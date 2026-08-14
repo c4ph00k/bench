@@ -9,9 +9,11 @@ import {
 import { ReactNode, useState } from "react";
 import { IconEdit, IconTrash } from "./Icons";
 
+const ARIA_SORT = { asc: "ascending", desc: "descending" } as const;
+
 interface Props<T> {
   data: T[];
-  columns: ColumnDef<T, any>[];
+  columns: ColumnDef<T>[];
   onRowClick?: (row: T) => void;
   onEdit?: (row: T) => void;
   onDelete?: (row: T) => void;
@@ -44,7 +46,7 @@ export default function DataTable<T>({
     getSortedRowModel: getSortedRowModel(),
   });
 
-  const hasActions = Boolean(onEdit || onDelete);
+  const hasActions = Boolean(onEdit ?? onDelete);
   const label = (row: T) => (rowLabel ? rowLabel(row) : "");
 
   return (
@@ -61,13 +63,7 @@ export default function DataTable<T>({
                     <th
                       key={header.id}
                       className={sortable ? "sortable" : undefined}
-                      aria-sort={
-                        dir === "asc"
-                          ? "ascending"
-                          : dir === "desc"
-                            ? "descending"
-                            : undefined
-                      }
+                      aria-sort={dir ? ARIA_SORT[dir] : undefined}
                       onClick={
                         sortable
                           ? header.column.getToggleSortingHandler()

@@ -188,7 +188,7 @@ export default function DatabaseView({ databaseId }: Props) {
     data.properties.find(
       (p) => p.id === config.groupBy && p.type === "select",
     ) ??
-    selectProps[0] ??
+    selectProps.at(0) ??
     null;
   const cardProperty = data.properties.find(
     (p) =>

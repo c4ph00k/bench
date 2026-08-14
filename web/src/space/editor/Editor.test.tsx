@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import Editor from "./Editor";
 import { applyReorder } from "./reorder";
 import { api, type Block } from "../api";
-import { block } from "../test/helpers";
+import { block, containing } from "../test/helpers";
 
 vi.mock("../api", () => ({
   api: {
@@ -162,7 +162,7 @@ describe("editing", () => {
         "p1",
         expect.objectContaining({
           type: "todo",
-          content: expect.objectContaining({ checked: false }),
+          content: containing({ checked: false }),
         }),
       ),
     );
@@ -256,7 +256,8 @@ describe("slash menu", () => {
     const el = blockText(id);
     el.focus();
     fireEvent.keyDown(el, { key: "/" });
-    el.textContent = (el.textContent ?? "") + "/";
+    const existing: unknown = el.textContent;
+    el.textContent = `${typeof existing === "string" ? existing : ""}/`;
     fireEvent.input(el);
     return el;
   }
@@ -341,7 +342,7 @@ describe("slash menu", () => {
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
     expect(api.updateBlock).not.toHaveBeenCalledWith(
       "b1",
-      expect.objectContaining({ type: expect.anything() }),
+      containing({ type: expect.anything() as unknown }),
     );
   });
 });

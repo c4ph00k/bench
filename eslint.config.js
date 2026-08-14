@@ -59,6 +59,15 @@ export default tseslint.config(
         { allowNumber: true },
       ],
 
+      // `useFetch<Deal[]>(url)` names the shape the caller expects back from untrusted JSON. The
+      // rule is right that a once-used type parameter is a disguised cast - that is exactly what
+      // it is, and moving the cast to every call site would not make it any more checked.
+      "@typescript-eslint/no-unnecessary-type-parameters": "off",
+
+      // A sort key is a number for a numeric column and a string for everything else, and that is
+      // the point: collapsing it to one type would sort 10 before 9.
+      "sonarjs/function-return-type": "off",
+
       // `Readonly<Props>` on 61 component signatures, for a mutation this codebase never performs
       // and which `Readonly` is too shallow to prevent anyway. Ceremony, not safety.
       "sonarjs/prefer-read-only-props": "off",
@@ -106,6 +115,21 @@ export default tseslint.config(
   {
     files: ["server/src/**/seed.ts", "web/src/groove/patches.ts"],
     rules: { "max-lines": "off", "max-lines-per-function": "off" },
+  },
+
+  // Building a Web Audio graph is long and linear: a voice's parameters are its signal inputs, and
+  // the branches are "does this patch use vibrato". EXPLORATORY.md records that none of this has
+  // automated coverage, so a refactor driven by these metrics could only be checked by ear -
+  // which is a worse trade than the metric is worth. Math.random shapes noise buffers and sample
+  // offsets here; nothing in Groove is security-sensitive.
+  {
+    files: ["web/src/groove/audio/**"],
+    rules: {
+      complexity: "off",
+      "max-params": "off",
+      "sonarjs/cognitive-complexity": "off",
+      "sonarjs/pseudo-random": "off",
+    },
   },
 
   // Config files and plain scripts sit outside any tsconfig, so type-aware rules cannot run.

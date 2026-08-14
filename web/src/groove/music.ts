@@ -18,7 +18,7 @@ export const NOTE_MAX = 96;
 
 /** MIDI number to a display name such as "F#2". */
 export function noteName(midi: number): string {
-  return NOTE_NAMES[((midi % 12) + 12) % 12] + (Math.floor(midi / 12) - 1);
+  return `${NOTE_NAMES[((midi % 12) + 12) % 12]}${Math.floor(midi / 12) - 1}`;
 }
 
 export function mtof(midi: number): number {

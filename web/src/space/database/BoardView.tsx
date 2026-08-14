@@ -29,6 +29,12 @@ interface Props {
   onReorder: (orderedIds: string[]) => void;
 }
 
+/** A card's chips: multi-select stores an array of option ids, select stores a single one. */
+function toChips(value: unknown): string[] {
+  if (Array.isArray(value)) return value as string[];
+  return value ? [value as string] : [];
+}
+
 function Card({
   row,
   cardProperty,
@@ -47,12 +53,7 @@ function Card({
     transition,
     isDragging,
   } = useSortable({ id: row.id });
-  const chips =
-    cardProperty && Array.isArray(row.values[cardProperty.id])
-      ? (row.values[cardProperty.id] as string[])
-      : cardProperty && row.values[cardProperty.id]
-        ? [row.values[cardProperty.id] as string]
-        : [];
+  const chips = toChips(cardProperty ? row.values[cardProperty.id] : undefined);
   return (
     <div
       ref={setNodeRef}
@@ -67,7 +68,7 @@ function Card({
       }}
       onKeyDown={(e) => {
         // dnd-kit's listeners own Space and the arrows for dragging; Enter opens the row.
-        listeners?.onKeyDown?.(e);
+        listeners?.onKeyDown(e);
         if (e.key === "Enter" && !e.defaultPrevented)
           void navigate(`/p/${row.id}`);
       }}
@@ -163,11 +164,13 @@ export default function BoardView({
 
     // Dropping on a column targets that column; dropping on a card targets the card's column.
     const overRow = rows.find((r) => r.id === overId);
-    const targetColumn = overId.startsWith("col:")
-      ? overId === "col:none"
-        ? null
-        : overId.replace("col:", "")
-      : ((overRow?.values[groupProperty.id] as string | undefined) ?? null);
+    let targetColumn: string | null;
+    if (overId.startsWith("col:")) {
+      targetColumn = overId === "col:none" ? null : overId.replace("col:", "");
+    } else {
+      targetColumn =
+        (overRow?.values[groupProperty.id] as string | undefined) ?? null;
+    }
 
     if ((row.values[groupProperty.id] ?? null) !== targetColumn) {
       onMove(activeId, targetColumn);

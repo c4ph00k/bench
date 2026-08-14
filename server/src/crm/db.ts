@@ -455,6 +455,12 @@ export function listActivities(
   return db.prepare(sql).all(...params) as Activity[];
 }
 
+/** `done` is a boolean coming in and SQLite's 0 or 1 going out; absent means leave it alone. */
+function doneFlag(done: boolean | undefined, current: number): number {
+  if (done === undefined) return current;
+  return done ? 1 : 0;
+}
+
 export function updateActivity(
   db: DB,
   id: number,
@@ -465,7 +471,7 @@ export function updateActivity(
   const next = {
     ...current,
     ...fields,
-    done: fields.done !== undefined ? (fields.done ? 1 : 0) : current.done,
+    done: doneFlag(fields.done, current.done),
   };
   db.prepare(
     "UPDATE activities SET type = ?, contact_id = ?, deal_id = ?, description = ?, occurred_at = ?, due_date = ?, done = ? WHERE id = ?",

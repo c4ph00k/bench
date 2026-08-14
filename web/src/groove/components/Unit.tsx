@@ -53,6 +53,9 @@ export function Unit(props: Props) {
   const knobs = specs.filter((s) => s.kind === "knob");
   const faders = specs.filter((s) => s.kind === "slider");
   const hits = activeCount(patch, id);
+  // What the display shows when no knob is being turned: drums count hits, the rest count steps.
+  const idleLabel = id === "drums" ? "HITS" : "STEPS";
+  const idleValue = id === "drums" ? `${hits}` : `${hits}/16`;
 
   return (
     <section
@@ -67,18 +70,10 @@ export function Unit(props: Props) {
         <span className="unit-model">{meta.model}</span>
         <div className="unit-display">
           <span className="disp-label">
-            {readout.value
-              ? readout.value.label
-              : id === "drums"
-                ? "HITS"
-                : "STEPS"}
+            {readout.value ? readout.value.label : idleLabel}
           </span>
           <span className="disp-value">
-            {readout.value
-              ? readout.value.value
-              : id === "drums"
-                ? `${hits}`
-                : `${hits}/16`}
+            {readout.value ? readout.value.value : idleValue}
           </span>
         </div>
         <button

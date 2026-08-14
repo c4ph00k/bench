@@ -24,9 +24,9 @@ export function highpassHz(macro: number): number {
 }
 
 function hz(v: number): string {
-  return v >= 1000
-    ? `${(v / 1000).toFixed(v >= 10000 ? 0 : 1)}k`
-    : `${Math.round(v)}`;
+  if (v < 1000) return `${Math.round(v)}`;
+  const decimals = v >= 10000 ? 0 : 1;
+  return `${(v / 1000).toFixed(decimals)}k`;
 }
 
 export function filterLabel(macro: number): string {

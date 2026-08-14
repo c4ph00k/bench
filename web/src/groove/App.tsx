@@ -107,7 +107,11 @@ export default function App() {
 
   const patch = patches[index];
   const stateRef = useRef<EngineState>({ patch, mutes, volume });
-  stateRef.current = { patch, mutes, volume };
+  // The engine reads this on every audio tick. Written after the render rather than during it,
+  // and declared before the effects below so they see the current value.
+  useEffect(() => {
+    stateRef.current = { patch, mutes, volume };
+  });
 
   useEffect(() => {
     const e = new Engine(() => stateRef.current);

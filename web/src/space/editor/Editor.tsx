@@ -49,18 +49,27 @@ interface Props {
 
 export default function Editor({ pageId, initialBlocks }: Props) {
   const [blocks, setBlocks] = useState<Block[]>(() =>
-    initialBlocks.map((b) =>
-      b.content && typeof b.content === "object" && !Array.isArray(b.content)
-        ? b
-        : { ...b, content: {} },
-    ),
+    initialBlocks.map((b) => {
+      // Typed as an object, but it arrives as JSON and an older block may hold anything.
+      const content: unknown = b.content;
+      const usable =
+        typeof content === "object" &&
+        content !== null &&
+        !Array.isArray(content);
+      return usable ? b : { ...b, content: {} };
+    }),
   );
   const blocksRef = useRef(blocks);
-  blocksRef.current = blocks;
   const [versions, setVersions] = useState<Record<string, number>>({});
   const [slash, setSlash] = useState<SlashState | null>(null);
   const slashRef = useRef(slash);
-  slashRef.current = slash;
+
+  // These mirror the latest render for the callbacks and the pagehide flush to read. Written after
+  // the render rather than during it, which is what React expects of a ref.
+  useEffect(() => {
+    blocksRef.current = blocks;
+    slashRef.current = slash;
+  });
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const pendingFocus = useRef<{ id: string; offset: number | "end" } | null>(
     null,
@@ -251,7 +260,8 @@ export default function Editor({ pageId, initialBlocks }: Props) {
       const i = bs.findIndex((b) => b.id === id);
       const block = bs[i];
       const text = (block.content.text as string | undefined) ?? "";
-      const prev = bs[i - 1];
+      // Typed as always present, but at the first block there is nothing before it.
+      const prev: Block | undefined = i > 0 ? bs[i - 1] : undefined;
 
       if (prev?.type === "divider") {
         e.preventDefault();
@@ -318,7 +328,11 @@ export default function Editor({ pageId, initialBlocks }: Props) {
         const end = caret > s.index ? caret : undefined;
         if (text[s.index] !== "/") setSlash(null);
         else
-          setSlash({ ...s, query: text.slice(s.index + 1, end), selected: 0 });
+          setSlash({
+            ...s,
+            query: text.slice(s.index + 1, end ?? text.length),
+            selected: 0,
+          });
       }
     },
     [setText],
@@ -412,10 +426,9 @@ export default function Editor({ pageId, initialBlocks }: Props) {
     (e: React.MouseEvent<HTMLDivElement>) => {
       if (e.target !== e.currentTarget) return;
       const bs = blocksRef.current;
-      const last = bs[bs.length - 1];
+      const last = bs.at(-1);
       if (
-        last &&
-        last.type === "paragraph" &&
+        last?.type === "paragraph" &&
         !((last.content.text as string | undefined) ?? "")
       ) {
         focusBlock(last.id, "end");
@@ -426,7 +439,14 @@ export default function Editor({ pageId, initialBlocks }: Props) {
     [insertBlock],
   );
 
-  let numberCounter = 0;
+  // An ordered list restarts at 1 whenever a non-numbered block interrupts it. Computed up front
+  // rather than by mutating a counter while mapping, which reassigns across renders.
+  const ordinals = blocks.reduce<number[]>((acc, block) => {
+    const running = acc.at(-1) ?? 0;
+    acc.push(block.type === "numbered" ? running + 1 : 0);
+    return acc;
+  }, []);
+
   return (
     <div
       role="presentation"
@@ -444,13 +464,12 @@ export default function Editor({ pageId, initialBlocks }: Props) {
           items={blocks.map((b) => b.id)}
           strategy={verticalListSortingStrategy}
         >
-          {blocks.map((block) => {
-            numberCounter = block.type === "numbered" ? numberCounter + 1 : 0;
+          {blocks.map((block, i) => {
             return (
               <BlockRow
                 key={block.id}
                 block={block}
-                number={numberCounter}
+                number={ordinals[i]}
                 version={versions[block.id] ?? 0}
                 onTextInput={onTextInput}
                 onKeyDown={onKeyDown}

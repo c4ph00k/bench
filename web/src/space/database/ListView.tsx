@@ -35,7 +35,7 @@ export function ValuePreview({
       );
     }
     case "checkbox":
-      return <span className="preview-check">{value ? "✓" : ""}</span>;
+      return <span className="preview-check">{value === true ? "✓" : ""}</span>;
     default:
       return <span className="preview-text">{valueText(value)}</span>;
   }

@@ -94,11 +94,9 @@ function FilterValueInput({
   );
 }
 
-function FilterPanel({
-  data,
-  config,
-  onConfigChange,
-}: Pick<Props, "data" | "config" | "onConfigChange">) {
+type PanelProps = Pick<Props, "data" | "config" | "onConfigChange">;
+
+function FilterPanel({ data, config, onConfigChange }: PanelProps) {
   const props = filterableProps(data);
   const setFilter = (i: number, patch: Partial<Filter>) => {
     const filters = config.filters.map((f, j) =>
@@ -187,11 +185,7 @@ function FilterPanel({
   );
 }
 
-function SortPanel({
-  data,
-  config,
-  onConfigChange,
-}: Pick<Props, "data" | "config" | "onConfigChange">) {
+function SortPanel({ data, config, onConfigChange }: PanelProps) {
   const props = filterableProps(data);
   const sort = config.sort;
   return (
@@ -237,11 +231,7 @@ function SortPanel({
   );
 }
 
-function GroupPanel({
-  data,
-  config,
-  onConfigChange,
-}: Pick<Props, "data" | "config" | "onConfigChange">) {
+function GroupPanel({ data, config, onConfigChange }: PanelProps) {
   const selects = data.properties.filter((p) => p.type === "select");
   return (
     <div className="popover group-panel" role="dialog" aria-label="Group by">

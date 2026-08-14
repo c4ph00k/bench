@@ -31,11 +31,14 @@ describe("api client", () => {
   it("POSTs JSON bodies with the right headers", async () => {
     fetchMock.mockResolvedValue(ok({ id: "p1" }));
     await api.createPage({ title: "X", parentId: null });
-    const [url, init] = fetchMock.mock.calls[0];
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toBe("/api/space/pages");
     expect(init.method).toBe("POST");
     expect(init.headers).toEqual({ "Content-Type": "application/json" });
-    expect(JSON.parse(init.body)).toEqual({ title: "X", parentId: null });
+    expect(JSON.parse(init.body as string)).toEqual({
+      title: "X",
+      parentId: null,
+    });
   });
 
   it("throws the server's error message on failure", async () => {
@@ -75,7 +78,7 @@ describe("api client", () => {
     await api.getRow("r");
     await api.updateView("d", "board", { groupBy: "pr" });
     await api.search("q x");
-    const urls = fetchMock.mock.calls.map(([u]) => u);
+    const urls = fetchMock.mock.calls.map(([u]) => u as string);
     expect(urls).toEqual([
       "/api/space/pages/p",
       "/api/space/pages/p/blocks",

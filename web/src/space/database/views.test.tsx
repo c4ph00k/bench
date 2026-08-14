@@ -1,4 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
+import { arrayContaining, containing } from "../test/helpers";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
@@ -165,9 +166,7 @@ describe("filters and sort in the toolbar", () => {
       "db1",
       "table",
       expect.objectContaining({
-        filters: expect.arrayContaining([
-          expect.objectContaining({ operator: "contains" }),
-        ]),
+        filters: arrayContaining([containing({ operator: "contains" })]),
       }),
     );
   });

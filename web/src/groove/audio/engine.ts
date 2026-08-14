@@ -123,9 +123,9 @@ export class Engine {
     for (const id of UNIT_IDS) {
       const p = patch[id].params;
       const ch = this.master.channels[id];
-      ch.level.gain.setTargetAtTime(p.level ?? 0.8, t, 0.02);
-      ch.reverbSend.gain.setTargetAtTime((p.space ?? 0) * 0.55, t, 0.02);
-      ch.delaySend.gain.setTargetAtTime((p.echo ?? 0) * 0.6, t, 0.02);
+      ch.level.gain.setTargetAtTime(p.level, t, 0.02);
+      ch.reverbSend.gain.setTargetAtTime(p.space * 0.55, t, 0.02);
+      ch.delaySend.gain.setTargetAtTime(p.echo * 0.6, t, 0.02);
       this.master.setMute(id, s.mutes[id]);
     }
     if (!this.playing) {

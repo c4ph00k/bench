@@ -29,6 +29,9 @@ export const OPTION_COLORS = [
 
 const DEFAULT_VIEW = { filters: [], sort: null, groupBy: null };
 
+const UPSERT_VALUE =
+  "INSERT INTO row_values (row_id, property_id, value) VALUES (?, ?, ?) ON CONFLICT(row_id, property_id) DO UPDATE SET value = excluded.value";
+
 /** The projections these queries select, rather than whole rows. */
 type PropertySummary = Pick<PropertyRow, "id" | "name" | "type" | "position">;
 type OptionSummary = Pick<
@@ -58,43 +61,55 @@ function isViewKind(value: string): boolean {
   return (VIEW_KINDS as readonly string[]).includes(value);
 }
 
-export function databasesRouter(db: Database.Database): Router {
-  const router = Router();
+/** The reads every group of routes below needs, bound to one connection. */
+interface Queries {
+  db: Database.Database;
+  getDb: (id: string) => DatabasePage | undefined;
+  optionsOf: (propertyId: string) => OptionSummary[];
+  propertiesOf: (databaseId: string) => PropertySummary[];
+  nextPosition: (sql: string, id: string) => number;
+}
 
-  const getDb = (id: string) =>
-    db
-      .prepare("SELECT * FROM pages WHERE id = ? AND type = 'database'")
-      .get(id) as DatabasePage | undefined;
+function queriesFor(db: Database.Database): Queries {
+  return {
+    db,
+    getDb: (id) =>
+      db
+        .prepare("SELECT * FROM pages WHERE id = ? AND type = 'database'")
+        .get(id) as DatabasePage | undefined,
+    optionsOf: (propertyId) =>
+      db
+        .prepare(
+          "SELECT id, name, color, position FROM property_options WHERE property_id = ? ORDER BY position",
+        )
+        .all(propertyId) as OptionSummary[],
+    propertiesOf: (databaseId) =>
+      db
+        .prepare(
+          "SELECT id, name, type, position FROM properties WHERE database_id = ? ORDER BY position",
+        )
+        .all(databaseId) as PropertySummary[],
+    nextPosition: (sql, id) => (db.prepare(sql).get(id) as NextPosition).pos,
+  };
+}
 
-  const optionsOf = (propertyId: string) =>
-    db
-      .prepare(
-        "SELECT id, name, color, position FROM property_options WHERE property_id = ? ORDER BY position",
-      )
-      .all(propertyId) as OptionSummary[];
-
-  const propertiesOf = (databaseId: string) =>
-    db
-      .prepare(
-        "SELECT id, name, type, position FROM properties WHERE database_id = ? ORDER BY position",
-      )
-      .all(databaseId) as PropertySummary[];
-
+/** Reading a whole database: its properties with options, its rows with values, and its views. */
+function registerDatabaseRoutes(router: Router, q: Queries) {
   router.get("/databases/:id", (req, res) => {
-    const page = getDb(req.params.id);
+    const page = q.getDb(req.params.id);
     if (!page) {
       res.status(404).json({ error: "database not found" });
       return;
     }
-    const properties = propertiesOf(req.params.id);
+    const properties = q.propertiesOf(req.params.id);
     const optionsByProp = new Map<string, OptionSummary[]>();
-    for (const p of properties) optionsByProp.set(p.id, optionsOf(p.id));
-    const rows = db
+    for (const p of properties) optionsByProp.set(p.id, q.optionsOf(p.id));
+    const rows = q.db
       .prepare(
         "SELECT id, title, icon, position FROM pages WHERE parent_id = ? AND type = 'row' ORDER BY position",
       )
       .all(req.params.id) as RowSummary[];
-    const values = db
+    const values = q.db
       .prepare(
         `SELECT rv.row_id, rv.property_id, rv.value FROM row_values rv
          JOIN pages p ON p.id = rv.row_id WHERE p.parent_id = ?`,
@@ -113,7 +128,7 @@ export function databasesRouter(db: Database.Database): Router {
     }
     const views: Record<string, unknown> = {};
     for (const kind of VIEW_KINDS) {
-      const row = db
+      const row = q.db
         .prepare("SELECT config FROM views WHERE database_id = ? AND kind = ?")
         .get(req.params.id, kind) as { config: string } | undefined;
       views[kind] = row
@@ -132,14 +147,16 @@ export function databasesRouter(db: Database.Database): Router {
       views,
     });
   });
+}
 
+function registerPropertyRoutes(router: Router, q: Queries) {
   router.post("/databases/:id/properties", (req, res) => {
-    if (!getDb(req.params.id)) {
+    if (!q.getDb(req.params.id)) {
       res.status(404).json({ error: "database not found" });
       return;
     }
-    // `name` stays unknown: it is untrusted JSON, and asText below is a real coercion rather than
-    // the redundant one a `string` type would have implied.
+    // `name` stays unknown: it is untrusted JSON, and asText is a real coercion rather than the
+    // redundant one a `string` type would have implied.
     const { name = "", type = "" } = (req.body ?? {}) as {
       name?: unknown;
       type?: string;
@@ -148,22 +165,23 @@ export function databasesRouter(db: Database.Database): Router {
       res.status(400).json({ error: `unknown property type '${type}'` });
       return;
     }
-    const { pos } = db
-      .prepare(
-        "SELECT COALESCE(MAX(position), -1) + 1 AS pos FROM properties WHERE database_id = ?",
-      )
-      .get(req.params.id) as NextPosition;
+    const pos = q.nextPosition(
+      "SELECT COALESCE(MAX(position), -1) + 1 AS pos FROM properties WHERE database_id = ?",
+      req.params.id,
+    );
     const id = randomUUID();
-    db.prepare(
-      "INSERT INTO properties (id, database_id, name, type, position) VALUES (?, ?, ?, ?, ?)",
-    ).run(id, req.params.id, asText(name), type, pos);
+    q.db
+      .prepare(
+        "INSERT INTO properties (id, database_id, name, type, position) VALUES (?, ?, ?, ?, ?)",
+      )
+      .run(id, req.params.id, asText(name), type, pos);
     res
       .status(201)
       .json({ id, name: asText(name), type, position: pos, options: [] });
   });
 
   router.patch("/properties/:id", (req, res) => {
-    const prop = db
+    const prop = q.db
       .prepare("SELECT * FROM properties WHERE id = ?")
       .get(req.params.id) as PropertyRow | undefined;
     if (!prop) {
@@ -181,18 +199,17 @@ export function databasesRouter(db: Database.Database): Router {
       return;
     }
     if (name !== undefined) {
-      db.prepare("UPDATE properties SET name = ? WHERE id = ?").run(
-        asText(name),
-        req.params.id,
-      );
+      q.db
+        .prepare("UPDATE properties SET name = ? WHERE id = ?")
+        .run(asText(name), req.params.id);
     }
     res.json(
-      db.prepare("SELECT * FROM properties WHERE id = ?").get(req.params.id),
+      q.db.prepare("SELECT * FROM properties WHERE id = ?").get(req.params.id),
     );
   });
 
   router.delete("/properties/:id", (req, res) => {
-    const result = db
+    const result = q.db
       .prepare("DELETE FROM properties WHERE id = ?")
       .run(req.params.id);
     if (result.changes === 0) {
@@ -203,7 +220,7 @@ export function databasesRouter(db: Database.Database): Router {
   });
 
   router.post("/properties/:id/options", (req, res) => {
-    const prop = db
+    const prop = q.db
       .prepare("SELECT * FROM properties WHERE id = ?")
       .get(req.params.id) as PropertyRow | undefined;
     if (!prop) {
@@ -228,20 +245,23 @@ export function databasesRouter(db: Database.Database): Router {
       res.status(400).json({ error: "option name required" });
       return;
     }
-    const { pos } = db
-      .prepare(
-        "SELECT COALESCE(MAX(position), -1) + 1 AS pos FROM property_options WHERE property_id = ?",
-      )
-      .get(req.params.id) as NextPosition;
+    const pos = q.nextPosition(
+      "SELECT COALESCE(MAX(position), -1) + 1 AS pos FROM property_options WHERE property_id = ?",
+      req.params.id,
+    );
     const id = randomUUID();
-    db.prepare(
-      "INSERT INTO property_options (id, property_id, name, color, position) VALUES (?, ?, ?, ?, ?)",
-    ).run(id, req.params.id, name, chosen, pos);
+    q.db
+      .prepare(
+        "INSERT INTO property_options (id, property_id, name, color, position) VALUES (?, ?, ?, ?, ?)",
+      )
+      .run(id, req.params.id, name, chosen, pos);
     res.status(201).json({ id, name, color: chosen, position: pos });
   });
+}
 
+function registerRowRoutes(router: Router, q: Queries) {
   router.post("/databases/:id/rows", (req, res) => {
-    if (!getDb(req.params.id)) {
+    if (!q.getDb(req.params.id)) {
       res.status(404).json({ error: "database not found" });
       return;
     }
@@ -249,18 +269,17 @@ export function databasesRouter(db: Database.Database): Router {
       title?: unknown;
       values?: Record<string, unknown>;
     };
-    const { pos } = db
-      .prepare(
-        "SELECT COALESCE(MAX(position), -1) + 1 AS pos FROM pages WHERE parent_id = ?",
-      )
-      .get(req.params.id) as NextPosition;
-    const id = randomUUID();
-    db.prepare(
-      "INSERT INTO pages (id, parent_id, type, title, position) VALUES (?, ?, 'row', ?, ?)",
-    ).run(id, req.params.id, asText(title), pos);
-    const upsert = db.prepare(
-      "INSERT INTO row_values (row_id, property_id, value) VALUES (?, ?, ?) ON CONFLICT(row_id, property_id) DO UPDATE SET value = excluded.value",
+    const pos = q.nextPosition(
+      "SELECT COALESCE(MAX(position), -1) + 1 AS pos FROM pages WHERE parent_id = ?",
+      req.params.id,
     );
+    const id = randomUUID();
+    q.db
+      .prepare(
+        "INSERT INTO pages (id, parent_id, type, title, position) VALUES (?, ?, 'row', ?, ?)",
+      )
+      .run(id, req.params.id, asText(title), pos);
+    const upsert = q.db.prepare(UPSERT_VALUE);
     for (const [propId, value] of Object.entries(values)) {
       upsert.run(id, propId, JSON.stringify(value));
     }
@@ -274,7 +293,7 @@ export function databasesRouter(db: Database.Database): Router {
     // Shape asserted here, then checked below against the database's actual row ids.
     const { ids } = (req.body ?? {}) as { ids?: string[] };
     const existing = (
-      db
+      q.db
         .prepare(
           "SELECT id FROM pages WHERE parent_id = ? AND type = 'row' ORDER BY position",
         )
@@ -292,15 +311,15 @@ export function databasesRouter(db: Database.Database): Router {
         .json({ error: "ids must be a permutation of the database's row ids" });
       return;
     }
-    const update = db.prepare("UPDATE pages SET position = ? WHERE id = ?");
-    db.transaction(() => {
+    const update = q.db.prepare("UPDATE pages SET position = ? WHERE id = ?");
+    q.db.transaction(() => {
       ids.forEach((id, i) => update.run(i, id));
     })();
     res.json({ ok: true });
   });
 
   router.patch("/rows/:rowId/values", (req, res) => {
-    const row = db
+    const row = q.db
       .prepare("SELECT * FROM pages WHERE id = ? AND type = 'row'")
       .get(req.params.rowId);
     if (!row) {
@@ -311,18 +330,20 @@ export function databasesRouter(db: Database.Database): Router {
       propertyId?: string;
       value?: unknown;
     };
-    if (!db.prepare("SELECT id FROM properties WHERE id = ?").get(propertyId)) {
+    if (
+      !q.db.prepare("SELECT id FROM properties WHERE id = ?").get(propertyId)
+    ) {
       res.status(400).json({ error: "property not found" });
       return;
     }
-    db.prepare(
-      "INSERT INTO row_values (row_id, property_id, value) VALUES (?, ?, ?) ON CONFLICT(row_id, property_id) DO UPDATE SET value = excluded.value",
-    ).run(req.params.rowId, propertyId, JSON.stringify(value ?? null));
+    q.db
+      .prepare(UPSERT_VALUE)
+      .run(req.params.rowId, propertyId, JSON.stringify(value ?? null));
     res.json({ ok: true });
   });
 
   router.get("/rows/:rowId", (req, res) => {
-    const row = db
+    const row = q.db
       .prepare("SELECT * FROM pages WHERE id = ? AND type = 'row'")
       .get(req.params.rowId) as
       { id: string; parent_id: string; title: string } | undefined;
@@ -330,19 +351,19 @@ export function databasesRouter(db: Database.Database): Router {
       res.status(404).json({ error: "row not found" });
       return;
     }
-    const properties = propertiesOf(row.parent_id).map((p) => ({
+    const properties = q.propertiesOf(row.parent_id).map((p) => ({
       ...p,
-      options: optionsOf(p.id),
+      options: q.optionsOf(p.id),
     }));
     const values: Record<string, unknown> = {};
-    const stored = db
+    const stored = q.db
       .prepare("SELECT property_id, value FROM row_values WHERE row_id = ?")
       .all(row.id) as { property_id: string; value: string | null }[];
     for (const v of stored) {
       values[v.property_id] =
         v.value === null ? null : (JSON.parse(v.value) as unknown);
     }
-    const parent = db
+    const parent = q.db
       .prepare("SELECT title FROM pages WHERE id = ?")
       .get(row.parent_id) as { title: string } | undefined;
     res.json({
@@ -354,9 +375,11 @@ export function databasesRouter(db: Database.Database): Router {
       values,
     });
   });
+}
 
+function registerViewRoutes(router: Router, q: Queries) {
   router.patch("/databases/:id/views/:kind", (req, res) => {
-    if (!getDb(req.params.id)) {
+    if (!q.getDb(req.params.id)) {
       res.status(404).json({ error: "database not found" });
       return;
     }
@@ -364,7 +387,7 @@ export function databasesRouter(db: Database.Database): Router {
       res.status(400).json({ error: "unknown view kind" });
       return;
     }
-    const existing = db
+    const existing = q.db
       .prepare("SELECT config FROM views WHERE database_id = ? AND kind = ?")
       .get(req.params.id, req.params.kind) as { config: string } | undefined;
     const config = {
@@ -372,11 +395,21 @@ export function databasesRouter(db: Database.Database): Router {
       ...(existing ? (JSON.parse(existing.config) as object) : {}),
       ...((req.body ?? {}) as object),
     };
-    db.prepare(
-      "INSERT INTO views (database_id, kind, config) VALUES (?, ?, ?) ON CONFLICT(database_id, kind) DO UPDATE SET config = excluded.config",
-    ).run(req.params.id, req.params.kind, JSON.stringify(config));
+    q.db
+      .prepare(
+        "INSERT INTO views (database_id, kind, config) VALUES (?, ?, ?) ON CONFLICT(database_id, kind) DO UPDATE SET config = excluded.config",
+      )
+      .run(req.params.id, req.params.kind, JSON.stringify(config));
     res.json(config);
   });
+}
 
+export function databasesRouter(db: Database.Database): Router {
+  const router = Router();
+  const q = queriesFor(db);
+  registerDatabaseRoutes(router, q);
+  registerPropertyRoutes(router, q);
+  registerRowRoutes(router, q);
+  registerViewRoutes(router, q);
   return router;
 }

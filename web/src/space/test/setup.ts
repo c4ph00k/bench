@@ -8,9 +8,11 @@ beforeEach(() => {
   // requests stub it again themselves.
   vi.stubGlobal(
     "fetch",
-    vi
-      .fn()
-      .mockResolvedValue({ ok: true, status: 200, json: async () => ({}) }),
+    vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({}),
+    }),
   );
 });
 

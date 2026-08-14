@@ -19,11 +19,20 @@ function parseNote(token: string): number {
 }
 
 /** "X" = accent, "x" = hit, anything else = rest. */
+function hit(char: string | undefined): number {
+  if (char === "X") return 2;
+  return char === "x" ? 1 : 0;
+}
+
+/** "!" plays the step hard, "~" plays it as a ghost note. */
+function velocity(accent: boolean, ghost: boolean): number {
+  if (accent) return 1;
+  return ghost ? 0.42 : 0.76;
+}
+
 function row(spec: string): number[] {
   const chars = spec.replace(/\s+/g, "").split("");
-  return Array.from({ length: STEPS }, (_, i) =>
-    chars[i] === "X" ? 2 : chars[i] === "x" ? 1 : 0,
-  );
+  return Array.from({ length: STEPS }, (_, i) => hit(chars[i]));
 }
 
 function drums(spec: Record<keyof DrumPattern, string>): DrumPattern {
@@ -65,7 +74,7 @@ function mel(spec: string): MelodicStep[] {
       on: true,
       note: lastNote,
       chord: lastChord,
-      vel: accent ? 1 : ghost ? 0.42 : 0.76,
+      vel: velocity(accent, ghost),
     });
   }
   // A leading rest should inherit the loop's first real note, not the default.

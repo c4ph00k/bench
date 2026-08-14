@@ -55,6 +55,53 @@ function rowValue(row: DbRow, propertyId: string): unknown {
   return propertyId === TITLE_ID ? row.title : row.values[propertyId];
 }
 
+const contains = (value: unknown, target: unknown) =>
+  typeof target === "string" &&
+  valueText(value).toLowerCase().includes(target.toLowerCase());
+
+/** A date cell holds an ISO string; an empty one is "no date" rather than the earliest one. */
+const isDate = (value: unknown): value is string =>
+  typeof value === "string" && value !== "";
+
+/**
+ * One predicate per operator. A stored view config carries its operator as a plain string, so an
+ * operator this build does not know falls through to "matches everything" rather than hiding every
+ * row - which is why this is a Map rather than a lookup that is always defined.
+ */
+const OPERATORS = new Map<string, (value: unknown, target: unknown) => boolean>(
+  [
+    ["contains", contains],
+    ["not_contains", (value, target) => !contains(value, target)],
+    [
+      "eq",
+      (value, target) => typeof value === "number" && value === Number(target),
+    ],
+    [
+      "gt",
+      (value, target) => typeof value === "number" && value > Number(target),
+    ],
+    [
+      "lt",
+      (value, target) => typeof value === "number" && value < Number(target),
+    ],
+    ["is", (value, target) => value === target],
+    ["is_not", (value, target) => value !== target],
+    ["has", (value, target) => Array.isArray(value) && value.includes(target)],
+    [
+      "before",
+      (value, target) =>
+        isDate(value) && typeof target === "string" && value < target,
+    ],
+    [
+      "after",
+      (value, target) =>
+        isDate(value) && typeof target === "string" && value > target,
+    ],
+    ["checked", (value) => Boolean(value)],
+    ["unchecked", (value) => !value],
+  ],
+);
+
 export function matchesFilter(
   row: DbRow,
   filter: Filter,
@@ -66,52 +113,9 @@ export function matchesFilter(
   ) {
     return true; // the filtered property was deleted; ignore the filter rather than hide everything
   }
-  const value = rowValue(row, filter.propertyId);
-  const fv = filter.value;
-  switch (filter.operator) {
-    case "contains":
-      return (
-        typeof fv === "string" &&
-        valueText(value).toLowerCase().includes(fv.toLowerCase())
-      );
-    case "not_contains":
-      return (
-        typeof fv === "string" &&
-        !valueText(value).toLowerCase().includes(fv.toLowerCase())
-      );
-    case "eq":
-      return typeof value === "number" && value === Number(fv);
-    case "gt":
-      return typeof value === "number" && value > Number(fv);
-    case "lt":
-      return typeof value === "number" && value < Number(fv);
-    case "is":
-      return value === fv;
-    case "is_not":
-      return value !== fv;
-    case "has":
-      return Array.isArray(value) && value.includes(fv);
-    case "before":
-      return (
-        typeof value === "string" &&
-        value !== "" &&
-        typeof fv === "string" &&
-        value < fv
-      );
-    case "after":
-      return (
-        typeof value === "string" &&
-        value !== "" &&
-        typeof fv === "string" &&
-        value > fv
-      );
-    case "checked":
-      return Boolean(value);
-    case "unchecked":
-      return !value;
-    default:
-      return true;
-  }
+  const predicate = OPERATORS.get(filter.operator);
+  if (!predicate) return true;
+  return predicate(rowValue(row, filter.propertyId), filter.value);
 }
 
 export function applyFilters(
