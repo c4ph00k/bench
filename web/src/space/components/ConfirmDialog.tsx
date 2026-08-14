@@ -1,3 +1,5 @@
+import { useEffect, useRef } from "react";
+
 interface Props {
   title: string;
   message: string;
@@ -6,14 +8,31 @@ interface Props {
   onCancel: () => void;
 }
 
-export default function ConfirmDialog({ title, message, confirmLabel, onConfirm, onCancel }: Props) {
+export default function ConfirmDialog({
+  title,
+  message,
+  confirmLabel,
+  onConfirm,
+  onCancel,
+}: Props) {
+  // Focused on mount rather than through autoFocus, which fires before assistive technology has
+  // been told the dialog opened.
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => cancelRef.current?.focus(), []);
+
   return (
-    <div className="overlay" onMouseDown={onCancel}>
-      <div className="dialog" role="dialog" aria-label={title} onMouseDown={(e) => e.stopPropagation()}>
+    <div
+      role="presentation"
+      className="overlay"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onCancel();
+      }}
+    >
+      <div className="dialog" role="dialog" aria-label={title}>
         <h3>{title}</h3>
         <p>{message}</p>
         <div className="dialog-actions">
-          <button className="btn" onClick={onCancel} autoFocus>
+          <button ref={cancelRef} className="btn" onClick={onCancel}>
             Cancel
           </button>
           <button className="btn btn-danger" onClick={onConfirm}>

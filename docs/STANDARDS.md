@@ -106,19 +106,23 @@ The exception, kept deliberately: the small conic-gradient brand mark.
 
 ## Commits
 
-**Do not commit.** Leave finished work in the working tree; Ed reviews and commits it himself. The
-same goes for `git add`, amending, rebasing, tagging and pushing - do none of them unless asked
-directly, and never rewrite history.
+**Commit your work when it is finished.** Finishing means the checks are green and you have seen the
+change working - see [PROCESS.md](./PROCESS.md). Do not leave completed work sitting in the tree.
 
-What to do instead, when a piece of work is done:
-
-- Say what changed and why, and name anything a reader would otherwise be surprised by: a bug that
-  turned out to be pre-existing, a deliberate gap, a decision that looks odd without the reason.
-- Offer a commit message he can use. Plain sentences, wrapped at roughly 80 columns, no emoji and
-  no `feat:` / `chore:` prefixes.
-- Leave the tree clean of scratch files - delete any throwaway scripts you wrote along the way.
+- **Never commit red.** If the checks do not pass, the work is not finished; fix it or say plainly
+  what you could not fix and leave it uncommitted.
+- **Write the message in the commit,** not in your reply. Plain sentences, wrapped at roughly 80
+  columns, no emoji and no `feat:` / `chore:` prefixes. Say what changed and why.
+- **Still report in your reply.** Name anything a reader would otherwise be surprised by: a bug that
+  turned out to be pre-existing, a deliberate gap, a decision that looks odd without the reason,
+  anything incomplete or unverified. The commit records the change; the reply records the judgement.
+- **Leave the tree clean of scratch files** - delete any throwaway scripts you wrote along the way.
+  Commit the work, not the workings.
+- **Do not rewrite history.** No amending, rebasing, force-pushing or tagging unless asked directly.
+- **Do not push** unless asked. Committing is now part of the job; publishing is still Ed's call.
 
 ## Related documents
 
 - [PROJECT.md](./PROJECT.md) - purpose, layout, architectural decisions
 - [PROCESS.md](./PROCESS.md) - implementing a change, testing, suite maintenance
+- [CONTROLS.md](./CONTROLS.md) - the checks that mechanise these standards, and how each is enforced

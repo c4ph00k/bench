@@ -1,13 +1,18 @@
-import Modal from './Modal'
+import Modal from "./Modal";
 
 interface Props {
-  title: string
-  message: string
-  onConfirm: () => void
-  onCancel: () => void
+  title: string;
+  message: string;
+  onConfirm: () => void;
+  onCancel: () => void;
 }
 
-export default function ConfirmDialog({ title, message, onConfirm, onCancel }: Props) {
+export default function ConfirmDialog({
+  title,
+  message,
+  onConfirm,
+  onCancel,
+}: Props) {
   return (
     <Modal title={title} onClose={onCancel}>
       <p style={{ marginTop: 0 }}>{message}</p>
@@ -20,5 +25,5 @@ export default function ConfirmDialog({ title, message, onConfirm, onCancel }: P
         </button>
       </div>
     </Modal>
-  )
+  );
 }

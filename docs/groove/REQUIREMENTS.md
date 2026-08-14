@@ -21,7 +21,7 @@ the best of what the instrument can do. They should be creative, original and
 inspiring. Name the patches - could be after genres, could be a track name, could be
 an inspiration - it's up to you.
 
-Ensure there is a lot of detail - many effects that can be tweaked. Add dials, 
+Ensure there is a lot of detail - many effects that can be tweaked. Add dials,
 sliders and other controls to further sculpt the sound.
 For at least one of the preset patches, ensure that the sound can have a deadmau5 style filter effect.
 Consider application of filter, echo, swing, and selecting the waveform type.

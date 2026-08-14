@@ -2,7 +2,8 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
-import Sidebar, { subtreeContains } from "./Sidebar";
+import Sidebar from "./Sidebar";
+import { subtreeContains } from "../tree";
 import { api } from "../api";
 import { node, pageData } from "../test/helpers";
 
@@ -15,11 +16,20 @@ vi.mock("../api", () => ({
 }));
 
 const tree = [
-  node({ id: "root1", title: "Projects", icon: "🗂️", children: [node({ id: "child1", title: "Garden", icon: "🌱" })] }),
+  node({
+    id: "root1",
+    title: "Projects",
+    icon: "🗂️",
+    children: [node({ id: "child1", title: "Garden", icon: "🌱" })],
+  }),
   node({ id: "root2", title: "Notes", icon: "🧠" }),
 ];
 
-function renderSidebar(onChange = vi.fn(), initialPath = "/", onSearch = vi.fn()) {
+function renderSidebar(
+  onChange = vi.fn(),
+  initialPath = "/",
+  onSearch = vi.fn(),
+) {
   render(
     <MemoryRouter initialEntries={[initialPath]}>
       <Sidebar tree={tree} onChange={onChange} onSearch={onSearch} />
@@ -39,46 +49,76 @@ describe("Sidebar", () => {
     expect(screen.getByText("🗂️")).toBeInTheDocument();
     expect(screen.queryByText("Garden")).not.toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Expand Projects" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Expand Projects" }),
+    );
     expect(screen.getByText("Garden")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Collapse Projects" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Collapse Projects" }),
+    );
     expect(screen.queryByText("Garden")).not.toBeInTheDocument();
   });
 
   it("remembers expanded state in localStorage", async () => {
     renderSidebar();
-    await userEvent.click(screen.getByRole("button", { name: "Expand Projects" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Expand Projects" }),
+    );
     expect(JSON.parse(localStorage.getItem("ps.expanded")!)).toContain("root1");
   });
 
   it("marks the active page from the URL", () => {
     renderSidebar(vi.fn(), "/p/root2");
-    expect(screen.getByRole("treeitem", { name: /Notes/ })).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByRole("treeitem", { name: /Projects/ })).toHaveAttribute("aria-selected", "false");
+    expect(screen.getByRole("treeitem", { name: /Notes/ })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(screen.getByRole("treeitem", { name: /Projects/ })).toHaveAttribute(
+      "aria-selected",
+      "false",
+    );
   });
 
   it("creates a root page from the footer button", async () => {
-    vi.mocked(api.createPage).mockResolvedValue(pageData({ id: "new1", title: "" }));
+    vi.mocked(api.createPage).mockResolvedValue(
+      pageData({ id: "new1", title: "" }),
+    );
     const onChange = vi.fn();
     renderSidebar(onChange);
     await userEvent.click(screen.getByRole("button", { name: "New page" }));
-    expect(api.createPage).toHaveBeenCalledWith({ parentId: null, title: "", type: "page" });
+    expect(api.createPage).toHaveBeenCalledWith({
+      parentId: null,
+      title: "",
+      type: "page",
+    });
     expect(onChange).toHaveBeenCalled();
   });
 
   it("creates a nested page via the row plus button", async () => {
-    vi.mocked(api.createPage).mockResolvedValue(pageData({ id: "new2", title: "" }));
+    vi.mocked(api.createPage).mockResolvedValue(
+      pageData({ id: "new2", title: "" }),
+    );
     renderSidebar();
-    await userEvent.click(screen.getByRole("button", { name: "Add page inside Notes" }));
-    expect(api.createPage).toHaveBeenCalledWith({ parentId: "root2", title: "", type: "page" });
+    await userEvent.click(
+      screen.getByRole("button", { name: "Add page inside Notes" }),
+    );
+    expect(api.createPage).toHaveBeenCalledWith({
+      parentId: "root2",
+      title: "",
+      type: "page",
+    });
   });
 
   it("renames a page inline through the options menu", async () => {
-    vi.mocked(api.updatePage).mockResolvedValue(pageData({ id: "root2", title: "Journal" }));
+    vi.mocked(api.updatePage).mockResolvedValue(
+      pageData({ id: "root2", title: "Journal" }),
+    );
     const onChange = vi.fn();
     renderSidebar(onChange);
-    await userEvent.click(screen.getByRole("button", { name: "Page options for Notes" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Page options for Notes" }),
+    );
     await userEvent.click(screen.getByRole("menuitem", { name: "Rename" }));
     const input = screen.getByRole("textbox", { name: "Rename page" });
     await userEvent.clear(input);
@@ -89,9 +129,14 @@ describe("Sidebar", () => {
 
   it("cancels a rename with Escape", async () => {
     renderSidebar();
-    await userEvent.click(screen.getByRole("button", { name: "Page options for Notes" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Page options for Notes" }),
+    );
     await userEvent.click(screen.getByRole("menuitem", { name: "Rename" }));
-    await userEvent.type(screen.getByRole("textbox", { name: "Rename page" }), "X{Escape}");
+    await userEvent.type(
+      screen.getByRole("textbox", { name: "Rename page" }),
+      "X{Escape}",
+    );
     expect(api.updatePage).not.toHaveBeenCalled();
     expect(screen.getByText("Notes")).toBeInTheDocument();
   });
@@ -100,18 +145,24 @@ describe("Sidebar", () => {
     vi.mocked(api.deletePage).mockResolvedValue({ ok: true });
     const onChange = vi.fn();
     renderSidebar(onChange);
-    await userEvent.click(screen.getByRole("button", { name: "Page options for Projects" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Page options for Projects" }),
+    );
     await userEvent.click(screen.getByRole("menuitem", { name: "Delete" }));
     const dialog = screen.getByRole("dialog");
     expect(dialog).toHaveTextContent("everything nested inside it");
-    await userEvent.click(within(dialog).getByRole("button", { name: "Delete" }));
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Delete" }),
+    );
     expect(api.deletePage).toHaveBeenCalledWith("root1");
     expect(onChange).toHaveBeenCalled();
   });
 
   it("does not delete when the confirmation is cancelled", async () => {
     renderSidebar();
-    await userEvent.click(screen.getByRole("button", { name: "Page options for Notes" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Page options for Notes" }),
+    );
     await userEvent.click(screen.getByRole("menuitem", { name: "Delete" }));
     await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(api.deletePage).not.toHaveBeenCalled();
@@ -128,10 +179,14 @@ describe("Sidebar search and theme controls", () => {
 
   it("toggles dark mode and persists the choice", async () => {
     renderSidebar();
-    await userEvent.click(screen.getByRole("button", { name: "Switch to dark mode" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Switch to dark mode" }),
+    );
     expect(document.documentElement.dataset.theme).toBe("dark");
     expect(localStorage.getItem("ps.theme")).toBe("dark");
-    await userEvent.click(screen.getByRole("button", { name: "Switch to light mode" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Switch to light mode" }),
+    );
     expect(document.documentElement.dataset.theme).toBeUndefined();
     expect(localStorage.getItem("ps.theme")).toBe("light");
   });

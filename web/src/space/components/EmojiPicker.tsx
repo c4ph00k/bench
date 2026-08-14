@@ -1,9 +1,54 @@
 const EMOJIS = [
-  "📄", "📝", "📚", "📖", "🗂️", "📁", "✅", "📌", "🎯", "🚀",
-  "💡", "🧠", "🏠", "🗺️", "✈️", "🧳", "🗾", "🍜", "🍝", "🍳",
-  "🥗", "☕", "🎨", "🎵", "🎮", "🏃", "💪", "🧘", "🌱", "🌞",
-  "🌙", "⭐", "🔥", "❄️", "💧", "🌊", "🐛", "🔧", "🖥️", "📦",
-  "🔑", "💰", "📊", "📈", "🗓️", "⏰", "✉️", "🎁", "❤️", "🎉",
+  "📄",
+  "📝",
+  "📚",
+  "📖",
+  "🗂️",
+  "📁",
+  "✅",
+  "📌",
+  "🎯",
+  "🚀",
+  "💡",
+  "🧠",
+  "🏠",
+  "🗺️",
+  "✈️",
+  "🧳",
+  "🗾",
+  "🍜",
+  "🍝",
+  "🍳",
+  "🥗",
+  "☕",
+  "🎨",
+  "🎵",
+  "🎮",
+  "🏃",
+  "💪",
+  "🧘",
+  "🌱",
+  "🌞",
+  "🌙",
+  "⭐",
+  "🔥",
+  "❄️",
+  "💧",
+  "🌊",
+  "🐛",
+  "🔧",
+  "🖥️",
+  "📦",
+  "🔑",
+  "💰",
+  "📊",
+  "📈",
+  "🗓️",
+  "⏰",
+  "✉️",
+  "🎁",
+  "❤️",
+  "🎉",
 ];
 
 interface Props {
@@ -13,11 +58,22 @@ interface Props {
 
 export default function EmojiPicker({ onPick, onClose }: Props) {
   return (
-    <div className="menu-overlay" onMouseDown={onClose}>
-      <div className="emoji-picker" role="dialog" aria-label="Pick an icon" onMouseDown={(e) => e.stopPropagation()}>
+    <div
+      role="presentation"
+      className="menu-overlay"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="emoji-picker" role="dialog" aria-label="Pick an icon">
         <div className="emoji-grid">
           {EMOJIS.map((e) => (
-            <button key={e} className="emoji-cell" onClick={() => onPick(e)} aria-label={`Icon ${e}`}>
+            <button
+              key={e}
+              className="emoji-cell"
+              onClick={() => onPick(e)}
+              aria-label={`Icon ${e}`}
+            >
               {e}
             </button>
           ))}

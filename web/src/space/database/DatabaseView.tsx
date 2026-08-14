@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
-import { api, type DatabaseData, type PropertyOption, type PropertyType, type ViewConfig, type ViewKind } from "../api";
-import { nextColor } from "./cells";
+import {
+  api,
+  type DatabaseData,
+  type PropertyOption,
+  type PropertyType,
+  type ViewConfig,
+  type ViewKind,
+} from "../api";
+import { nextColor } from "./optionColors";
 import TableView from "./TableView";
 import BoardView from "./BoardView";
 import ListView from "./ListView";
@@ -23,7 +30,19 @@ export interface DbActions {
 }
 
 export default function DatabaseView({ databaseId }: Props) {
-  const [data, setData] = useState<DatabaseData | null>(null);
+  // The loaded id travels with the data, so "still loading the next database" is derived during
+  // render rather than reset by an effect, which would render twice on every navigation.
+  const [loaded, setLoaded] = useState<{
+    id: string;
+    data: DatabaseData | null;
+  }>({ id: "", data: null });
+  const data = loaded.id === databaseId ? loaded.data : null;
+  const setData = useCallback(
+    (update: (d: DatabaseData | null) => DatabaseData | null) => {
+      setLoaded((prev) => ({ ...prev, data: update(prev.data) }));
+    },
+    [],
+  );
   const [kind, setKind] = useState<ViewKind>(() => {
     const saved = localStorage.getItem(`ps.view.${databaseId}`);
     return saved === "board" || saved === "list" ? saved : "table";
@@ -35,20 +54,28 @@ export default function DatabaseView({ databaseId }: Props) {
   };
 
   useEffect(() => {
-    setData(null);
-    void api.getDatabase(databaseId).then(setData);
+    void api
+      .getDatabase(databaseId)
+      .then((d) => setLoaded({ id: databaseId, data: d }));
   }, [databaseId]);
 
   const setValue = useCallback(
     (rowId: string, propertyId: string, value: unknown) => {
       setData((d) =>
         d
-          ? { ...d, rows: d.rows.map((r) => (r.id === rowId ? { ...r, values: { ...r.values, [propertyId]: value } } : r)) }
+          ? {
+              ...d,
+              rows: d.rows.map((r) =>
+                r.id === rowId
+                  ? { ...r, values: { ...r.values, [propertyId]: value } }
+                  : r,
+              ),
+            }
           : d,
       );
       void api.setRowValue(rowId, propertyId, value);
     },
-    [],
+    [setData],
   );
 
   /** Persist a new row order for the whole database, reordering optimistically first. */
@@ -62,7 +89,7 @@ export default function DatabaseView({ databaseId }: Props) {
       });
       void api.reorderRows(databaseId, orderedIds);
     },
-    [databaseId],
+    [databaseId, setData],
   );
 
   const actions: DbActions = {
@@ -71,11 +98,20 @@ export default function DatabaseView({ databaseId }: Props) {
       setData((d) => (d ? { ...d, rows: [...d.rows, row] } : d));
     },
     deleteRow: async (rowId) => {
-      setData((d) => (d ? { ...d, rows: d.rows.filter((r) => r.id !== rowId) } : d));
+      setData((d) =>
+        d ? { ...d, rows: d.rows.filter((r) => r.id !== rowId) } : d,
+      );
       await api.deletePage(rowId);
     },
     setRowTitle: (rowId, title) => {
-      setData((d) => (d ? { ...d, rows: d.rows.map((r) => (r.id === rowId ? { ...r, title } : r)) } : d));
+      setData((d) =>
+        d
+          ? {
+              ...d,
+              rows: d.rows.map((r) => (r.id === rowId ? { ...r, title } : r)),
+            }
+          : d,
+      );
       void api.updatePage(rowId, { title });
     },
     setValue,
@@ -85,23 +121,37 @@ export default function DatabaseView({ databaseId }: Props) {
     },
     renameProperty: async (id, name) => {
       setData((d) =>
-        d ? { ...d, properties: d.properties.map((p) => (p.id === id ? { ...p, name } : p)) } : d,
+        d
+          ? {
+              ...d,
+              properties: d.properties.map((p) =>
+                p.id === id ? { ...p, name } : p,
+              ),
+            }
+          : d,
       );
       await api.renameProperty(id, name);
     },
     deleteProperty: async (id) => {
-      setData((d) => (d ? { ...d, properties: d.properties.filter((p) => p.id !== id) } : d));
+      setData((d) =>
+        d ? { ...d, properties: d.properties.filter((p) => p.id !== id) } : d,
+      );
       await api.deleteProperty(id);
     },
     createOption: async (propertyId, name) => {
       const prop = data?.properties.find((p) => p.id === propertyId);
-      const option = await api.addOption(propertyId, { name, color: nextColor(prop?.options ?? []) });
+      const option = await api.addOption(propertyId, {
+        name,
+        color: nextColor(prop?.options ?? []),
+      });
       setData((d) =>
         d
           ? {
               ...d,
               properties: d.properties.map((p) =>
-                p.id === propertyId ? { ...p, options: [...p.options, option] } : p,
+                p.id === propertyId
+                  ? { ...p, options: [...p.options, option] }
+                  : p,
               ),
             }
           : d,
@@ -112,21 +162,38 @@ export default function DatabaseView({ databaseId }: Props) {
 
   const updateViewConfig = useCallback(
     (kind: ViewKind, patch: Partial<ViewConfig>) => {
-      setData((d) => (d ? { ...d, views: { ...d.views, [kind]: { ...d.views[kind], ...patch } } } : d));
+      setData((d) =>
+        d
+          ? {
+              ...d,
+              views: { ...d.views, [kind]: { ...d.views[kind], ...patch } },
+            }
+          : d,
+      );
       void api.updateView(databaseId, kind, patch);
     },
-    [databaseId],
+    [databaseId, setData],
   );
 
   if (!data) return <div className="db-loading" aria-busy="true" />;
 
   const config = data.views[kind];
-  const rows = applySort(applyFilters(data.rows, config.filters, data.properties), config.sort, data.properties);
+  const rows = applySort(
+    applyFilters(data.rows, config.filters, data.properties),
+    config.sort,
+    data.properties,
+  );
   const selectProps = data.properties.filter((p) => p.type === "select");
   const groupProperty =
-    data.properties.find((p) => p.id === config.groupBy && p.type === "select") ?? selectProps[0] ?? null;
+    data.properties.find(
+      (p) => p.id === config.groupBy && p.type === "select",
+    ) ??
+    selectProps.at(0) ??
+    null;
   const cardProperty = data.properties.find(
-    (p) => p.id !== groupProperty?.id && (p.type === "select" || p.type === "multi_select"),
+    (p) =>
+      p.id !== groupProperty?.id &&
+      (p.type === "select" || p.type === "multi_select"),
   );
 
   return (
@@ -139,7 +206,13 @@ export default function DatabaseView({ databaseId }: Props) {
         onConfigChange={(patch) => updateViewConfig(kind, patch)}
       />
       {kind === "table" && (
-        <TableView data={data} rows={rows} actions={actions} config={config} onConfigChange={(p) => updateViewConfig("table", p)} />
+        <TableView
+          data={data}
+          rows={rows}
+          actions={actions}
+          config={config}
+          onConfigChange={(p) => updateViewConfig("table", p)}
+        />
       )}
       {kind === "board" &&
         (groupProperty ? (
@@ -147,12 +220,16 @@ export default function DatabaseView({ databaseId }: Props) {
             rows={rows}
             groupProperty={groupProperty}
             cardProperty={cardProperty}
-            onMove={(rowId, optionId) => setValue(rowId, groupProperty.id, optionId)}
+            onMove={(rowId, optionId) =>
+              setValue(rowId, groupProperty.id, optionId)
+            }
             allRows={data.rows}
             onReorder={reorderRows}
           />
         ) : (
-          <div className="board-empty">Add a select property to group this board.</div>
+          <div className="board-empty">
+            Add a select property to group this board.
+          </div>
         ))}
       {kind === "list" && <ListView rows={rows} properties={data.properties} />}
     </div>

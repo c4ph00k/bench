@@ -17,7 +17,17 @@ interface Props {
 }
 
 export default function TreeItem(props: Props) {
-  const { node, depth, activeId, expanded, onToggle, onNavigate, onCreateChild, onDelete, onRenamed } = props;
+  const {
+    node,
+    depth,
+    activeId,
+    expanded,
+    onToggle,
+    onNavigate,
+    onCreateChild,
+    onDelete,
+    onRenamed,
+  } = props;
   const isOpen = expanded.has(node.id);
   const [menuAt, setMenuAt] = useState<{ x: number; y: number } | null>(null);
   const [confirming, setConfirming] = useState(false);
@@ -46,7 +56,14 @@ export default function TreeItem(props: Props) {
         aria-expanded={node.children.length > 0 ? isOpen : undefined}
         className={`tree-row${node.id === activeId ? " active" : ""}`}
         style={{ paddingLeft: 8 + depth * 16 }}
+        tabIndex={0}
         onClick={() => onNavigate(node.id)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onNavigate(node.id);
+          }
+        }}
       >
         <button
           className={`chevron${isOpen ? " open" : ""}${node.children.length === 0 ? " hidden" : ""}`}
@@ -58,7 +75,9 @@ export default function TreeItem(props: Props) {
         >
           <ChevronRight size={14} />
         </button>
-        <span className="tree-icon">{node.icon ?? (node.type === "database" ? "🗃️" : "📄")}</span>
+        <span className="tree-icon">
+          {node.icon ?? (node.type === "database" ? "🗃️" : "📄")}
+        </span>
         {renaming ? (
           <input
             ref={inputRef}
@@ -67,9 +86,9 @@ export default function TreeItem(props: Props) {
             aria-label="Rename page"
             onChange={(e) => setDraft(e.target.value)}
             onClick={(e) => e.stopPropagation()}
-            onBlur={commitRename}
+            onBlur={() => void commitRename()}
             onKeyDown={(e) => {
-              if (e.key === "Enter") commitRename();
+              if (e.key === "Enter") void commitRename();
               if (e.key === "Escape") {
                 setDraft(node.title);
                 setRenaming(false);
@@ -114,7 +133,11 @@ export default function TreeItem(props: Props) {
                 setRenaming(true);
               },
             },
-            { label: "Delete", danger: true, onSelect: () => setConfirming(true) },
+            {
+              label: "Delete",
+              danger: true,
+              onSelect: () => setConfirming(true),
+            },
           ]}
         />
       )}

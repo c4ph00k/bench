@@ -4,11 +4,11 @@ Three local-first apps, merged from three separate repos into one project with *
 server and one backend server**. Everything runs on your own machine: no login, no cloud, no
 external services, no secrets. Data lives in local SQLite files.
 
-| App | Path | What it is | Backend |
-| --- | --- | --- | --- |
-| **CRM** | `/crm` | Personal sales CRM: organizations, contacts, deals, drag-and-drop pipeline, activities, dashboard | `data/crm.sqlite` |
-| **Space** | `/space` | Personal knowledge manager, a single-user Notion: pages and blocks, databases with table/board/list views, search, light and dark themes | `data/personal-space.db` |
-| **Groove** | `/groove` | Browser groovebox instrument: four synth units, one transport, a master DJ filter | none - pure Web Audio, no data |
+| App        | Path      | What it is                                                                                                                               | Backend                        |
+| ---------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| **CRM**    | `/crm`    | Personal sales CRM: organizations, contacts, deals, drag-and-drop pipeline, activities, dashboard                                        | `data/crm.sqlite`              |
+| **Space**  | `/space`  | Personal knowledge manager, a single-user Notion: pages and blocks, databases with table/board/list views, search, light and dark themes | `data/personal-space.db`       |
+| **Groove** | `/groove` | Browser groovebox instrument: four synth units, one transport, a master DJ filter                                                        | none - pure Web Audio, no data |
 
 A launcher at `/` links to all three.
 
@@ -17,10 +17,10 @@ A launcher at `/` links to all three.
 One directory per app. Read these on demand - they are not loaded into context by default. Open the
 app you are working in before changing its behaviour.
 
-| App | Implementation | Requirements | Also |
-| --- | --- | --- | --- |
-| CRM | [crm/IMPLEMENTATION.md](./crm/IMPLEMENTATION.md) | [crm/REQUIREMENTS.md](./crm/REQUIREMENTS.md) | |
-| Space | [space/IMPLEMENTATION.md](./space/IMPLEMENTATION.md) | [space/REQUIREMENTS.md](./space/REQUIREMENTS.md) | |
+| App    | Implementation                                         | Requirements                                       | Also                                                            |
+| ------ | ------------------------------------------------------ | -------------------------------------------------- | --------------------------------------------------------------- |
+| CRM    | [crm/IMPLEMENTATION.md](./crm/IMPLEMENTATION.md)       | [crm/REQUIREMENTS.md](./crm/REQUIREMENTS.md)       |                                                                 |
+| Space  | [space/IMPLEMENTATION.md](./space/IMPLEMENTATION.md)   | [space/REQUIREMENTS.md](./space/REQUIREMENTS.md)   |                                                                 |
 | Groove | [groove/IMPLEMENTATION.md](./groove/IMPLEMENTATION.md) | [groove/REQUIREMENTS.md](./groove/REQUIREMENTS.md) | [groove/INSTRUMENT.md](./groove/INSTRUMENT.md) - player's guide |
 
 **IMPLEMENTATION.md** is how the app is built now: structure, domain rules, and the traps.
@@ -46,6 +46,14 @@ server/             ONE Express app
 data/                 crm.sqlite, personal-space.db (gitignored, seeded on first run)
 docs/                 this documentation; docs/<app>/ per app
 e2e/                  Playwright specs
+scripts/              check-secrets.mjs, the repo-specific half of the secrets check
+                      stop-lint.mjs, the Claude Code Stop hook
+eslint.config.js      one flat config covering web, server and e2e
+knip.json             entry points, so knip can see what is reachable
+lefthook.yml          pre-commit: format the staged files, then lint the tree
+.github/workflows/    ci.yml - npm run check and npm run e2e, the only gate
+.claude/settings.json the Stop hook registration (settings.local.json is not committed)
+.vscode/              settings.json and extensions.json only, both shared deliberately
 ```
 
 ## Run
@@ -56,7 +64,8 @@ npm run dev     # API :8100 + Vite :8101 -> open http://localhost:8101
 npm start       # build, then serve everything from :8100
 ```
 
-`npm run build` (typecheck + bundle), `npm test` (vitest, server + web), `npm run e2e` (Playwright).
+`npm run build` (typecheck + bundle), `npm test` (vitest, server + web), `npm run e2e` (Playwright),
+`npm run check` (everything: typecheck, lint, formatting, secrets, dead code, coverage).
 Commands run from the root; `-w web` / `-w server` targets one workspace.
 
 Under `npm run dev` use **8101**. Port 8100 serves the last build, not your live edits.
@@ -85,7 +94,14 @@ These are settled. Changing one is a project-level decision, not an implementati
   refresh on `/crm/contacts` serves the launcher. Both carry the same `APPS` list, and they have
   disagreed before - check both when you touch routing.
 - **One dependency set per workspace.** All three UIs live in `web/`, so they share one set of
-  versions: TypeScript 7, Vite 8, vitest 4, react-router 8, React 19.
+  versions: TypeScript 6, Vite 8, vitest 4, react-router 8, React 19.
+- **TypeScript 6.0.3, pinned exactly, everywhere.** Root and both workspaces, one hoisted copy.
+  6.0.3 is the last release carrying the JS compiler API that type-aware linting needs, so one
+  compiler serves both `tsc --noEmit` and ESLint; TypeScript 7 is the native Go build and exposes no
+  such API until 7.1. The pin is exact rather than `^6.0.3` because 6.1.0 would fall outside
+  typescript-eslint's supported range. The cost is roughly three seconds a typecheck against 7.
+  **Revisit when typescript-eslint supports the native compiler.** See
+  [CONTROLS.md](./CONTROLS.md).
 
 ## Adding a fourth app
 
@@ -102,5 +118,6 @@ See [STANDARDS.md](./STANDARDS.md) for the rules, including what to avoid.
 
 - [PROCESS.md](./PROCESS.md) - how to implement a change and how to keep the test suite honest
 - [STANDARDS.md](./STANDARDS.md) - coding standards
+- [CONTROLS.md](./CONTROLS.md) - lint, static analysis, coverage and how each is enforced
 - [e2e/EXPLORATORY.md](../e2e/EXPLORATORY.md) - what the automated suite deliberately does not cover
 - [README.md](../README.md) - the short public-facing readme

@@ -45,7 +45,9 @@ body,
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    sans-serif;
   color: var(--text);
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
@@ -473,9 +475,15 @@ textarea {
   cursor: grab;
 }
 
-.bt-heading1 .drag-handle { top: 16px; }
-.bt-heading2 .drag-handle { top: 11px; }
-.bt-heading3 .drag-handle { top: 7px; }
+.bt-heading1 .drag-handle {
+  top: 16px;
+}
+.bt-heading2 .drag-handle {
+  top: 11px;
+}
+.bt-heading3 .drag-handle {
+  top: 7px;
+}
 
 .block-row:hover .drag-handle {
   opacity: 1;
@@ -635,7 +643,8 @@ textarea {
 }
 
 .b-code-text {
-  font-family: "SF Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-family:
+    "SF Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 13.5px;
   padding: 12px 14px;
   line-height: 1.6;
@@ -946,27 +955,87 @@ tr:hover .title-actions {
   opacity: 1;
 }
 
-.chip-gray { background: #e7e6e2; color: #45484d; }
-.chip-amber { background: #f9e5ae; color: #6d5106; }
-.chip-blue { background: #c9e6f5; color: #0f5a80; }
-.chip-purple { background: #e4d0ec; color: #5c2c73; }
-.chip-green { background: #cde8d4; color: #1f5c30; }
-.chip-red { background: #f6d0cd; color: #8a241d; }
-.chip-pink { background: #f5d3e6; color: #8f2f66; }
-.chip-teal { background: #c8e8e4; color: #14574f; }
-.chip-orange { background: #f7dbc4; color: #7c4312; }
-.chip-brown { background: #e6d5cb; color: #5c3d2a; }
+.chip-gray {
+  background: #e7e6e2;
+  color: #45484d;
+}
+.chip-amber {
+  background: #f9e5ae;
+  color: #6d5106;
+}
+.chip-blue {
+  background: #c9e6f5;
+  color: #0f5a80;
+}
+.chip-purple {
+  background: #e4d0ec;
+  color: #5c2c73;
+}
+.chip-green {
+  background: #cde8d4;
+  color: #1f5c30;
+}
+.chip-red {
+  background: #f6d0cd;
+  color: #8a241d;
+}
+.chip-pink {
+  background: #f5d3e6;
+  color: #8f2f66;
+}
+.chip-teal {
+  background: #c8e8e4;
+  color: #14574f;
+}
+.chip-orange {
+  background: #f7dbc4;
+  color: #7c4312;
+}
+.chip-brown {
+  background: #e6d5cb;
+  color: #5c3d2a;
+}
 
-[data-theme="dark"] .chip-gray { background: #3d4149; color: #c8ccd2; }
-[data-theme="dark"] .chip-amber { background: #57430a; color: #f2d489; }
-[data-theme="dark"] .chip-blue { background: #143f56; color: #a3d5ef; }
-[data-theme="dark"] .chip-purple { background: #46235a; color: #dcb8ea; }
-[data-theme="dark"] .chip-green { background: #1e4529; color: #a9dcb6; }
-[data-theme="dark"] .chip-red { background: #5b1f1b; color: #f0b3ae; }
-[data-theme="dark"] .chip-pink { background: #57203f; color: #efb8d8; }
-[data-theme="dark"] .chip-teal { background: #123f39; color: #a2ddd5; }
-[data-theme="dark"] .chip-orange { background: #533112; color: #f0c9a2; }
-[data-theme="dark"] .chip-brown { background: #46311f; color: #ddc0ae; }
+[data-theme="dark"] .chip-gray {
+  background: #3d4149;
+  color: #c8ccd2;
+}
+[data-theme="dark"] .chip-amber {
+  background: #57430a;
+  color: #f2d489;
+}
+[data-theme="dark"] .chip-blue {
+  background: #143f56;
+  color: #a3d5ef;
+}
+[data-theme="dark"] .chip-purple {
+  background: #46235a;
+  color: #dcb8ea;
+}
+[data-theme="dark"] .chip-green {
+  background: #1e4529;
+  color: #a9dcb6;
+}
+[data-theme="dark"] .chip-red {
+  background: #5b1f1b;
+  color: #f0b3ae;
+}
+[data-theme="dark"] .chip-pink {
+  background: #57203f;
+  color: #efb8d8;
+}
+[data-theme="dark"] .chip-teal {
+  background: #123f39;
+  color: #a2ddd5;
+}
+[data-theme="dark"] .chip-orange {
+  background: #533112;
+  color: #f0c9a2;
+}
+[data-theme="dark"] .chip-brown {
+  background: #46311f;
+  color: #ddc0ae;
+}
 
 /* ---------- Popovers / option picker ---------- */
 

@@ -1,6 +1,8 @@
 import { test, expect } from "../fixtures";
 
-test("quick-find opens by shortcut and control, narrows live, and jumps to a result", async ({ page }) => {
+test("quick-find opens by shortcut and control, narrows live, and jumps to a result", async ({
+  page,
+}) => {
   await page.goto("/space/");
 
   // keyboard shortcut
@@ -9,12 +11,16 @@ test("quick-find opens by shortcut and control, narrows live, and jumps to a res
   await expect(dialog).toBeVisible();
 
   await page.keyboard.type("read");
-  await expect(page.getByRole("option", { name: /Reading List/ })).toBeVisible();
+  await expect(
+    page.getByRole("option", { name: /Reading List/ }),
+  ).toBeVisible();
 
   // narrows live across rows too
   await page.getByRole("textbox", { name: "Search" }).fill("dune");
   await expect(page.getByRole("option", { name: /Dune/ })).toBeVisible();
-  await expect(page.getByRole("option", { name: /Reading List/ })).toHaveCount(1); // Dune shows its parent
+  await expect(page.getByRole("option", { name: /Reading List/ })).toHaveCount(
+    1,
+  ); // Dune shows its parent
 
   // choosing a result navigates to it
   await page.getByRole("option", { name: /Dune/ }).click();
@@ -28,7 +34,9 @@ test("quick-find opens by shortcut and control, narrows live, and jumps to a res
   await expect(page.getByPlaceholder("Untitled")).toHaveValue("Balcony Garden");
 });
 
-test("keyboard-only quick-find: arrows plus Enter jump to the selection", async ({ page }) => {
+test("keyboard-only quick-find: arrows plus Enter jump to the selection", async ({
+  page,
+}) => {
   await page.goto("/space/");
   await page.keyboard.press("ControlOrMeta+k");
   await page.keyboard.type("japan");
@@ -40,7 +48,9 @@ test("keyboard-only quick-find: arrows plus Enter jump to the selection", async 
   await expect(page).toHaveURL(/\/p\//);
 });
 
-test("theme toggle switches the whole app and survives a reload", async ({ page }) => {
+test("theme toggle switches the whole app and survives a reload", async ({
+  page,
+}) => {
   await page.goto("/space/");
   const html = page.locator("html");
   await expect(html).not.toHaveAttribute("data-theme", "dark");
@@ -50,7 +60,9 @@ test("theme toggle switches the whole app and survives a reload", async ({ page 
 
   await page.reload();
   await expect(html).toHaveAttribute("data-theme", "dark");
-  await expect(page.getByRole("button", { name: "Switch to light mode" })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Switch to light mode" }),
+  ).toBeVisible();
 
   await page.getByRole("button", { name: "Switch to light mode" }).click();
   await expect(html).not.toHaveAttribute("data-theme", "dark");

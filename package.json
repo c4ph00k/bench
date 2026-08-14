@@ -8,18 +8,45 @@
     "server"
   ],
   "scripts": {
+    "prepare": "lefthook install",
     "start": "npm run build && npm run start -w server",
     "dev": "concurrently -k -n api,web -c blue,yellow \"npm:dev:api\" \"npm:dev:web\"",
     "dev:api": "npm run dev -w server",
     "dev:web": "npm run dev -w web",
+    "prebuild": "npm run lint",
     "build": "npm run build -w web",
     "typecheck": "npm run typecheck -w server && npm run typecheck -w web",
     "test": "npm run test -w server && npm run test -w web",
     "coverage": "npm run coverage -w server && npm run coverage -w web",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "knip": "knip",
+    "gitleaks": "command -v gitleaks >/dev/null || { echo 'gitleaks is required for this check: brew install gitleaks'; exit 1; }; gitleaks dir . --no-banner --redact",
+    "check:secrets": "node scripts/check-secrets.mjs",
+    "jscpd": "jscpd",
+    "check": "npm run typecheck && npm run lint && npm run format:check && npm run gitleaks && npm run check:secrets && npm run knip && npm run coverage"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
     "@playwright/test": "^1.54.1",
-    "concurrently": "^10.0.3"
+    "@vitest/eslint-plugin": "^1.6.27",
+    "concurrently": "^10.0.3",
+    "eslint": "9.39.5",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-playwright": "^2.11.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.4",
+    "eslint-plugin-sonarjs": "^4.2.0",
+    "globals": "^17.11.0",
+    "jscpd": "^5.0.15",
+    "knip": "^6.32.2",
+    "lefthook": "^2.1.10",
+    "prettier": "^3.9.6",
+    "typescript": "6.0.3",
+    "typescript-eslint": "^8.67.0"
   }
 }

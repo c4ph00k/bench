@@ -1,4 +1,4 @@
-import { NavLink, Route, Routes } from 'react-router'
+import { NavLink, Route, Routes } from "react-router";
 import {
   IconContacts,
   IconDashboard,
@@ -6,23 +6,23 @@ import {
   IconHome,
   IconOrganizations,
   IconPipeline,
-} from './components/Icons'
-import Dashboard from './pages/Dashboard'
-import Organizations from './pages/Organizations'
-import OrganizationDetail from './pages/OrganizationDetail'
-import Contacts from './pages/Contacts'
-import ContactDetail from './pages/ContactDetail'
-import Deals from './pages/Deals'
-import DealDetail from './pages/DealDetail'
-import Pipeline from './pages/Pipeline'
+} from "./components/Icons";
+import Dashboard from "./pages/Dashboard";
+import Organizations from "./pages/Organizations";
+import OrganizationDetail from "./pages/OrganizationDetail";
+import Contacts from "./pages/Contacts";
+import ContactDetail from "./pages/ContactDetail";
+import Deals from "./pages/Deals";
+import DealDetail from "./pages/DealDetail";
+import Pipeline from "./pages/Pipeline";
 
 const NAV = [
-  { to: '/', label: 'Dashboard', end: true, Icon: IconDashboard },
-  { to: '/organizations', label: 'Organizations', Icon: IconOrganizations },
-  { to: '/contacts', label: 'Contacts', Icon: IconContacts },
-  { to: '/deals', label: 'Deals', Icon: IconDeals },
-  { to: '/pipeline', label: 'Pipeline', Icon: IconPipeline },
-]
+  { to: "/", label: "Dashboard", end: true, Icon: IconDashboard },
+  { to: "/organizations", label: "Organizations", Icon: IconOrganizations },
+  { to: "/contacts", label: "Contacts", Icon: IconContacts },
+  { to: "/deals", label: "Deals", Icon: IconDeals },
+  { to: "/pipeline", label: "Pipeline", Icon: IconPipeline },
+];
 
 export default function App() {
   return (
@@ -58,5 +58,5 @@ export default function App() {
         </Routes>
       </main>
     </div>
-  )
+  );
 }

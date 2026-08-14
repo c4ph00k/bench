@@ -2,7 +2,8 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
-import { RowBreadcrumb, RowPropsGrid, useRow } from "./RowProperties";
+import { RowBreadcrumb, RowPropsGrid } from "./RowProperties";
+import { useRow } from "./useRow";
 import { api, type RowData } from "../api";
 
 vi.mock("../api", () => ({
@@ -50,7 +51,9 @@ describe("row page properties", () => {
   it("loads the row, shows a breadcrumb to the database, and lists properties", async () => {
     vi.mocked(api.getRow).mockResolvedValue(rowData());
     render(<Harness />);
-    expect(await screen.findByRole("link", { name: /Reading List/ })).toHaveAttribute("href", "/p/db1");
+    expect(
+      await screen.findByRole("link", { name: /Reading List/ }),
+    ).toHaveAttribute("href", "/p/db1");
     expect(screen.getByText("Author")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Frank Herbert")).toBeInTheDocument();
     expect(screen.getByText("Reading")).toBeInTheDocument();
@@ -68,11 +71,26 @@ describe("row page properties", () => {
 
   it("creates a new select option from the row page", async () => {
     vi.mocked(api.getRow).mockResolvedValue(rowData());
-    vi.mocked(api.addOption).mockResolvedValue({ id: "s2", name: "Finished", color: "amber", position: 1 });
+    vi.mocked(api.addOption).mockResolvedValue({
+      id: "s2",
+      name: "Finished",
+      color: "amber",
+      position: 1,
+    });
     render(<Harness />);
-    await userEvent.click(await screen.findByRole("button", { name: "Status for Dune" }));
-    await userEvent.type(screen.getByPlaceholderText("Select or create…"), "Finished{Enter}");
-    expect(api.addOption).toHaveBeenCalledWith("status", { name: "Finished", color: "amber" });
-    await vi.waitFor(() => expect(api.setRowValue).toHaveBeenCalledWith("r1", "status", "s2"));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Status for Dune" }),
+    );
+    await userEvent.type(
+      screen.getByPlaceholderText("Select or create…"),
+      "Finished{Enter}",
+    );
+    expect(api.addOption).toHaveBeenCalledWith("status", {
+      name: "Finished",
+      color: "amber",
+    });
+    await vi.waitFor(() =>
+      expect(api.setRowValue).toHaveBeenCalledWith("r1", "status", "s2"),
+    );
   });
 });

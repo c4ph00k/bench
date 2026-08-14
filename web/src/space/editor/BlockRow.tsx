@@ -4,7 +4,7 @@ import { GripVertical } from "lucide-react";
 import type { Block } from "../api";
 import ContentEditable from "./ContentEditable";
 
-export interface BlockHandlers {
+interface BlockHandlers {
   onTextInput: (id: string, text: string, caret: number) => void;
   onKeyDown: (e: React.KeyboardEvent<HTMLDivElement>, id: string) => void;
   onBlur: (id: string) => void;
@@ -43,9 +43,21 @@ const PLACEHOLDERS: Record<string, string> = {
   callout: "Callout",
 };
 
-export default function BlockRow({ block, number, version, ...handlers }: Props) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id });
-  const text = (block.content.text as string) ?? "";
+export default function BlockRow({
+  block,
+  number,
+  version,
+  ...handlers
+}: Props) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: block.id });
+  const text = (block.content.text as string | undefined) ?? "";
   const checked = Boolean(block.content.checked);
 
   const editable = (extraClass = "") => (
@@ -94,7 +106,9 @@ export default function BlockRow({ block, number, version, ...handlers }: Props)
               className="b-checkbox"
               checked={checked}
               aria-label={text || "To-do"}
-              onChange={(e) => handlers.onToggleTodo(block.id, e.target.checked)}
+              onChange={(e) =>
+                handlers.onToggleTodo(block.id, e.target.checked)
+              }
             />
             {editable(checked ? " b-done" : "")}
           </div>
@@ -126,7 +140,12 @@ export default function BlockRow({ block, number, version, ...handlers }: Props)
       className={`block-row bt-${block.type}${isDragging ? " dragging" : ""}`}
       data-block-id={block.id}
     >
-      <button className="drag-handle" aria-label="Drag block" {...attributes} {...listeners}>
+      <button
+        className="drag-handle"
+        aria-label="Drag block"
+        {...attributes}
+        {...listeners}
+      >
         <GripVertical size={15} />
       </button>
       <div className="block-content">{inner()}</div>

@@ -32,7 +32,9 @@ async function openTrip() {
 for (const theme of ["light", "dark"]) {
   await page.goto(base + "/space/");
   await page.getByRole("treeitem", { name: "🏠 Home" }).waitFor();
-  const toggle = page.getByRole("button", { name: theme === "dark" ? "Switch to dark mode" : "Switch to light mode" });
+  const toggle = page.getByRole("button", {
+    name: theme === "dark" ? "Switch to dark mode" : "Switch to light mode",
+  });
   if (await toggle.count()) await toggle.click();
 
   // Home page (editor with blocks)
@@ -82,7 +84,10 @@ for (const theme of ["light", "dark"]) {
   await page.getByRole("button", { name: /Filter/ }).click();
   await shot(`walk-filters-${theme}`);
   await page.keyboard.press("Escape");
-  await page.locator(".menu-overlay").click({ position: { x: 5, y: 5 } }).catch(() => {});
+  await page
+    .locator(".menu-overlay")
+    .click({ position: { x: 5, y: 5 } })
+    .catch(() => undefined);
 
   // Search modal
   await page.keyboard.press("ControlOrMeta+k");
@@ -93,5 +98,8 @@ for (const theme of ["light", "dark"]) {
   await page.keyboard.press("Escape");
 }
 
-console.log("console errors during walkthrough:", consoleErrors.length === 0 ? "none" : consoleErrors);
+console.log(
+  "console errors during walkthrough:",
+  consoleErrors.length === 0 ? "none" : consoleErrors,
+);
 await browser.close();

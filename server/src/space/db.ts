@@ -57,9 +57,38 @@ CREATE TABLE IF NOT EXISTS views (
 );
 `;
 
+/**
+ * Row shapes for the tables above. The JSON-bearing columns - a block's `content`, a row value's
+ * `value`, a view's `config` - are stored and returned as text, and parsed at the edges.
+ */
+export interface BlockRow {
+  id: string;
+  page_id: string;
+  type: string;
+  content: string;
+  position: number;
+}
+
+export interface PropertyRow {
+  id: string;
+  database_id: string;
+  name: string;
+  type: string;
+  position: number;
+}
+
+export interface PropertyOptionRow {
+  id: string;
+  property_id: string;
+  name: string;
+  color: string;
+  position: number;
+}
+
 /** Open (creating if needed) the SQLite database and ensure the schema exists. */
 export function openDb(dbPath: string): Database.Database {
-  if (dbPath !== ":memory:") mkdirSync(path.dirname(dbPath), { recursive: true });
+  if (dbPath !== ":memory:")
+    mkdirSync(path.dirname(dbPath), { recursive: true });
   const db = new Database(dbPath);
   db.pragma("journal_mode = WAL");
   db.pragma("foreign_keys = ON");

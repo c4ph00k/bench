@@ -1,9 +1,10 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import Editor, { applyReorder } from "./Editor";
+import Editor from "./Editor";
+import { applyReorder } from "./reorder";
 import { api, type Block } from "../api";
-import { block } from "../test/helpers";
+import { block, containing } from "../test/helpers";
 
 vi.mock("../api", () => ({
   api: {
@@ -19,10 +20,25 @@ beforeEach(() => {
 });
 
 const makeBlocks = (): Block[] => [
-  block({ id: "b1", type: "paragraph", content: { text: "First paragraph" }, position: 0 }),
-  block({ id: "b2", type: "todo", content: { text: "A task", checked: false }, position: 1 }),
+  block({
+    id: "b1",
+    type: "paragraph",
+    content: { text: "First paragraph" },
+    position: 0,
+  }),
+  block({
+    id: "b2",
+    type: "todo",
+    content: { text: "A task", checked: false },
+    position: 1,
+  }),
   block({ id: "b3", type: "divider", content: {}, position: 2 }),
-  block({ id: "b4", type: "code", content: { text: "console.log(1)" }, position: 3 }),
+  block({
+    id: "b4",
+    type: "code",
+    content: { text: "console.log(1)" },
+    position: 3,
+  }),
 ];
 
 function renderEditor(blocks = makeBlocks()) {
@@ -30,7 +46,7 @@ function renderEditor(blocks = makeBlocks()) {
 }
 
 function blockText(id: string): HTMLElement {
-  return document.querySelector(`[data-block-id="${id}"] [contenteditable]`) as HTMLElement;
+  return document.querySelector(`[data-block-id="${id}"] [contenteditable]`)!;
 }
 
 describe("Editor rendering", () => {
@@ -43,7 +59,11 @@ describe("Editor rendering", () => {
       block({ id: "bu", type: "bulleted", content: { text: "Bullet" } }),
       block({ id: "n1", type: "numbered", content: { text: "NumA" } }),
       block({ id: "n2", type: "numbered", content: { text: "NumB" } }),
-      block({ id: "td", type: "todo", content: { text: "Todo", checked: true } }),
+      block({
+        id: "td",
+        type: "todo",
+        content: { text: "Todo", checked: true },
+      }),
       block({ id: "q", type: "quote", content: { text: "Quote" } }),
       block({ id: "d", type: "divider", content: {} }),
       block({ id: "c", type: "code", content: { text: "code()" } }),
@@ -53,20 +73,37 @@ describe("Editor rendering", () => {
     expect(blockText("h2").className).toContain("b-h2");
     expect(blockText("h3").className).toContain("b-h3");
     expect(blockText("p").className).toContain("b-paragraph");
-    expect(document.querySelector('[data-block-id="bu"] .b-bullet')).toBeInTheDocument();
-    expect(document.querySelector('[data-block-id="n1"] .b-number')).toHaveTextContent("1.");
-    expect(document.querySelector('[data-block-id="n2"] .b-number')).toHaveTextContent("2.");
+    expect(
+      document.querySelector('[data-block-id="bu"] .b-bullet'),
+    ).toBeInTheDocument();
+    expect(
+      document.querySelector('[data-block-id="n1"] .b-number'),
+    ).toHaveTextContent("1.");
+    expect(
+      document.querySelector('[data-block-id="n2"] .b-number'),
+    ).toHaveTextContent("2.");
     expect(screen.getByRole("checkbox", { name: "Todo" })).toBeChecked();
-    expect(document.querySelector('[data-block-id="q"] .b-quote')).toBeInTheDocument();
-    expect(document.querySelector('[data-block-id="d"] hr.b-divider')).toBeInTheDocument();
-    expect(document.querySelector('[data-block-id="c"] .b-code')).toBeInTheDocument();
-    expect(document.querySelector('[data-block-id="ca"] .b-callout')).toBeInTheDocument();
+    expect(
+      document.querySelector('[data-block-id="q"] .b-quote'),
+    ).toBeInTheDocument();
+    expect(
+      document.querySelector('[data-block-id="d"] hr.b-divider'),
+    ).toBeInTheDocument();
+    expect(
+      document.querySelector('[data-block-id="c"] .b-code'),
+    ).toBeInTheDocument();
+    expect(
+      document.querySelector('[data-block-id="ca"] .b-callout'),
+    ).toBeInTheDocument();
   });
 
   it("creates a starter paragraph for an empty page", async () => {
     renderEditor([]);
     await waitFor(() =>
-      expect(api.createBlock).toHaveBeenCalledWith("p1", expect.objectContaining({ type: "paragraph", index: 0 })),
+      expect(api.createBlock).toHaveBeenCalledWith(
+        "p1",
+        expect.objectContaining({ type: "paragraph", index: 0 }),
+      ),
     );
     expect(document.querySelectorAll(".block-row")).toHaveLength(1);
   });
@@ -94,7 +131,11 @@ describe("editing", () => {
     el.textContent = "Changed";
     fireEvent.input(el);
     fireEvent.blur(el);
-    await waitFor(() => expect(api.updateBlock).toHaveBeenCalledWith("b1", { content: { text: "Changed" } }));
+    await waitFor(() =>
+      expect(api.updateBlock).toHaveBeenCalledWith("b1", {
+        content: { text: "Changed" },
+      }),
+    );
   });
 
   it("Enter at the end creates a paragraph below", async () => {
@@ -103,7 +144,10 @@ describe("editing", () => {
     el.focus();
     fireEvent.keyDown(el, { key: "Enter" });
     await waitFor(() =>
-      expect(api.createBlock).toHaveBeenCalledWith("p1", expect.objectContaining({ type: "paragraph", index: 1 })),
+      expect(api.createBlock).toHaveBeenCalledWith(
+        "p1",
+        expect.objectContaining({ type: "paragraph", index: 1 }),
+      ),
     );
     expect(document.querySelectorAll(".block-row")).toHaveLength(5);
   });
@@ -116,17 +160,27 @@ describe("editing", () => {
     await waitFor(() =>
       expect(api.createBlock).toHaveBeenCalledWith(
         "p1",
-        expect.objectContaining({ type: "todo", content: expect.objectContaining({ checked: false }) }),
+        expect.objectContaining({
+          type: "todo",
+          content: containing({ checked: false }),
+        }),
       ),
     );
   });
 
   it("Enter on an empty list block converts it back to a paragraph", async () => {
-    renderEditor([block({ id: "b1", type: "bulleted", content: { text: "" } })]);
+    renderEditor([
+      block({ id: "b1", type: "bulleted", content: { text: "" } }),
+    ]);
     const el = blockText("b1");
     el.focus();
     fireEvent.keyDown(el, { key: "Enter" });
-    await waitFor(() => expect(api.updateBlock).toHaveBeenCalledWith("b1", { type: "paragraph", content: { text: "" } }));
+    await waitFor(() =>
+      expect(api.updateBlock).toHaveBeenCalledWith("b1", {
+        type: "paragraph",
+        content: { text: "" },
+      }),
+    );
     expect(api.createBlock).not.toHaveBeenCalled();
   });
 
@@ -147,7 +201,12 @@ describe("editing", () => {
     const el = blockText("b1");
     el.focus();
     fireEvent.keyDown(el, { key: "Backspace" });
-    await waitFor(() => expect(api.updateBlock).toHaveBeenCalledWith("b1", { type: "paragraph", content: { text: "" } }));
+    await waitFor(() =>
+      expect(api.updateBlock).toHaveBeenCalledWith("b1", {
+        type: "paragraph",
+        content: { text: "" },
+      }),
+    );
     expect(api.deleteBlock).not.toHaveBeenCalled();
   });
 
@@ -160,7 +219,9 @@ describe("editing", () => {
     el.focus();
     fireEvent.keyDown(el, { key: "Backspace" });
     await waitFor(() => expect(api.deleteBlock).toHaveBeenCalledWith("b2"));
-    expect(api.updateBlock).toHaveBeenCalledWith("b1", { content: { text: "Hello world" } });
+    expect(api.updateBlock).toHaveBeenCalledWith("b1", {
+      content: { text: "Hello world" },
+    });
   });
 
   it("Backspace at the start removes a divider sitting above", async () => {
@@ -172,7 +233,9 @@ describe("editing", () => {
   });
 
   it("does not remove the only remaining block", () => {
-    renderEditor([block({ id: "b1", type: "paragraph", content: { text: "" } })]);
+    renderEditor([
+      block({ id: "b1", type: "paragraph", content: { text: "" } }),
+    ]);
     const el = blockText("b1");
     el.focus();
     fireEvent.keyDown(el, { key: "Backspace" });
@@ -182,7 +245,9 @@ describe("editing", () => {
   it("toggles a to-do checkbox and saves immediately", async () => {
     renderEditor();
     await userEvent.click(screen.getByRole("checkbox", { name: "A task" }));
-    expect(api.updateBlock).toHaveBeenCalledWith("b2", { content: { text: "A task", checked: true } });
+    expect(api.updateBlock).toHaveBeenCalledWith("b2", {
+      content: { text: "A task", checked: true },
+    });
   });
 });
 
@@ -191,13 +256,16 @@ describe("slash menu", () => {
     const el = blockText(id);
     el.focus();
     fireEvent.keyDown(el, { key: "/" });
-    el.textContent = (el.textContent ?? "") + "/";
+    const existing: unknown = el.textContent;
+    el.textContent = `${typeof existing === "string" ? existing : ""}/`;
     fireEvent.input(el);
     return el;
   }
 
   it("opens on '/', lists all block types, and filters as you type", () => {
-    renderEditor([block({ id: "b1", type: "paragraph", content: { text: "" } })]);
+    renderEditor([
+      block({ id: "b1", type: "paragraph", content: { text: "" } }),
+    ]);
     const el = openSlash();
     expect(screen.getByRole("listbox")).toBeInTheDocument();
     expect(screen.getAllByRole("option")).toHaveLength(11);
@@ -205,45 +273,77 @@ describe("slash menu", () => {
     el.textContent = "/head";
     fireEvent.input(el);
     expect(screen.getAllByRole("option")).toHaveLength(3);
-    expect(screen.getByRole("option", { name: /Heading 1/ })).toBeInTheDocument();
+    expect(
+      screen.getByRole("option", { name: /Heading 1/ }),
+    ).toBeInTheDocument();
   });
 
   it("picks a type with arrows and Enter, converting the block", async () => {
-    renderEditor([block({ id: "b1", type: "paragraph", content: { text: "" } })]);
+    renderEditor([
+      block({ id: "b1", type: "paragraph", content: { text: "" } }),
+    ]);
     const el = openSlash();
     fireEvent.keyDown(el, { key: "ArrowDown" });
     fireEvent.keyDown(el, { key: "ArrowDown" });
-    expect(screen.getByRole("option", { name: /Heading 2/ })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("option", { name: /Heading 2/ })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
     fireEvent.keyDown(el, { key: "Enter" });
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
-    await waitFor(() => expect(api.updateBlock).toHaveBeenCalledWith("b1", { type: "heading2", content: { text: "" } }));
+    await waitFor(() =>
+      expect(api.updateBlock).toHaveBeenCalledWith("b1", {
+        type: "heading2",
+        content: { text: "" },
+      }),
+    );
   });
 
   it("picks a type with the mouse", async () => {
-    renderEditor([block({ id: "b1", type: "paragraph", content: { text: "" } })]);
+    renderEditor([
+      block({ id: "b1", type: "paragraph", content: { text: "" } }),
+    ]);
     openSlash();
     await userEvent.click(screen.getByRole("option", { name: /Quote/ }));
-    expect(api.updateBlock).toHaveBeenCalledWith("b1", { type: "quote", content: { text: "" } });
+    expect(api.updateBlock).toHaveBeenCalledWith("b1", {
+      type: "quote",
+      content: { text: "" },
+    });
   });
 
   it("inserting a divider keeps a paragraph for the caret", async () => {
-    renderEditor([block({ id: "b1", type: "paragraph", content: { text: "" } })]);
+    renderEditor([
+      block({ id: "b1", type: "paragraph", content: { text: "" } }),
+    ]);
     const el = openSlash();
     el.textContent = "/div";
     fireEvent.input(el);
     fireEvent.keyDown(el, { key: "Enter" });
-    await waitFor(() => expect(api.updateBlock).toHaveBeenCalledWith("b1", { type: "divider", content: {} }));
     await waitFor(() =>
-      expect(api.createBlock).toHaveBeenCalledWith("p1", expect.objectContaining({ type: "paragraph", index: 1 })),
+      expect(api.updateBlock).toHaveBeenCalledWith("b1", {
+        type: "divider",
+        content: {},
+      }),
+    );
+    await waitFor(() =>
+      expect(api.createBlock).toHaveBeenCalledWith(
+        "p1",
+        expect.objectContaining({ type: "paragraph", index: 1 }),
+      ),
     );
   });
 
   it("closes with Escape leaving the text alone", () => {
-    renderEditor([block({ id: "b1", type: "paragraph", content: { text: "" } })]);
+    renderEditor([
+      block({ id: "b1", type: "paragraph", content: { text: "" } }),
+    ]);
     const el = openSlash();
     fireEvent.keyDown(el, { key: "Escape" });
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
-    expect(api.updateBlock).not.toHaveBeenCalledWith("b1", expect.objectContaining({ type: expect.anything() }));
+    expect(api.updateBlock).not.toHaveBeenCalledWith(
+      "b1",
+      containing({ type: expect.anything() as unknown }),
+    );
   });
 });
 
@@ -262,6 +362,8 @@ describe("reordering", () => {
 
   it("renders a drag handle for every block", () => {
     renderEditor();
-    expect(screen.getAllByRole("button", { name: "Drag block" })).toHaveLength(4);
+    expect(screen.getAllByRole("button", { name: "Drag block" })).toHaveLength(
+      4,
+    );
   });
 });

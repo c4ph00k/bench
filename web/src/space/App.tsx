@@ -8,9 +8,7 @@ import SearchModal from "./components/SearchModal";
 export default function App() {
   const [tree, setTree] = useState<TreeNode[] | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
-  const reloadTree = useCallback(async () => {
-    setTree(await api.tree());
-  }, []);
+  const reloadTree = useCallback(() => api.tree().then(setTree), []);
   useEffect(() => {
     void reloadTree();
   }, [reloadTree]);
@@ -28,14 +26,25 @@ export default function App() {
 
   return (
     <div className="app">
-      <Sidebar tree={tree ?? []} onChange={reloadTree} onSearch={() => setSearchOpen(true)} />
+      <Sidebar
+        tree={tree ?? []}
+        onChange={reloadTree}
+        onSearch={() => setSearchOpen(true)}
+      />
       <main className="main">
         <Routes>
           <Route
             path="/"
-            element={tree && tree.length > 0 ? <Navigate to={`/p/${tree[0].id}`} replace /> : null}
+            element={
+              tree && tree.length > 0 ? (
+                <Navigate to={`/p/${tree[0].id}`} replace />
+              ) : null
+            }
           />
-          <Route path="/p/:pageId" element={<PageView onTreeChange={reloadTree} />} />
+          <Route
+            path="/p/:pageId"
+            element={<PageView onTreeChange={reloadTree} />}
+          />
         </Routes>
       </main>
       {searchOpen && <SearchModal onClose={() => setSearchOpen(false)} />}

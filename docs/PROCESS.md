@@ -1,8 +1,22 @@
 # Process - how to implement a change
 
 Work in small increments and validate each one before moving on. A change is finished when the
-typecheck, the unit tests and the e2e suite all pass, and you have seen the feature working in a
-real browser.
+checks and the e2e suite all pass, you have seen the feature working in a real browser, and it is
+committed.
+
+**`npm run check` passes end to end** - typecheck, lint, formatting, secrets, dead code and the 80%
+coverage threshold in both workspaces. There are no known failures to read past, so anything it
+reports is yours.
+
+**Three things run on their own**, all of them backstops rather than the mechanism: `prebuild` lints
+before any build, lefthook formats and lints on pre-commit, and a Claude Code Stop hook holds a turn
+open while lint fails. None of that lets you skip `npm run check` - a hook firing means the process
+already failed.
+
+**The gate is CI.** It runs `check` and `e2e` on every push and pull request, and `main` is
+protected: no merge without it passing. That gate only sees the work once Ed pushes the branch,
+which is what makes running the checks locally a requirement rather than a courtesy. See
+[CONTROLS.md](./CONTROLS.md).
 
 ## 1. Understand before changing
 
@@ -34,11 +48,18 @@ Three layers, each with a different job. Add to whichever ones the change touche
 
 ### Unit tests - `npm test`
 
-vitest, server and web. Server suites live in `server/test/{crm,space}/`; web suites are Space-only
-today, which is why coverage thresholds are scoped to `src/space/**`.
+vitest, server and web. Server suites live in `server/test/{crm,space}/`; web suites sit beside the
+code they cover. Coverage is measured across every app at 80% statements and currently sits at 82%
+on the server and 90% on web, with `web/src/groove/audio/**` excluded because jsdom has no
+`AudioContext`.
 
 Use these for logic with edges: calculations, filtering, sorting, migrations, data transforms. A
 new derived value or a new column default should get one.
+
+jsdom implements no layout, no pointer capture, no canvas and no audio, so any component that
+measures itself needs a stub before it will render at all. [CONTROLS.md](./CONTROLS.md) lists the
+six that have bitten so far and what each suite does about them - read it before concluding that a
+component is untestable.
 
 ### End-to-end tests - `npm run e2e`
 
@@ -64,7 +85,13 @@ Rules that keep this suite reliable:
   `@hello-pangea/dnd`: Space to lift, arrows to move, Space to drop - deterministic, no coordinates.
   Space's board uses dnd-kit, which has no keyboard sensor here, so its drags stay mouse-driven.
 - `getByRole` name matching is substring-based: `{ name: "BASS step 1" }` also matches steps 10-16.
-  Pass `exact: true` for numbered labels.
+  Pass `exact: true` for numbered labels. **This is a Playwright rule only** - Testing Library's
+  `name` already matches the whole string, and `exact` is not one of its options there.
+- **One spec depends on the wall clock**: "running the sequencer logs no console errors" waits for
+  Groove's playhead to pass step 12, and the playhead is driven by the audio clock. Under heavy CPU
+  load the headless audio thread falls behind and the poll times out - seen at load average 7, while
+  the same spec passes in ~2s at load 4. If it fails, check what else is running before treating it
+  as a regression.
 
 Run one file while iterating: `npx playwright test e2e/crm/revenue.spec.ts --retries=0`.
 
@@ -117,22 +144,37 @@ elements around it, above and below included.
 - **Delete tests that no longer describe intended behaviour.** A test kept alive by workarounds is
   worse than no test.
 - **Do not state test counts in the docs.** They are stale by the next commit. `npx playwright
-  test --list` answers it on demand.
+test --list` answers it on demand.
 - When you deliberately leave something uncovered, say so in `e2e/EXPLORATORY.md` rather than
   letting a green suite imply coverage it does not have. Groove's audio is the standing example.
 
 ## 5. Finishing
 
-1. `npm run typecheck`
-2. `npm test`
+1. `npm run format` - formatting is not applied to agent edits automatically, and `check` fails on
+   unformatted files.
+2. `npm run check` - typecheck, lint, formatting, secrets, dead code, and unit tests with coverage.
 3. `npm run e2e`
 4. Look at it in a browser.
 5. Update the docs the change invalidates - the app doc for behaviour, `PROJECT.md` for structure,
    `EXPLORATORY.md` for coverage gaps.
-6. **Do not commit** - see [STANDARDS.md](./STANDARDS.md). Report what changed, offer a commit
-   message, and say honestly which parts are incomplete or unverified.
+6. **Commit**, with everything above green - see [STANDARDS.md](./STANDARDS.md). Then report what
+   changed and say honestly which parts are incomplete or unverified.
+
+**Run the checks yourself.** The lefthook pre-commit hook and the Claude Code stop hook both run
+lint, but they are backstops for the times something slips - not the mechanism. Do not hand work
+over and let a hook discover what `npm run check` would have told you a minute earlier. A hook
+firing means the process already failed.
+
+**If vitest will not start**, saying "Cannot find native binding", npm has pruned an optional
+platform package - it does that when a dependency is added. Clear all three `node_modules`, not
+just the root one, or a stale nested copy shadows the hoisted package inside that workspace:
+`rm -rf node_modules web/node_modules server/node_modules package-lock.json && npm install`. See
+[CONTROLS.md](./CONTROLS.md).
+
+See [CONTROLS.md](./CONTROLS.md) for what the checks are and how each layer is enforced.
 
 ## Related documents
 
 - [PROJECT.md](./PROJECT.md) - purpose, layout, architectural decisions
 - [STANDARDS.md](./STANDARDS.md) - coding standards
+- [CONTROLS.md](./CONTROLS.md) - lint, static analysis, coverage and how each is enforced

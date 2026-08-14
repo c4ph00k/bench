@@ -1,11 +1,12 @@
 import { Router } from "express";
 import type Database from "better-sqlite3";
+import { asText } from "../text.js";
 
 export function searchRouter(db: Database.Database): Router {
   const router = Router();
 
   router.get("/search", (req, res) => {
-    const q = String(req.query.q ?? "").trim();
+    const q = asText(req.query.q).trim();
     if (!q) {
       res.json([]);
       return;
@@ -19,7 +20,10 @@ export function searchRouter(db: Database.Database): Router {
          ORDER BY CASE WHEN p.title LIKE ? ESCAPE '\\' COLLATE NOCASE THEN 0 ELSE 1 END, length(p.title)
          LIMIT 20`,
       )
-      .all(`%${q.replace(/[%_\\]/g, "\\$&")}%`, `${q.replace(/[%_\\]/g, "\\$&")}%`);
+      .all(
+        `%${q.replace(/[%_\\]/g, "\\$&")}%`,
+        `${q.replace(/[%_\\]/g, "\\$&")}%`,
+      );
     res.json(results);
   });
 

@@ -1,51 +1,103 @@
-import { FormEvent, useState } from 'react'
-import Modal from './Modal'
-import { api } from '../api'
-import { Contact, DEAL_STAGES, Deal, DealStage, Organization, STAGE_PROBABILITY, expectedValue } from '../types'
-import { formatMoney } from './Chips'
+import { SubmitEvent, useState } from "react";
+import Modal from "./Modal";
+import { api } from "../api";
+import {
+  Contact,
+  DEAL_STAGES,
+  Deal,
+  DealStage,
+  Organization,
+  STAGE_PROBABILITY,
+  expectedValue,
+} from "../types";
+import { formatMoney } from "../format";
 
 interface Props {
-  existing?: Deal
-  organizations: Organization[]
-  contacts: Contact[]
-  defaultOrganizationId?: number
-  onSaved: () => void
-  onClose: () => void
+  existing?: Deal;
+  organizations: Organization[];
+  contacts: Contact[];
+  defaultOrganizationId?: number;
+  onSaved: () => void;
+  onClose: () => void;
 }
 
-export default function DealForm({ existing, organizations, contacts, defaultOrganizationId, onSaved, onClose }: Props) {
-  const [form, setForm] = useState({
-    name: existing?.name ?? '',
-    organization_id: existing?.organization_id ?? defaultOrganizationId ?? ('' as number | ''),
-    contact_id: existing?.contact_id ?? ('' as number | ''),
-    stage: existing?.stage ?? ('New' as DealStage),
-    value: existing?.value ?? 0,
-    probability: existing?.probability ?? STAGE_PROBABILITY.New,
-    close_date: existing?.close_date ?? '',
-  })
+interface FormState {
+  name: string;
+  organization_id: number | "";
+  contact_id: number | "";
+  stage: DealStage;
+  value: number;
+  probability: number;
+  close_date: string;
+}
 
-  async function submit(e: FormEvent) {
-    e.preventDefault()
+/** An edit starts from the deal; a new deal starts blank, on the stage's default probability. */
+function initialForm(
+  existing?: Deal,
+  defaultOrganizationId?: number,
+): FormState {
+  if (!existing) {
+    return {
+      name: "",
+      organization_id: defaultOrganizationId ?? "",
+      contact_id: "",
+      stage: "New",
+      value: 0,
+      probability: STAGE_PROBABILITY.New,
+      close_date: "",
+    };
+  }
+  return {
+    name: existing.name,
+    organization_id: existing.organization_id ?? defaultOrganizationId ?? "",
+    contact_id: existing.contact_id ?? "",
+    stage: existing.stage,
+    value: existing.value,
+    probability: existing.probability,
+    close_date: existing.close_date ?? "",
+  };
+}
+
+export default function DealForm({
+  existing,
+  organizations,
+  contacts,
+  defaultOrganizationId,
+  onSaved,
+  onClose,
+}: Props) {
+  const [form, setForm] = useState(() =>
+    initialForm(existing, defaultOrganizationId),
+  );
+
+  async function submit(e: SubmitEvent) {
+    e.preventDefault();
     const body = {
       ...form,
-      organization_id: form.organization_id === '' ? null : Number(form.organization_id),
-      contact_id: form.contact_id === '' ? null : Number(form.contact_id),
-      value: Number(form.value),
-      probability: Number(form.probability),
+      organization_id:
+        form.organization_id === "" ? null : form.organization_id,
+      contact_id: form.contact_id === "" ? null : form.contact_id,
+      value: form.value,
+      probability: form.probability,
       close_date: form.close_date || null,
-    }
-    if (existing) await api.put(`/api/crm/deals/${existing.id}`, body)
-    else await api.post('/api/crm/deals', body)
-    onSaved()
-    onClose()
+    };
+    if (existing) await api.put(`/api/crm/deals/${existing.id}`, body);
+    else await api.post("/api/crm/deals", body);
+    onSaved();
+    onClose();
   }
 
   return (
-    <Modal title={existing ? 'Edit deal' : 'Add deal'} onClose={onClose}>
-      <form className="form-grid" onSubmit={submit}>
+    <Modal title={existing ? "Edit deal" : "Add deal"} onClose={onClose}>
+      <form className="form-grid" onSubmit={(e) => void submit(e)}>
         <div className="field">
           <label htmlFor="dl-name">Name</label>
-          <input id="dl-name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          <input
+            id="dl-name"
+            required
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+          />
         </div>
         <div className="form-row">
           <div className="field">
@@ -53,7 +105,13 @@ export default function DealForm({ existing, organizations, contacts, defaultOrg
             <select
               id="dl-org"
               value={form.organization_id}
-              onChange={(e) => setForm({ ...form, organization_id: e.target.value === '' ? '' : Number(e.target.value) })}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  organization_id:
+                    e.target.value === "" ? "" : Number(e.target.value),
+                })
+              }
             >
               <option value="">— None —</option>
               {organizations.map((o) => (
@@ -68,7 +126,13 @@ export default function DealForm({ existing, organizations, contacts, defaultOrg
             <select
               id="dl-contact"
               value={form.contact_id}
-              onChange={(e) => setForm({ ...form, contact_id: e.target.value === '' ? '' : Number(e.target.value) })}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  contact_id:
+                    e.target.value === "" ? "" : Number(e.target.value),
+                })
+              }
             >
               <option value="">— None —</option>
               {contacts.map((c) => (
@@ -86,8 +150,12 @@ export default function DealForm({ existing, organizations, contacts, defaultOrg
               id="dl-stage"
               value={form.stage}
               onChange={(e) => {
-                const stage = e.target.value as DealStage
-                setForm({ ...form, stage, probability: STAGE_PROBABILITY[stage] })
+                const stage = e.target.value as DealStage;
+                setForm({
+                  ...form,
+                  stage,
+                  probability: STAGE_PROBABILITY[stage],
+                });
               }}
             >
               {DEAL_STAGES.map((s) => (
@@ -106,7 +174,9 @@ export default function DealForm({ existing, organizations, contacts, defaultOrg
               step="1"
               required
               value={form.value}
-              onChange={(e) => setForm({ ...form, value: e.target.valueAsNumber || 0 })}
+              onChange={(e) =>
+                setForm({ ...form, value: e.target.valueAsNumber || 0 })
+              }
             />
           </div>
         </div>
@@ -121,13 +191,20 @@ export default function DealForm({ existing, organizations, contacts, defaultOrg
               step="5"
               required
               value={form.probability}
-              onChange={(e) => setForm({ ...form, probability: e.target.valueAsNumber || 0 })}
+              onChange={(e) =>
+                setForm({ ...form, probability: e.target.valueAsNumber || 0 })
+              }
             />
           </div>
           <div className="field">
-            <label>Expected value</label>
-            <output className="field-output">
-              {formatMoney(expectedValue({ value: Number(form.value), probability: Number(form.probability) }))}
+            <label htmlFor="deal-expected">Expected value</label>
+            <output id="deal-expected" className="field-output">
+              {formatMoney(
+                expectedValue({
+                  value: form.value,
+                  probability: form.probability,
+                }),
+              )}
             </output>
           </div>
         </div>
@@ -150,5 +227,5 @@ export default function DealForm({ existing, organizations, contacts, defaultOrg
         </div>
       </form>
     </Modal>
-  )
+  );
 }

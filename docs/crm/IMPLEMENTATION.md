@@ -52,7 +52,7 @@ Tiles, then **four charts**, then recent activity and follow-ups.
   other, and stacking keeps the bars readable across twelve of them. Deal volume rides over the top
   as a line on its own right-hand axis.
 - **Revenue funnel** (`pipelineFunnel`) - **cumulative**: value at or past each stage, which is why
-  the labels carry a trailing `+`. Charting value *sitting in* each stage produces an inverted
+  the labels carry a trailing `+`. Charting value _sitting in_ each stage produces an inverted
   funnel, because historical Won dwarfs the open stages. If the funnel ever widens downwards, this
   is why. Wins are capped at the trailing six months; without a horizon every win ever recorded
   keeps widening the top. Lost deals never appear - a lost deal overwrites the stage it reached, so

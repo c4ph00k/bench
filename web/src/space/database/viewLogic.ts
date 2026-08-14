@@ -1,4 +1,11 @@
-import type { DbRow, Filter, Property, PropertyOption, PropertyType } from "../api";
+import { valueText } from "./valueText";
+import type {
+  DbRow,
+  Filter,
+  Property,
+  PropertyOption,
+  PropertyType,
+} from "../api";
 
 export const TITLE_ID = "__title";
 
@@ -48,56 +55,94 @@ function rowValue(row: DbRow, propertyId: string): unknown {
   return propertyId === TITLE_ID ? row.title : row.values[propertyId];
 }
 
-export function matchesFilter(row: DbRow, filter: Filter, properties: Property[]): boolean {
-  if (filter.propertyId !== TITLE_ID && !properties.some((p) => p.id === filter.propertyId)) {
+const contains = (value: unknown, target: unknown) =>
+  typeof target === "string" &&
+  valueText(value).toLowerCase().includes(target.toLowerCase());
+
+/** A date cell holds an ISO string; an empty one is "no date" rather than the earliest one. */
+const isDate = (value: unknown): value is string =>
+  typeof value === "string" && value !== "";
+
+/**
+ * One predicate per operator. A stored view config carries its operator as a plain string, so an
+ * operator this build does not know falls through to "matches everything" rather than hiding every
+ * row - which is why this is a Map rather than a lookup that is always defined.
+ */
+const OPERATORS = new Map<string, (value: unknown, target: unknown) => boolean>(
+  [
+    ["contains", contains],
+    ["not_contains", (value, target) => !contains(value, target)],
+    [
+      "eq",
+      (value, target) => typeof value === "number" && value === Number(target),
+    ],
+    [
+      "gt",
+      (value, target) => typeof value === "number" && value > Number(target),
+    ],
+    [
+      "lt",
+      (value, target) => typeof value === "number" && value < Number(target),
+    ],
+    ["is", (value, target) => value === target],
+    ["is_not", (value, target) => value !== target],
+    ["has", (value, target) => Array.isArray(value) && value.includes(target)],
+    [
+      "before",
+      (value, target) =>
+        isDate(value) && typeof target === "string" && value < target,
+    ],
+    [
+      "after",
+      (value, target) =>
+        isDate(value) && typeof target === "string" && value > target,
+    ],
+    ["checked", (value) => Boolean(value)],
+    ["unchecked", (value) => !value],
+  ],
+);
+
+export function matchesFilter(
+  row: DbRow,
+  filter: Filter,
+  properties: Property[],
+): boolean {
+  if (
+    filter.propertyId !== TITLE_ID &&
+    !properties.some((p) => p.id === filter.propertyId)
+  ) {
     return true; // the filtered property was deleted; ignore the filter rather than hide everything
   }
-  const value = rowValue(row, filter.propertyId);
-  const fv = filter.value;
-  switch (filter.operator) {
-    case "contains":
-      return typeof fv === "string" && String(value ?? "").toLowerCase().includes(fv.toLowerCase());
-    case "not_contains":
-      return typeof fv === "string" && !String(value ?? "").toLowerCase().includes(fv.toLowerCase());
-    case "eq":
-      return typeof value === "number" && value === Number(fv);
-    case "gt":
-      return typeof value === "number" && value > Number(fv);
-    case "lt":
-      return typeof value === "number" && value < Number(fv);
-    case "is":
-      return value === fv;
-    case "is_not":
-      return value !== fv;
-    case "has":
-      return Array.isArray(value) && value.includes(fv as string);
-    case "before":
-      return typeof value === "string" && value !== "" && typeof fv === "string" && value < fv;
-    case "after":
-      return typeof value === "string" && value !== "" && typeof fv === "string" && value > fv;
-    case "checked":
-      return Boolean(value);
-    case "unchecked":
-      return !value;
-    default:
-      return true;
-  }
+  const predicate = OPERATORS.get(filter.operator);
+  if (!predicate) return true;
+  return predicate(rowValue(row, filter.propertyId), filter.value);
 }
 
-export function applyFilters(rows: DbRow[], filters: Filter[], properties: Property[]): DbRow[] {
-  if (!filters || filters.length === 0) return rows;
-  return rows.filter((row) => filters.every((f) => matchesFilter(row, f, properties)));
+export function applyFilters(
+  rows: DbRow[],
+  filters: Filter[],
+  properties: Property[],
+): DbRow[] {
+  if (filters.length === 0) return rows;
+  return rows.filter((row) =>
+    filters.every((f) => matchesFilter(row, f, properties)),
+  );
 }
 
-function sortKey(row: DbRow, propertyId: string, properties: Property[]): string | number {
+function sortKey(
+  row: DbRow,
+  propertyId: string,
+  properties: Property[],
+): string | number {
   const value = rowValue(row, propertyId);
   const prop = properties.find((p) => p.id === propertyId);
-  if (value == null) return prop?.type === "number" ? Number.NEGATIVE_INFINITY : "";
+  if (value == null)
+    return prop?.type === "number" ? Number.NEGATIVE_INFINITY : "";
   switch (prop?.type) {
     case "number":
       return typeof value === "number" ? value : Number.NEGATIVE_INFINITY;
     case "checkbox":
-      return value ? 1 : 0;
+      return value === true ? 1 : 0;
     case "select": {
       const opt = prop.options.find((o) => o.id === value);
       return (opt?.name ?? "").toLowerCase();
@@ -108,10 +153,10 @@ function sortKey(row: DbRow, propertyId: string, properties: Property[]): string
         .map((id) => prop.options.find((o) => o.id === id)?.name ?? "")
         .filter(Boolean)
         .map((n) => n.toLowerCase());
-      return names.sort().join(",");
+      return [...names].sort((a, b) => a.localeCompare(b)).join(",");
     }
     default:
-      return String(value).toLowerCase();
+      return valueText(value).toLowerCase();
   }
 }
 
@@ -137,9 +182,13 @@ export interface BoardColumn {
 }
 
 /** One column per option of the grouping select property, plus a "none" column. */
-export function groupRows(rows: DbRow[], groupProperty: Property): BoardColumn[] {
+export function groupRows(
+  rows: DbRow[],
+  groupProperty: Property,
+): BoardColumn[] {
   const columns: BoardColumn[] = [{ option: null, rows: [] }];
-  for (const option of groupProperty.options) columns.push({ option, rows: [] });
+  for (const option of groupProperty.options)
+    columns.push({ option, rows: [] });
   for (const row of rows) {
     const value = row.values[groupProperty.id];
     const column = columns.find((c) => c.option?.id === value) ?? columns[0];

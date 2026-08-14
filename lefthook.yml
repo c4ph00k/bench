@@ -1,0 +1,15 @@
+# A backstop, not the mechanism. PROCESS.md asks whoever did the work to run `npm run check`
+# before committing; this catches the times that slips. `git commit --no-verify` walks past it,
+# by design - CI is the gate. See docs/CONTROLS.md.
+pre-commit:
+  parallel: false
+  jobs:
+    - name: format
+      glob: "*.{ts,tsx,js,mjs,cjs,json,css,html,md,yml,yaml}"
+      run: npx prettier --write {staged_files}
+      stage_fixed: true
+
+    - name: lint
+      # The whole tree, not the staged files: the rules are type-aware, so a staged subset can pass
+      # while the change has broken a file that was not staged.
+      run: npm run lint

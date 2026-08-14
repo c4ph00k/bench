@@ -1,32 +1,35 @@
-import { useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router'
-import { api } from '../api'
-import { useFetch } from '../hooks'
-import { Activity, Contact, Deal, Organization } from '../types'
-import DealForm from '../components/DealForm'
-import ConfirmDialog from '../components/ConfirmDialog'
-import ActivityForm from '../components/ActivityForm'
-import ActivityTimeline from '../components/ActivityTimeline'
-import { StageChip, formatDate, formatMoney } from '../components/Chips'
+import { useState } from "react";
+import { Link, useNavigate, useParams } from "react-router";
+import { api } from "../api";
+import { useFetch } from "../hooks";
+import { Activity, Contact, Deal, Organization } from "../types";
+import DealForm from "../components/DealForm";
+import ConfirmDialog from "../components/ConfirmDialog";
+import ActivityForm from "../components/ActivityForm";
+import ActivityTimeline from "../components/ActivityTimeline";
+import { StageChip } from "../components/Chips";
+import { formatDate, formatMoney } from "../format";
 
 export default function DealDetail() {
-  const { id } = useParams()
-  const navigate = useNavigate()
-  const [editing, setEditing] = useState(false)
-  const [deleting, setDeleting] = useState(false)
-  const [logging, setLogging] = useState(false)
-  const { data: deal, reload } = useFetch<Deal>(`/api/crm/deals/${id}`)
-  const { data: activities, reload: reloadActivities } = useFetch<Activity[]>(`/api/crm/activities?deal_id=${id}`)
-  const { data: orgs } = useFetch<Organization[]>('/api/crm/organizations')
-  const { data: contacts } = useFetch<Contact[]>('/api/crm/contacts')
-  const org = orgs?.find((o) => o.id === deal?.organization_id)
-  const contact = contacts?.find((c) => c.id === deal?.contact_id)
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [editing, setEditing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [logging, setLogging] = useState(false);
+  const { data: deal, reload } = useFetch<Deal>(`/api/crm/deals/${id}`);
+  const { data: activities, reload: reloadActivities } = useFetch<Activity[]>(
+    `/api/crm/activities?deal_id=${id}`,
+  );
+  const { data: orgs } = useFetch<Organization[]>("/api/crm/organizations");
+  const { data: contacts } = useFetch<Contact[]>("/api/crm/contacts");
+  const org = orgs?.find((o) => o.id === deal?.organization_id);
+  const contact = contacts?.find((c) => c.id === deal?.contact_id);
 
-  if (!deal) return null
+  if (!deal) return null;
 
   async function remove() {
-    await api.delete(`/api/crm/deals/${id}`)
-    navigate('/deals')
+    await api.delete(`/api/crm/deals/${id}`);
+    void navigate("/deals");
   }
 
   return (
@@ -39,10 +42,10 @@ export default function DealDetail() {
           <h1>{deal.name}</h1>
           <p className="page-sub">
             {formatMoney(deal.value)}
-            {org ? ` · ${org.name}` : ''}
+            {org ? ` · ${org.name}` : ""}
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div style={{ display: "flex", gap: 10 }}>
           <button className="btn btn-primary" onClick={() => setLogging(true)}>
             Log activity
           </button>
@@ -73,7 +76,7 @@ export default function DealDetail() {
                   {org.name}
                 </Link>
               ) : (
-                '—'
+                "—"
               )}
             </dd>
             <dt>Primary contact</dt>
@@ -83,17 +86,26 @@ export default function DealDetail() {
                   {contact.name}
                 </Link>
               ) : (
-                '—'
+                "—"
               )}
             </dd>
           </dl>
         </div>
         <div className="card">
           <h2>Activity</h2>
-          <ActivityTimeline activities={activities ?? []} onChanged={reloadActivities} />
+          <ActivityTimeline
+            activities={activities ?? []}
+            onChanged={reloadActivities}
+          />
         </div>
       </div>
-      {logging && <ActivityForm dealId={deal.id} onSaved={reloadActivities} onClose={() => setLogging(false)} />}
+      {logging && (
+        <ActivityForm
+          dealId={deal.id}
+          onSaved={reloadActivities}
+          onClose={() => setLogging(false)}
+        />
+      )}
       {editing && (
         <DealForm
           existing={deal}
@@ -107,10 +119,10 @@ export default function DealDetail() {
         <ConfirmDialog
           title="Delete deal"
           message={`Delete "${deal.name}"? This cannot be undone.`}
-          onConfirm={remove}
+          onConfirm={() => void remove()}
           onCancel={() => setDeleting(false)}
         />
       )}
     </>
-  )
+  );
 }

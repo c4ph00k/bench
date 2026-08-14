@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
-import { CornerDownLeft, FileText, Database as DatabaseIcon, Rows3, Search } from "lucide-react";
+import {
+  CornerDownLeft,
+  FileText,
+  Database as DatabaseIcon,
+  Rows3,
+  Search,
+} from "lucide-react";
 import { api, type SearchResult } from "../api";
 
 interface Props {
@@ -8,16 +14,21 @@ interface Props {
 }
 
 function TypeBadge({ result }: { result: SearchResult }) {
-  if (result.type === "database") return <DatabaseIcon size={14} aria-label="Database" />;
-  if (result.type === "row") return <Rows3 size={14} aria-label="Database row" />;
+  if (result.type === "database")
+    return <DatabaseIcon size={14} aria-label="Database" />;
+  if (result.type === "row")
+    return <Rows3 size={14} aria-label="Database row" />;
   return <FileText size={14} aria-label="Page" />;
 }
 
 export default function SearchModal({ onClose }: Props) {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<SearchResult[]>([]);
+  const [found, setFound] = useState<SearchResult[]>([]);
   const [selected, setSelected] = useState(0);
+  // Derived, so clearing the box empties the list without an effect resetting state. The last
+  // results stay up while a new query is still debouncing, which is what they did before.
+  const results = query.trim() ? found : [];
   const inputRef = useRef<HTMLInputElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -25,22 +36,20 @@ export default function SearchModal({ onClose }: Props) {
 
   useEffect(() => {
     clearTimeout(timer.current);
-    if (!query.trim()) {
-      setResults([]);
-      setSelected(0);
-      return;
-    }
-    timer.current = setTimeout(async () => {
-      const found = await api.search(query.trim());
-      setResults(found);
-      setSelected(0);
+    const q = query.trim();
+    if (!q) return;
+    timer.current = setTimeout(() => {
+      void api.search(q).then((hits) => {
+        setFound(hits);
+        setSelected(0);
+      });
     }, 120);
     return () => clearTimeout(timer.current);
   }, [query]);
 
   const open = (result: SearchResult) => {
     onClose();
-    navigate(`/p/${result.id}`);
+    void navigate(`/p/${result.id}`);
   };
 
   const onKeyDown = (e: React.KeyboardEvent) => {
@@ -57,8 +66,14 @@ export default function SearchModal({ onClose }: Props) {
   };
 
   return (
-    <div className="overlay search-overlay" onMouseDown={onClose}>
-      <div className="search-modal" role="dialog" aria-label="Quick find" onMouseDown={(e) => e.stopPropagation()}>
+    <div
+      role="presentation"
+      className="overlay search-overlay"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="search-modal" role="dialog" aria-label="Quick find">
         <div className="search-input-row">
           <Search size={17} className="search-glyph" />
           <input
@@ -73,7 +88,11 @@ export default function SearchModal({ onClose }: Props) {
           <kbd className="search-kbd">esc</kbd>
         </div>
         {query.trim() && (
-          <div className="search-results" role="listbox" aria-label="Search results">
+          <div
+            className="search-results"
+            role="listbox"
+            aria-label="Search results"
+          >
             {results.map((r, i) => (
               <button
                 key={r.id}
@@ -83,13 +102,23 @@ export default function SearchModal({ onClose }: Props) {
                 onMouseEnter={() => setSelected(i)}
                 onClick={() => open(r)}
               >
-                <span className="search-icon">{r.icon ?? <TypeBadge result={r} />}</span>
+                <span className="search-icon">
+                  {r.icon ?? <TypeBadge result={r} />}
+                </span>
                 <span className="search-title">{r.title || "Untitled"}</span>
-                {r.parent_title && <span className="search-crumb">{r.parent_title}</span>}
-                {i === selected && <CornerDownLeft size={13} className="search-enter" />}
+                {r.parent_title && (
+                  <span className="search-crumb">{r.parent_title}</span>
+                )}
+                {i === selected && (
+                  <CornerDownLeft size={13} className="search-enter" />
+                )}
               </button>
             ))}
-            {results.length === 0 && <div className="search-empty">No matches for “{query.trim()}”</div>}
+            {results.length === 0 && (
+              <div className="search-empty">
+                No matches for “{query.trim()}”
+              </div>
+            )}
           </div>
         )}
       </div>

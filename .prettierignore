@@ -1,0 +1,11 @@
+node_modules/
+dist/
+coverage/
+test-results/
+playwright-report/
+e2e/.tmp/
+data/
+package-lock.json
+
+# Machine-local, ignored through a global gitignore rather than this repo's
+.claude/settings.local.json

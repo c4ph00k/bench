@@ -1,4 +1,5 @@
 import { test, expect } from "../fixtures";
+import { savedBlockTexts } from "../api";
 import type { Page } from "@playwright/test";
 
 async function freshPage(page: Page, title: string) {
@@ -12,9 +13,15 @@ async function freshPage(page: Page, title: string) {
 
 async function deletePage(page: Page, label: string | RegExp) {
   await page.getByRole("treeitem", { name: label }).hover();
-  await page.getByRole("button", { name: /Page options for/ }).last().click();
+  await page
+    .getByRole("button", { name: /Page options for/ })
+    .last()
+    .click();
   await page.getByRole("menuitem", { name: "Delete" }).click();
-  await page.getByRole("dialog").getByRole("button", { name: "Delete" }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Delete" })
+    .click();
 }
 
 test("script-looking titles and block text render inert", async ({ page }) => {
@@ -26,11 +33,15 @@ test("script-looking titles and block text render inert", async ({ page }) => {
   const name = `<img src=x onerror=alert(1)> ${Date.now()}`;
   await freshPage(page, name);
   await page.keyboard.type('<script>alert("xss")</script> & <b>not bold</b>');
-  await page.waitForTimeout(700);
+  await expect
+    .poll(() => savedBlockTexts(page))
+    .toEqual(['<script>alert("xss")</script> & <b>not bold</b>']);
   await page.reload();
 
-  await expect(page.locator(".block-text").first()).toHaveText('<script>alert("xss")</script> & <b>not bold</b>');
-  expect(await page.locator(".block-text b").count()).toBe(0);
+  await expect(page.locator(".block-text").first()).toHaveText(
+    '<script>alert("xss")</script> & <b>not bold</b>',
+  );
+  await expect(page.locator(".block-text b")).toHaveCount(0);
   await expect(page.getByRole("treeitem", { name: /onerror/ })).toBeVisible();
   expect(alertFired).toBe(false);
   await deletePage(page, /onerror/);
@@ -43,28 +54,44 @@ test("pasting rich HTML lands as plain text", async ({ page }) => {
     const dt = new DataTransfer();
     dt.setData("text/html", "<b>bold</b><script>alert(1)</script>");
     dt.setData("text/plain", "just plain text");
-    document.activeElement?.dispatchEvent(new ClipboardEvent("paste", { clipboardData: dt, bubbles: true, cancelable: true }));
+    document.activeElement?.dispatchEvent(
+      new ClipboardEvent("paste", {
+        clipboardData: dt,
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
   });
-  await expect(page.locator(".block-text").first()).toHaveText("just plain text");
-  expect(await page.locator(".block-text b").count()).toBe(0);
+  await expect(page.locator(".block-text").first()).toHaveText(
+    "just plain text",
+  );
+  await expect(page.locator(".block-text b")).toHaveCount(0);
   await deletePage(page, /Paste Test/);
 });
 
-test("hammering Enter keeps block order intact after reload", async ({ page }) => {
+test("hammering Enter keeps block order intact after reload", async ({
+  page,
+}) => {
   await freshPage(page, `Enter Storm ${Date.now()}`);
   for (let i = 1; i <= 12; i++) {
     await page.keyboard.type(`line${i}`);
     await page.keyboard.press("Enter");
   }
   await page.keyboard.type("last");
-  await page.waitForTimeout(900);
+  const expected = [
+    ...Array.from({ length: 12 }, (_, i) => `line${i + 1}`),
+    "last",
+  ];
+  // Thirteen blocks, each on its own save timer: wait for every one to reach the server.
+  await expect.poll(() => savedBlockTexts(page)).toEqual(expected);
   await page.reload();
-  const texts = await page.locator(".block-text").allTextContents();
-  expect(texts).toEqual([...Array.from({ length: 12 }, (_, i) => `line${i + 1}`), "last"]);
+  await expect(page.locator(".block-text")).toHaveText(expected);
   await deletePage(page, /Enter Storm/);
 });
 
-test("deleting a filtered property leaves the other rows visible", async ({ page }) => {
+test("deleting a filtered property leaves the other rows visible", async ({
+  page,
+}) => {
   const name = `Filter Orphan ${Date.now()}`;
   await page.goto("/space/");
   await page.getByRole("button", { name: "New database" }).click();
@@ -88,7 +115,9 @@ test("deleting a filtered property leaves the other rows visible", async ({ page
   await deletePage(page, /Filter Orphan/);
 });
 
-test("absurdly long titles do not break the sidebar or crash anything", async ({ page }) => {
+test("absurdly long titles do not break the sidebar or crash anything", async ({
+  page,
+}) => {
   const long = "L" + "o".repeat(500) + "ng";
   await freshPage(page, long);
   await expect(page.getByRole("treeitem", { name: /Loo/ })).toBeVisible();
@@ -97,7 +126,9 @@ test("absurdly long titles do not break the sidebar or crash anything", async ({
   await deletePage(page, /Loo/);
 });
 
-test("backspace-spamming the only block never removes it or crashes", async ({ page }) => {
+test("backspace-spamming the only block never removes it or crashes", async ({
+  page,
+}) => {
   await freshPage(page, `Backspace Storm ${Date.now()}`);
   for (let i = 0; i < 15; i++) await page.keyboard.press("Backspace");
   await expect(page.locator(".block-row")).toHaveCount(1);
@@ -106,11 +137,15 @@ test("backspace-spamming the only block never removes it or crashes", async ({ p
   await deletePage(page, /Backspace Storm/);
 });
 
-test("visiting a deleted page shows a friendly missing state", async ({ page }) => {
+test("visiting a deleted page shows a friendly missing state", async ({
+  page,
+}) => {
   const name = `Ghost ${Date.now()}`;
   await freshPage(page, name);
   const url = page.url();
   await deletePage(page, /Ghost/);
   await page.goto(url);
-  await expect(page.getByText("This page does not exist anymore.")).toBeVisible();
+  await expect(
+    page.getByText("This page does not exist anymore."),
+  ).toBeVisible();
 });

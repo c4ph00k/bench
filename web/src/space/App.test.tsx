@@ -18,8 +18,12 @@ vi.mock("./api", () => ({
 
 describe("App", () => {
   it("loads the tree and redirects to the first page", async () => {
-    vi.mocked(api.tree).mockResolvedValue([node({ id: "home", title: "Home", icon: "🏠" })]);
-    vi.mocked(api.getPage).mockResolvedValue(pageData({ id: "home", title: "Home", icon: "🏠" }));
+    vi.mocked(api.tree).mockResolvedValue([
+      node({ id: "home", title: "Home", icon: "🏠" }),
+    ]);
+    vi.mocked(api.getPage).mockResolvedValue(
+      pageData({ id: "home", title: "Home", icon: "🏠" }),
+    );
     render(
       <MemoryRouter initialEntries={["/"]}>
         <App />
@@ -30,8 +34,12 @@ describe("App", () => {
   });
 
   it("opens and closes quick-find with the keyboard shortcut", async () => {
-    vi.mocked(api.tree).mockResolvedValue([node({ id: "home", title: "Home", icon: "🏠" })]);
-    vi.mocked(api.getPage).mockResolvedValue(pageData({ id: "home", title: "Home", icon: "🏠" }));
+    vi.mocked(api.tree).mockResolvedValue([
+      node({ id: "home", title: "Home", icon: "🏠" }),
+    ]);
+    vi.mocked(api.getPage).mockResolvedValue(
+      pageData({ id: "home", title: "Home", icon: "🏠" }),
+    );
     const user = userEvent.setup();
     render(
       <MemoryRouter initialEntries={["/"]}>
@@ -39,8 +47,12 @@ describe("App", () => {
       </MemoryRouter>,
     );
     await user.keyboard("{Meta>}k{/Meta}");
-    expect(screen.getByRole("dialog", { name: "Quick find" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("dialog", { name: "Quick find" }),
+    ).toBeInTheDocument();
     await user.keyboard("{Control>}k{/Control}");
-    expect(screen.queryByRole("dialog", { name: "Quick find" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("dialog", { name: "Quick find" }),
+    ).not.toBeInTheDocument();
   });
 });

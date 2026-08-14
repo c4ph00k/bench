@@ -1,3 +1,4 @@
+import { valueText } from "./valueText";
 import { useNavigate } from "react-router";
 import type { DbRow, Property } from "../api";
 import { Chip } from "./cells";
@@ -7,7 +8,13 @@ interface Props {
   properties: Property[];
 }
 
-export function ValuePreview({ property, value }: { property: Property; value: unknown }) {
+function ValuePreview({
+  property,
+  value,
+}: {
+  property: Property;
+  value: unknown;
+}) {
   if (value == null || value === "") return null;
   switch (property.type) {
     case "select": {
@@ -28,9 +35,9 @@ export function ValuePreview({ property, value }: { property: Property; value: u
       );
     }
     case "checkbox":
-      return <span className="preview-check">{value ? "✓" : ""}</span>;
+      return <span className="preview-check">{value === true ? "✓" : ""}</span>;
     default:
-      return <span className="preview-text">{String(value)}</span>;
+      return <span className="preview-text">{valueText(value)}</span>;
   }
 }
 
@@ -40,7 +47,11 @@ export default function ListView({ rows, properties }: Props) {
   return (
     <div className="list-view">
       {rows.map((row) => (
-        <button key={row.id} className="list-row" onClick={() => navigate(`/p/${row.id}`)}>
+        <button
+          key={row.id}
+          className="list-row"
+          onClick={() => void navigate(`/p/${row.id}`)}
+        >
           <span className="list-title">{row.title || "Untitled"}</span>
           <span className="list-props">
             {shown.map((p) => (

@@ -10,8 +10,22 @@ vi.mock("../api", () => ({
 }));
 
 const results: SearchResult[] = [
-  { id: "p1", title: "Japan 2026", icon: "🗾", type: "page", parent_title: "Travel", parent_type: "page" },
-  { id: "r1", title: "Japanese Cooking", icon: null, type: "row", parent_title: "Reading List", parent_type: "database" },
+  {
+    id: "p1",
+    title: "Japan 2026",
+    icon: "🗾",
+    type: "page",
+    parent_title: "Travel",
+    parent_type: "page",
+  },
+  {
+    id: "r1",
+    title: "Japanese Cooking",
+    icon: null,
+    type: "row",
+    parent_title: "Reading List",
+    parent_type: "database",
+  },
 ];
 
 function renderModal(onClose = vi.fn()) {
@@ -34,7 +48,10 @@ describe("SearchModal", () => {
   it("searches as you type and lists results with context", async () => {
     vi.mocked(api.search).mockResolvedValue(results);
     renderModal();
-    await userEvent.type(screen.getByRole("textbox", { name: "Search" }), "japan");
+    await userEvent.type(
+      screen.getByRole("textbox", { name: "Search" }),
+      "japan",
+    );
     await waitFor(() => expect(api.search).toHaveBeenCalledWith("japan"));
     expect(await screen.findByText("Japan 2026")).toBeInTheDocument();
     expect(screen.getByText("Japanese Cooking")).toBeInTheDocument();
@@ -48,7 +65,9 @@ describe("SearchModal", () => {
     await userEvent.type(input, "japan");
     await screen.findByText("Japan 2026");
     await userEvent.keyboard("{ArrowDown}");
-    expect(screen.getByRole("option", { name: /Japanese Cooking/ })).toHaveAttribute("aria-selected", "true");
+    expect(
+      screen.getByRole("option", { name: /Japanese Cooking/ }),
+    ).toHaveAttribute("aria-selected", "true");
     await userEvent.keyboard("{Enter}");
     expect(onClose).toHaveBeenCalled();
     expect(screen.getByTestId("dest")).toBeInTheDocument();
@@ -66,7 +85,10 @@ describe("SearchModal", () => {
   it("shows an empty state and closes on Escape", async () => {
     vi.mocked(api.search).mockResolvedValue([]);
     const onClose = renderModal();
-    await userEvent.type(screen.getByRole("textbox", { name: "Search" }), "zzz");
+    await userEvent.type(
+      screen.getByRole("textbox", { name: "Search" }),
+      "zzz",
+    );
     expect(await screen.findByText(/No matches for/)).toBeInTheDocument();
     await userEvent.keyboard("{Escape}");
     expect(onClose).toHaveBeenCalled();

@@ -31,5 +31,10 @@ npm-debug.log*
 # Editor / OS
 .DS_Store
 .idea/
-.vscode/
+# The contents, not the directory: git will not re-include a file whose parent directory is
+# excluded, so `.vscode/` would make the two negations below dead letters. Those two are shared
+# deliberately - format-on-save is one of the four places CONTROLS.md keeps Prettier applied.
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
 *.swp

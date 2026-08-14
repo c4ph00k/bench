@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   DndContext,
   PointerSensor,
@@ -7,16 +13,26 @@ import {
   useSensors,
   type DragEndEvent,
 } from "@dnd-kit/core";
-import { SortableContext, arrayMove, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { api, type Block } from "../api";
 import { caretOffset, focusBlock, selectionCollapsed } from "./caret";
 import { filterBlockTypes } from "./blockTypes";
 import BlockRow from "./BlockRow";
 import SlashMenu from "./SlashMenu";
+import { applyReorder } from "./reorder";
 
 const LIST_TYPES = new Set(["bulleted", "numbered", "todo"]);
-const EMPTY_ENTER_RESETS = new Set(["bulleted", "numbered", "todo", "quote", "callout"]);
+const EMPTY_ENTER_RESETS = new Set([
+  "bulleted",
+  "numbered",
+  "todo",
+  "quote",
+  "callout",
+]);
 
 interface SlashState {
   blockId: string;
@@ -31,35 +47,42 @@ interface Props {
   initialBlocks: Block[];
 }
 
-/** Move activeId to overId's position; returns a new array (or the same one if a no-op). */
-export function applyReorder(blocks: Block[], activeId: string, overId: string): Block[] {
-  const from = blocks.findIndex((b) => b.id === activeId);
-  const to = blocks.findIndex((b) => b.id === overId);
-  if (from < 0 || to < 0 || from === to) return blocks;
-  return arrayMove(blocks, from, to);
-}
-
 export default function Editor({ pageId, initialBlocks }: Props) {
   const [blocks, setBlocks] = useState<Block[]>(() =>
-    initialBlocks.map((b) =>
-      b.content && typeof b.content === "object" && !Array.isArray(b.content) ? b : { ...b, content: {} },
-    ),
+    initialBlocks.map((b) => {
+      // Typed as an object, but it arrives as JSON and an older block may hold anything.
+      const content: unknown = b.content;
+      const usable =
+        typeof content === "object" &&
+        content !== null &&
+        !Array.isArray(content);
+      return usable ? b : { ...b, content: {} };
+    }),
   );
   const blocksRef = useRef(blocks);
-  blocksRef.current = blocks;
   const [versions, setVersions] = useState<Record<string, number>>({});
   const [slash, setSlash] = useState<SlashState | null>(null);
   const slashRef = useRef(slash);
-  slashRef.current = slash;
+
+  // These mirror the latest render for the callbacks and the pagehide flush to read. Written after
+  // the render rather than during it, which is what React expects of a ref.
+  useEffect(() => {
+    blocksRef.current = blocks;
+    slashRef.current = slash;
+  });
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
-  const pendingFocus = useRef<{ id: string; offset: number | "end" } | null>(null);
+  const pendingFocus = useRef<{ id: string; offset: number | "end" } | null>(
+    null,
+  );
   const queue = useRef<Promise<unknown>>(Promise.resolve());
   /** Serialize block mutations so they reach the server in the order they happened. */
   const enqueue = useCallback((op: () => Promise<unknown>) => {
     queue.current = queue.current.then(op, op);
   }, []);
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+  );
 
   useEffect(() => {
     const flushAll = () => {
@@ -87,10 +110,25 @@ export default function Editor({ pageId, initialBlocks }: Props) {
   useEffect(() => {
     if (blocksRef.current.length === 0) {
       const id = crypto.randomUUID();
-      setBlocks([{ id, page_id: pageId, type: "paragraph", content: { text: "" }, position: 0 }]);
-      enqueue(() => api.createBlock(pageId, { id, type: "paragraph", content: { text: "" }, index: 0 }));
+      setBlocks([
+        {
+          id,
+          page_id: pageId,
+          type: "paragraph",
+          content: { text: "" },
+          position: 0,
+        },
+      ]);
+      enqueue(() =>
+        api.createBlock(pageId, {
+          id,
+          type: "paragraph",
+          content: { text: "" },
+          index: 0,
+        }),
+      );
     }
-  }, [pageId]);
+  }, [pageId, enqueue]);
 
   useLayoutEffect(() => {
     if (pendingFocus.current) {
@@ -100,67 +138,101 @@ export default function Editor({ pageId, initialBlocks }: Props) {
     }
   });
 
-  const flushSave = useCallback((id: string) => {
-    const timer = timers.current.get(id);
-    if (timer) clearTimeout(timer);
-    timers.current.delete(id);
-    const block = blocksRef.current.find((b) => b.id === id);
-    if (block) enqueue(() => api.updateBlock(id, { content: block.content }));
-  }, []);
+  const flushSave = useCallback(
+    (id: string) => {
+      const timer = timers.current.get(id);
+      if (timer) clearTimeout(timer);
+      timers.current.delete(id);
+      const block = blocksRef.current.find((b) => b.id === id);
+      if (block) enqueue(() => api.updateBlock(id, { content: block.content }));
+    },
+    [enqueue],
+  );
 
   const scheduleSave = useCallback(
     (id: string) => {
       const timer = timers.current.get(id);
       if (timer) clearTimeout(timer);
-      timers.current.set(id, setTimeout(() => flushSave(id), 500));
+      timers.current.set(
+        id,
+        setTimeout(() => flushSave(id), 500),
+      );
     },
     [flushSave],
   );
 
   const setText = useCallback(
     (id: string, text: string, programmatic = false) => {
-      setBlocks((bs) => bs.map((b) => (b.id === id ? { ...b, content: { ...b.content, text } } : b)));
+      setBlocks((bs) =>
+        bs.map((b) =>
+          b.id === id ? { ...b, content: { ...b.content, text } } : b,
+        ),
+      );
       if (programmatic) {
         setVersions((v) => ({ ...v, [id]: (v[id] ?? 0) + 1 }));
         const timer = timers.current.get(id);
         if (timer) clearTimeout(timer);
         timers.current.delete(id);
         const block = blocksRef.current.find((b) => b.id === id);
-        enqueue(() => api.updateBlock(id, { content: { ...block?.content, text } }));
+        enqueue(() =>
+          api.updateBlock(id, { content: { ...block?.content, text } }),
+        );
       } else {
         scheduleSave(id);
       }
     },
-    [scheduleSave],
+    [scheduleSave, enqueue],
   );
 
   const insertBlock = useCallback(
-    (index: number, type: string, content: Record<string, unknown>, focusOffset: number | "end" | null = 0) => {
+    (
+      index: number,
+      type: string,
+      content: Record<string, unknown>,
+      focusOffset: number | "end" | null = 0,
+    ) => {
       const id = crypto.randomUUID();
       setBlocks((bs) => {
         const next = [...bs];
-        next.splice(index, 0, { id, page_id: pageId, type, content, position: index });
+        next.splice(index, 0, {
+          id,
+          page_id: pageId,
+          type,
+          content,
+          position: index,
+        });
         return next;
       });
       enqueue(() => api.createBlock(pageId, { id, type, content, index }));
-      if (focusOffset !== null) pendingFocus.current = { id, offset: focusOffset };
+      if (focusOffset !== null)
+        pendingFocus.current = { id, offset: focusOffset };
       return id;
     },
-    [pageId],
+    [pageId, enqueue],
   );
 
-  const removeBlock = useCallback((id: string) => {
-    setBlocks((bs) => bs.filter((b) => b.id !== id));
-    enqueue(() => api.deleteBlock(id));
-  }, []);
+  const removeBlock = useCallback(
+    (id: string) => {
+      setBlocks((bs) => bs.filter((b) => b.id !== id));
+      enqueue(() => api.deleteBlock(id));
+    },
+    [enqueue],
+  );
 
-  const convertType = useCallback((id: string, type: string, content?: Record<string, unknown>) => {
-    setBlocks((bs) =>
-      bs.map((b) => (b.id === id ? { ...b, type, content: content ?? b.content } : b)),
-    );
-    const block = blocksRef.current.find((b) => b.id === id);
-    enqueue(() => api.updateBlock(id, { type, content: content ?? block?.content }));
-  }, []);
+  const convertType = useCallback(
+    (id: string, type: string, content?: Record<string, unknown>) => {
+      setBlocks((bs) =>
+        bs.map((b) =>
+          b.id === id ? { ...b, type, content: content ?? b.content } : b,
+        ),
+      );
+      const block = blocksRef.current.find((b) => b.id === id);
+      enqueue(() =>
+        api.updateBlock(id, { type, content: content ?? block?.content }),
+      );
+    },
+    [enqueue],
+  );
 
   const handleEnter = useCallback(
     (id: string, el: HTMLElement, shift: boolean) => {
@@ -168,7 +240,7 @@ export default function Editor({ pageId, initialBlocks }: Props) {
       const bs = blocksRef.current;
       const i = bs.findIndex((b) => b.id === id);
       const block = bs[i];
-      const text = (block.content.text as string) ?? "";
+      const text = (block.content.text as string | undefined) ?? "";
       if (text === "" && EMPTY_ENTER_RESETS.has(block.type)) {
         convertType(id, "paragraph", { text: "" });
         return true;
@@ -183,7 +255,7 @@ export default function Editor({ pageId, initialBlocks }: Props) {
       insertBlock(i + 1, newType, content, 0);
       return true;
     },
-    [convertType, setText, flushSave, insertBlock],
+    [convertType, setText, insertBlock],
   );
 
   const handleBackspace = useCallback(
@@ -193,8 +265,9 @@ export default function Editor({ pageId, initialBlocks }: Props) {
       const bs = blocksRef.current;
       const i = bs.findIndex((b) => b.id === id);
       const block = bs[i];
-      const text = (block.content.text as string) ?? "";
-      const prev = bs[i - 1];
+      const text = (block.content.text as string | undefined) ?? "";
+      // Typed as always present, but at the first block there is nothing before it.
+      const prev: Block | undefined = i > 0 ? bs[i - 1] : undefined;
 
       if (prev?.type === "divider") {
         e.preventDefault();
@@ -211,18 +284,19 @@ export default function Editor({ pageId, initialBlocks }: Props) {
         e.preventDefault();
         removeBlock(id);
         if (prev) pendingFocus.current = { id: prev.id, offset: "end" };
-        else if (bs[i + 1]) pendingFocus.current = { id: bs[i + 1].id, offset: 0 };
+        else if (bs[i + 1])
+          pendingFocus.current = { id: bs[i + 1].id, offset: 0 };
         return;
       }
       if (prev && prev.type !== "divider") {
         e.preventDefault();
-        const prevText = (prev.content.text as string) ?? "";
+        const prevText = (prev.content.text as string | undefined) ?? "";
         setText(prev.id, prevText + text, true);
         removeBlock(id);
         pendingFocus.current = { id: prev.id, offset: prevText.length };
       }
     },
-    [removeBlock, convertType, setText, flushSave],
+    [removeBlock, convertType, setText],
   );
 
   const pickSlash = useCallback(
@@ -234,8 +308,9 @@ export default function Editor({ pageId, initialBlocks }: Props) {
       const i = bs.findIndex((b) => b.id === s.blockId);
       if (i < 0) return;
       const block = bs[i];
-      const text = (block.content.text as string) ?? "";
-      const newText = text.slice(0, s.index) + text.slice(s.index + 1 + s.query.length);
+      const text = (block.content.text as string | undefined) ?? "";
+      const newText =
+        text.slice(0, s.index) + text.slice(s.index + 1 + s.query.length);
       if (type === "divider") {
         convertType(block.id, "divider", {});
         insertBlock(i + 1, "paragraph", { text: newText }, 0);
@@ -254,42 +329,57 @@ export default function Editor({ pageId, initialBlocks }: Props) {
     (id: string, text: string, caret: number) => {
       setText(id, text);
       const s = slashRef.current;
-      if (s && s.blockId === id) {
+      if (s?.blockId === id) {
         // the filter runs from the slash to the caret, so text after the caret is left alone
         const end = caret > s.index ? caret : undefined;
         if (text[s.index] !== "/") setSlash(null);
-        else setSlash({ ...s, query: text.slice(s.index + 1, end), selected: 0 });
+        else
+          setSlash({
+            ...s,
+            query: text.slice(s.index + 1, end ?? text.length),
+            selected: 0,
+          });
       }
     },
     [setText],
   );
 
+  /** The slash menu's own keys while it is open. True means it consumed the event. */
+  const handleSlashKey = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>, s: SlashState) => {
+      const items = filterBlockTypes(s.query);
+      if (e.key === "ArrowDown" && items.length > 0) {
+        e.preventDefault();
+        setSlash({ ...s, selected: (s.selected + 1) % items.length });
+        return true;
+      }
+      if (e.key === "ArrowUp" && items.length > 0) {
+        e.preventDefault();
+        setSlash({
+          ...s,
+          selected: (s.selected - 1 + items.length) % items.length,
+        });
+        return true;
+      }
+      if (e.key === "Enter" && items[s.selected]) {
+        e.preventDefault();
+        pickSlash(items[s.selected].type);
+        return true;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setSlash(null);
+        return true;
+      }
+      return false;
+    },
+    [pickSlash],
+  );
+
   const onKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>, id: string) => {
       const s = slashRef.current;
-      if (s && s.blockId === id) {
-        const items = filterBlockTypes(s.query);
-        if (e.key === "ArrowDown" && items.length > 0) {
-          e.preventDefault();
-          setSlash({ ...s, selected: (s.selected + 1) % items.length });
-          return;
-        }
-        if (e.key === "ArrowUp" && items.length > 0) {
-          e.preventDefault();
-          setSlash({ ...s, selected: (s.selected - 1 + items.length) % items.length });
-          return;
-        }
-        if (e.key === "Enter" && items[s.selected]) {
-          e.preventDefault();
-          pickSlash(items[s.selected].type);
-          return;
-        }
-        if (e.key === "Escape") {
-          e.preventDefault();
-          setSlash(null);
-          return;
-        }
-      }
+      if (s?.blockId === id && handleSlashKey(e, s)) return;
       if (e.key === "/" && !s) {
         const el = e.currentTarget;
         const rect = el.getBoundingClientRect();
@@ -308,7 +398,7 @@ export default function Editor({ pageId, initialBlocks }: Props) {
       }
       if (e.key === "Backspace") handleBackspace(id, e);
     },
-    [pickSlash, handleEnter, handleBackspace],
+    [handleSlashKey, handleEnter, handleBackspace],
   );
 
   const onBlur = useCallback(
@@ -318,14 +408,20 @@ export default function Editor({ pageId, initialBlocks }: Props) {
     [flushSave],
   );
 
-  const onToggleTodo = useCallback((id: string, checked: boolean) => {
-    setBlocks((bs) => {
-      const next = bs.map((b) => (b.id === id ? { ...b, content: { ...b.content, checked } } : b));
-      const block = next.find((b) => b.id === id);
-      if (block) enqueue(() => api.updateBlock(id, { content: block.content }));
-      return next;
-    });
-  }, []);
+  const onToggleTodo = useCallback(
+    (id: string, checked: boolean) => {
+      setBlocks((bs) => {
+        const next = bs.map((b) =>
+          b.id === id ? { ...b, content: { ...b.content, checked } } : b,
+        );
+        const block = next.find((b) => b.id === id);
+        if (block)
+          enqueue(() => api.updateBlock(id, { content: block.content }));
+        return next;
+      });
+    },
+    [enqueue],
+  );
 
   const onDragEnd = useCallback(
     (event: DragEndEvent) => {
@@ -340,15 +436,18 @@ export default function Editor({ pageId, initialBlocks }: Props) {
         return next;
       });
     },
-    [pageId],
+    [pageId, enqueue],
   );
 
   const onBodyClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       if (e.target !== e.currentTarget) return;
       const bs = blocksRef.current;
-      const last = bs[bs.length - 1];
-      if (last && last.type === "paragraph" && !((last.content.text as string) ?? "")) {
+      const last = bs.at(-1);
+      if (
+        last?.type === "paragraph" &&
+        !((last.content.text as string | undefined) ?? "")
+      ) {
         focusBlock(last.id, "end");
       } else {
         insertBlock(bs.length, "paragraph", { text: "" }, 0);
@@ -357,23 +456,37 @@ export default function Editor({ pageId, initialBlocks }: Props) {
     [insertBlock],
   );
 
-  let numberCounter = 0;
+  // An ordered list restarts at 1 whenever a non-numbered block interrupts it. Computed up front
+  // rather than by mutating a counter while mapping, which reassigns across renders.
+  const ordinals = blocks.reduce<number[]>((acc, block) => {
+    const running = acc.at(-1) ?? 0;
+    acc.push(block.type === "numbered" ? running + 1 : 0);
+    return acc;
+  }, []);
+
   return (
-    <div className="editor" onClick={onBodyClick} data-testid="editor-body">
+    <div
+      role="presentation"
+      className="editor"
+      onClick={onBodyClick}
+      data-testid="editor-body"
+    >
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
         modifiers={[restrictToVerticalAxis]}
         onDragEnd={onDragEnd}
       >
-        <SortableContext items={blocks.map((b) => b.id)} strategy={verticalListSortingStrategy}>
-          {blocks.map((block) => {
-            numberCounter = block.type === "numbered" ? numberCounter + 1 : 0;
+        <SortableContext
+          items={blocks.map((b) => b.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          {blocks.map((block, i) => {
             return (
               <BlockRow
                 key={block.id}
                 block={block}
-                number={numberCounter}
+                number={ordinals[i]}
                 version={versions[block.id] ?? 0}
                 onTextInput={onTextInput}
                 onKeyDown={onKeyDown}
@@ -390,7 +503,9 @@ export default function Editor({ pageId, initialBlocks }: Props) {
           selected={slash.selected}
           anchor={slash.anchor}
           onPick={pickSlash}
-          onHover={(i) => setSlash((cur) => (cur ? { ...cur, selected: i } : cur))}
+          onHover={(i) =>
+            setSlash((cur) => (cur ? { ...cur, selected: i } : cur))
+          }
         />
       )}
     </div>

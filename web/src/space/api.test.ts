@@ -21,17 +21,24 @@ describe("api client", () => {
     fetchMock.mockResolvedValue(ok([{ id: "a" }]));
     const tree = await api.tree();
     expect(tree).toEqual([{ id: "a" }]);
-    expect(fetchMock).toHaveBeenCalledWith("/api/space/tree", { method: "GET", headers: undefined, body: undefined });
+    expect(fetchMock).toHaveBeenCalledWith("/api/space/tree", {
+      method: "GET",
+      headers: undefined,
+      body: undefined,
+    });
   });
 
   it("POSTs JSON bodies with the right headers", async () => {
     fetchMock.mockResolvedValue(ok({ id: "p1" }));
     await api.createPage({ title: "X", parentId: null });
-    const [url, init] = fetchMock.mock.calls[0];
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toBe("/api/space/pages");
     expect(init.method).toBe("POST");
     expect(init.headers).toEqual({ "Content-Type": "application/json" });
-    expect(JSON.parse(init.body)).toEqual({ title: "X", parentId: null });
+    expect(JSON.parse(init.body as string)).toEqual({
+      title: "X",
+      parentId: null,
+    });
   });
 
   it("throws the server's error message on failure", async () => {
@@ -39,7 +46,7 @@ describe("api client", () => {
       ok: false,
       status: 404,
       json: () => Promise.resolve({ error: "page not found" }),
-    } as Response);
+    });
     await expect(api.getPage("nope")).rejects.toThrow("page not found");
   });
 
@@ -48,8 +55,10 @@ describe("api client", () => {
       ok: false,
       status: 500,
       json: () => Promise.reject(new Error("bad json")),
-    } as Response);
-    await expect(api.deletePage("x")).rejects.toThrow("DELETE /api/space/pages/x failed (500)");
+    });
+    await expect(api.deletePage("x")).rejects.toThrow(
+      "DELETE /api/space/pages/x failed (500)",
+    );
   });
 
   it("hits the expected endpoints for blocks, databases, and search", async () => {
@@ -69,7 +78,7 @@ describe("api client", () => {
     await api.getRow("r");
     await api.updateView("d", "board", { groupBy: "pr" });
     await api.search("q x");
-    const urls = fetchMock.mock.calls.map(([u]) => u);
+    const urls = fetchMock.mock.calls.map(([u]) => u as string);
     expect(urls).toEqual([
       "/api/space/pages/p",
       "/api/space/pages/p/blocks",

@@ -14,7 +14,7 @@ export function selectionCollapsed(): boolean {
   return window.getSelection()?.isCollapsed ?? true;
 }
 
-export function setCaret(el: HTMLElement, offset: number | "end"): void {
+function setCaret(el: HTMLElement, offset: number | "end"): void {
   const sel = window.getSelection();
   if (!sel) return;
   const range = document.createRange();

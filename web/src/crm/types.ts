@@ -1,42 +1,49 @@
-export const DEAL_STAGES = ['New', 'Qualified', 'Proposal', 'Negotiation', 'Won', 'Lost'] as const
-export type DealStage = (typeof DEAL_STAGES)[number]
+export const DEAL_STAGES = [
+  "New",
+  "Qualified",
+  "Proposal",
+  "Negotiation",
+  "Won",
+  "Lost",
+] as const;
+export type DealStage = (typeof DEAL_STAGES)[number];
 
-export const CONTACT_STATUSES = ['lead', 'qualified', 'customer'] as const
-export type ContactStatus = (typeof CONTACT_STATUSES)[number]
+export const CONTACT_STATUSES = ["lead", "qualified", "customer"] as const;
+export type ContactStatus = (typeof CONTACT_STATUSES)[number];
 
-export const ACTIVITY_TYPES = ['note', 'call', 'email'] as const
-export type ActivityType = (typeof ACTIVITY_TYPES)[number]
+export const ACTIVITY_TYPES = ["note", "call", "email"] as const;
+export type ActivityType = (typeof ACTIVITY_TYPES)[number];
 
 export interface Organization {
-  id: number
-  name: string
-  website: string | null
-  industry: string | null
-  notes: string | null
-  created_at: string
+  id: number;
+  name: string;
+  website: string | null;
+  industry: string | null;
+  notes: string | null;
+  created_at: string;
 }
 
 export interface Contact {
-  id: number
-  name: string
-  email: string | null
-  phone: string | null
-  job_title: string | null
-  organization_id: number | null
-  status: ContactStatus
-  created_at: string
+  id: number;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  job_title: string | null;
+  organization_id: number | null;
+  status: ContactStatus;
+  created_at: string;
 }
 
 export interface Deal {
-  id: number
-  name: string
-  organization_id: number | null
-  contact_id: number | null
-  stage: DealStage
-  value: number
-  probability: number
-  close_date: string | null
-  created_at: string
+  id: number;
+  name: string;
+  organization_id: number | null;
+  contact_id: number | null;
+  stage: DealStage;
+  value: number;
+  probability: number;
+  close_date: string | null;
+  created_at: string;
 }
 
 /** Default win likelihood per stage; the server re-bases a deal on this when it moves. */
@@ -47,46 +54,53 @@ export const STAGE_PROBABILITY: Record<DealStage, number> = {
   Negotiation: 75,
   Won: 100,
   Lost: 0,
-}
+};
 
 /** Stage colours, drawn from the app palette so the pipeline matches the rest of the UI. */
 export const STAGE_COLOR: Record<DealStage, string> = {
-  New: '#6b7280',
-  Qualified: '#209dd7',
-  Proposal: '#753991',
-  Negotiation: '#ecad0a',
-  Won: '#2f9e5f',
-  Lost: '#c94f42',
-}
+  New: "#6b7280",
+  Qualified: "#209dd7",
+  Proposal: "#753991",
+  Negotiation: "#ecad0a",
+  Won: "#2f9e5f",
+  Lost: "#c94f42",
+};
 
 /** Stages a deal can still be won from. */
-export const OPEN_STAGES: DealStage[] = ['New', 'Qualified', 'Proposal', 'Negotiation']
+const OPEN_STAGES: DealStage[] = [
+  "New",
+  "Qualified",
+  "Proposal",
+  "Negotiation",
+];
 
 export function isOpen(deal: Deal): boolean {
-  return OPEN_STAGES.includes(deal.stage)
+  return OPEN_STAGES.includes(deal.stage);
 }
 
 /** Value weighted by the odds of winning it. */
-export function expectedValue(deal: Pick<Deal, 'value' | 'probability'>): number {
-  return (deal.value * deal.probability) / 100
+export function expectedValue(
+  deal: Pick<Deal, "value" | "probability">,
+): number {
+  return (deal.value * deal.probability) / 100;
 }
 
 export function sumValue(deals: Deal[]): number {
-  return deals.reduce((total, d) => total + d.value, 0)
+  return deals.reduce((total, d) => total + d.value, 0);
 }
 
 export function sumExpected(deals: Deal[]): number {
-  return deals.reduce((total, d) => total + expectedValue(d), 0)
+  return deals.reduce((total, d) => total + expectedValue(d), 0);
 }
 
 export interface FunnelRow {
-  name: DealStage
+  name: DealStage;
   /** Says the row covers this stage and everything past it, which the stage name alone does not. */
-  label: string
-  value: number
-  count: number
-  inStage: number
-  fill: string
+  label: string;
+  value: number;
+  count: number;
+  inStage: number;
+  fill: string;
 }
 
 /**
@@ -98,12 +112,13 @@ export interface FunnelRow {
  * the stage it reached, so there is nothing to place it at.
  */
 export function pipelineFunnel(deals: Deal[], sinceMonth: string): FunnelRow[] {
-  const stages: DealStage[] = [...OPEN_STAGES, 'Won']
+  const stages: DealStage[] = [...OPEN_STAGES, "Won"];
   const live = deals.filter(
-    (d) => isOpen(d) || (d.stage === 'Won' && (d.close_date ?? '') >= sinceMonth)
-  )
+    (d) =>
+      isOpen(d) || (d.stage === "Won" && (d.close_date ?? "") >= sinceMonth),
+  );
   return stages.map((stage, i) => {
-    const reached = live.filter((d) => stages.indexOf(d.stage) >= i)
+    const reached = live.filter((d) => stages.indexOf(d.stage) >= i);
     return {
       name: stage,
       // No space before the plus: recharts breaks a funnel label onto a second line at whitespace.
@@ -112,36 +127,36 @@ export function pipelineFunnel(deals: Deal[], sinceMonth: string): FunnelRow[] {
       count: reached.length,
       inStage: live.filter((d) => d.stage === stage).length,
       fill: STAGE_COLOR[stage],
-    }
-  })
+    };
+  });
 }
 
 export interface Month {
-  key: string
-  label: string
-  future: boolean
+  key: string;
+  label: string;
+  future: boolean;
 }
 
 /** Months from `back` before `from` to `forward` after it, oldest first, keyed 'YYYY-MM'. */
 export function monthRange(from: Date, back: number, forward: number): Month[] {
-  const months: Month[] = []
+  const months: Month[] = [];
   for (let i = -back; i <= forward; i++) {
-    const d = new Date(from.getFullYear(), from.getMonth() + i, 1)
+    const d = new Date(from.getFullYear(), from.getMonth() + i, 1);
     months.push({
-      key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
-      label: d.toLocaleDateString('en-US', { month: 'short' }),
+      key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
+      label: d.toLocaleDateString("en-US", { month: "short" }),
       future: i > 0,
-    })
+    });
   }
-  return months
+  return months;
 }
 
 export interface MonthlyRow extends Month {
-  actual: number
-  expected: number
-  won: number
+  actual: number;
+  expected: number;
+  won: number;
   /** Deals closing that month, won or still open. Lost deals are not volume. */
-  count: number
+  count: number;
 }
 
 /**
@@ -151,76 +166,78 @@ export interface MonthlyRow extends Month {
  */
 export function monthlyRevenue(deals: Deal[], months: Month[]): MonthlyRow[] {
   return months.map((month) => {
-    const closing = deals.filter((d) => d.close_date?.startsWith(month.key))
-    const won = closing.filter((d) => d.stage === 'Won')
-    const open = closing.filter(isOpen)
+    const closing = deals.filter((d) => d.close_date?.startsWith(month.key));
+    const won = closing.filter((d) => d.stage === "Won");
+    const open = closing.filter(isOpen);
     return {
       ...month,
       actual: sumValue(won),
       expected: sumExpected(open),
       won: won.length,
       count: won.length + open.length,
-    }
-  })
+    };
+  });
 }
 
 export interface WinLoss {
-  won: number
-  lost: number
-  wonValue: number
-  lostValue: number
+  won: number;
+  lost: number;
+  wonValue: number;
+  lostValue: number;
   /** Percent of closed deals won, 0 when nothing has closed yet. */
-  rate: number
+  rate: number;
 }
 
 /** Win rate over deals that closed on or after `sinceMonth` ('YYYY-MM'). */
 export function winLoss(deals: Deal[], sinceMonth: string): WinLoss {
   const closed = deals.filter(
-    (d) => (d.stage === 'Won' || d.stage === 'Lost') && (d.close_date ?? '') >= sinceMonth
-  )
-  const won = closed.filter((d) => d.stage === 'Won')
-  const lost = closed.filter((d) => d.stage === 'Lost')
+    (d) =>
+      (d.stage === "Won" || d.stage === "Lost") &&
+      (d.close_date ?? "") >= sinceMonth,
+  );
+  const won = closed.filter((d) => d.stage === "Won");
+  const lost = closed.filter((d) => d.stage === "Lost");
   return {
     won: won.length,
     lost: lost.length,
     wonValue: sumValue(won),
     lostValue: sumValue(lost),
     rate: closed.length ? Math.round((won.length / closed.length) * 100) : 0,
-  }
+  };
 }
 
 export interface OrgPipeline {
-  name: string
-  value: number
-  count: number
+  name: string;
+  value: number;
+  count: number;
 }
 
 /** Organizations holding the most open pipeline, largest first. Deals with no organization drop out. */
 export function topOrganizations(
   deals: Deal[],
   orgName: Map<number, string>,
-  limit: number
+  limit: number,
 ): OrgPipeline[] {
-  const totals = new Map<string, OrgPipeline>()
+  const totals = new Map<string, OrgPipeline>();
   for (const deal of deals.filter(isOpen)) {
-    const name = orgName.get(deal.organization_id ?? -1)
-    if (!name) continue
-    const row = totals.get(name) ?? { name, value: 0, count: 0 }
-    row.value += deal.value
-    row.count += 1
-    totals.set(name, row)
+    const name = orgName.get(deal.organization_id ?? -1);
+    if (!name) continue;
+    const row = totals.get(name) ?? { name, value: 0, count: 0 };
+    row.value += deal.value;
+    row.count += 1;
+    totals.set(name, row);
   }
-  return [...totals.values()].sort((a, b) => b.value - a.value).slice(0, limit)
+  return [...totals.values()].sort((a, b) => b.value - a.value).slice(0, limit);
 }
 
 export interface Activity {
-  id: number
-  type: ActivityType
-  contact_id: number | null
-  deal_id: number | null
-  description: string
-  occurred_at: string
-  due_date: string | null
-  done: 0 | 1
-  created_at: string
+  id: number;
+  type: ActivityType;
+  contact_id: number | null;
+  deal_id: number | null;
+  description: string;
+  occurred_at: string;
+  due_date: string | null;
+  done: 0 | 1;
+  created_at: string;
 }
