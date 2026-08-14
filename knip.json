@@ -1,15 +1,9 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
+  "ignoreBinaries": ["gitleaks"],
   "workspaces": {
     ".": {
-      "entry": [
-        "eslint.config.js",
-        "scripts/*.mjs",
-        "playwright.config.ts",
-        "e2e/global-setup.ts",
-        "e2e/**/*.spec.ts",
-        "e2e/tools/*.mjs"
-      ],
+      "entry": ["e2e/**/*.spec.ts", "e2e/tools/*.mjs", "scripts/*.mjs"],
       "project": ["e2e/**", "scripts/**"]
     },
     "web": {
@@ -17,8 +11,8 @@
       "project": ["src/**"]
     },
     "server": {
-      "entry": ["src/index.ts", "vitest.config.ts", "test/**/*.test.ts"],
-      "project": ["src/**", "test/**", "vitest.config.ts"]
+      "entry": ["test/**/*.test.ts"],
+      "project": ["src/**", "test/**"]
     }
   }
 }

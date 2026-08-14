@@ -4,7 +4,7 @@ export function currentTheme(): Theme {
   return document.documentElement.dataset.theme === "dark" ? "dark" : "light";
 }
 
-export function applyTheme(theme: Theme): void {
+function applyTheme(theme: Theme): void {
   if (theme === "dark") document.documentElement.dataset.theme = "dark";
   else delete document.documentElement.dataset.theme;
   localStorage.setItem("ps.theme", theme);

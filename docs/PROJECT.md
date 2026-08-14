@@ -46,6 +46,9 @@ server/             ONE Express app
 data/                 crm.sqlite, personal-space.db (gitignored, seeded on first run)
 docs/                 this documentation; docs/<app>/ per app
 e2e/                  Playwright specs
+scripts/              check-secrets.mjs, the repo-specific half of the secrets check
+eslint.config.js      one flat config covering web, server and e2e
+knip.json             entry points, so knip can see what is reachable
 ```
 
 ## Run
@@ -56,7 +59,8 @@ npm run dev     # API :8100 + Vite :8101 -> open http://localhost:8101
 npm start       # build, then serve everything from :8100
 ```
 
-`npm run build` (typecheck + bundle), `npm test` (vitest, server + web), `npm run e2e` (Playwright).
+`npm run build` (typecheck + bundle), `npm test` (vitest, server + web), `npm run e2e` (Playwright),
+`npm run check` (everything: typecheck, lint, formatting, secrets, dead code, coverage).
 Commands run from the root; `-w web` / `-w server` targets one workspace.
 
 Under `npm run dev` use **8101**. Port 8100 serves the last build, not your live edits.
@@ -86,6 +90,11 @@ These are settled. Changing one is a project-level decision, not an implementati
   disagreed before - check both when you touch routing.
 - **One dependency set per workspace.** All three UIs live in `web/`, so they share one set of
   versions: TypeScript 7, Vite 8, vitest 4, react-router 8, React 19.
+- **Two TypeScripts, deliberately.** The workspaces compile with 7; the repo root pins 5.9 purely
+  as ESLint's analysis engine, because TypeScript 7's native build no longer exposes the compiler
+  API that type-aware linting needs. The root `optionalDependencies` block carrying every
+  `@typescript/typescript-*` platform package exists to keep the nested 7 working, and is not
+  stray. [CONTROLS.md](./CONTROLS.md) has the detail.
 
 ## Adding a fourth app
 

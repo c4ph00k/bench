@@ -20,7 +20,7 @@ export interface BlockTypeDef {
   icon: ReactNode;
 }
 
-export const BLOCK_TYPE_DEFS: BlockTypeDef[] = [
+const BLOCK_TYPE_DEFS: BlockTypeDef[] = [
   {
     type: "paragraph",
     label: "Text",

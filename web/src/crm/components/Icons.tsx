@@ -109,10 +109,3 @@ export const IconPlus = (p: IconProps) => (
     <path d="M12 5v14M5 12h14" />
   </Svg>
 );
-
-export const IconTrendUp = (p: IconProps) => (
-  <Svg {...p}>
-    <path d="m3 16 6-6 4 4 8-8" />
-    <path d="M15 6h6v6" />
-  </Svg>
-);

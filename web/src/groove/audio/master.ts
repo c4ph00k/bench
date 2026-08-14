@@ -28,7 +28,7 @@ export function saturationCurve(drive: number): Float32Array<ArrayBuffer> {
 }
 
 /** Amplitude quantisation. amount 0 is transparent, 1 crushes to ~3 bits. */
-export function crushCurve(amount: number): Float32Array<ArrayBuffer> {
+function crushCurve(amount: number): Float32Array<ArrayBuffer> {
   const n = 8192;
   const curve = new Float32Array(n);
   const bits = 16 - amount * 13;

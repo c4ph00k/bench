@@ -67,7 +67,7 @@ export const STAGE_COLOR: Record<DealStage, string> = {
 };
 
 /** Stages a deal can still be won from. */
-export const OPEN_STAGES: DealStage[] = [
+const OPEN_STAGES: DealStage[] = [
   "New",
   "Qualified",
   "Proposal",

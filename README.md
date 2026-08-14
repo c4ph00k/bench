@@ -26,6 +26,8 @@ sample data.
 - `npm run dev` - API on :8100 plus the Vite dev server with hot reload on :8101. Use **:8101**.
 - `npm run build` - typecheck and bundle the frontend.
 - `npm test` - unit tests, backend and frontend.
+- `npm run check` - everything at once: typecheck, lint, formatting, secrets, dead code and
+  coverage. Needs [gitleaks](https://gitleaks.io) (`brew install gitleaks`).
 - `npm run e2e` - Playwright end-to-end suite across all three apps
   (`npx playwright install chromium` once, first). Each worker runs its own server and database,
   so specs never share state.

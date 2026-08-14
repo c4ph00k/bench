@@ -8,7 +8,7 @@ interface Props {
   properties: Property[];
 }
 
-export function ValuePreview({
+function ValuePreview({
   property,
   value,
 }: {

@@ -4,10 +4,14 @@ Work in small increments and validate each one before moving on. A change is fin
 checks and the e2e suite all pass, you have seen the feature working in a real browser, and it is
 committed.
 
-**`npm run format` and `npm run check` do not exist yet.** [CONTROLS.md](./CONTROLS.md) records the
-decisions behind them and they are the next piece of work; section 5 below is written for the world
-they land in. Until then the equivalent is `npm run typecheck` and `npm test`, and the hooks the
-finishing steps mention are not installed either.
+**`npm run check` fails on coverage today, and only on coverage.** Everything it chains -
+typecheck, lint, formatting, secrets, dead code - passes; the 80% threshold does not, because the
+tests for CRM's and Groove's components are still to be written. So read a `check` run for what it
+says: a coverage failure alone is the known gap, anything else is yours.
+
+**No hook enforces any of this yet.** The lefthook pre-commit hook, the Claude Code stop hook and
+the GitHub Action are the last piece of [CONTROLS.md](./CONTROLS.md) and are not installed, so
+nothing will catch a skipped check for you. Run it.
 
 ## 1. Understand before changing
 
@@ -39,8 +43,10 @@ Three layers, each with a different job. Add to whichever ones the change touche
 
 ### Unit tests - `npm test`
 
-vitest, server and web. Server suites live in `server/test/{crm,space}/`; web suites are Space-only
-today, which is why coverage thresholds are scoped to `src/space/**`.
+vitest, server and web. Server suites live in `server/test/{crm,space}/`; web suites sit beside the
+code they cover. Coverage is measured across every app at 80% statements, with
+`web/src/groove/audio/**` excluded because jsdom has no `AudioContext` - see
+[CONTROLS.md](./CONTROLS.md) for what is still missing.
 
 Use these for logic with edges: calculations, filtering, sorting, migrations, data transforms. A
 new derived value or a new column default should get one.
@@ -138,10 +144,15 @@ test --list` answers it on demand.
 6. **Commit**, with everything above green - see [STANDARDS.md](./STANDARDS.md). Then report what
    changed and say honestly which parts are incomplete or unverified.
 
-**Run the checks yourself.** The lefthook pre-commit hook and the Claude Code stop hook both run
-lint, but they are backstops for the times something slips - not the mechanism. Do not hand work
-over and let a hook discover what `npm run check` would have told you a minute earlier. A hook
-firing means the process already failed.
+**Run the checks yourself.** Once they exist, the lefthook pre-commit hook and the Claude Code stop
+hook will both run lint, but they are backstops for the times something slips - not the mechanism.
+Do not hand work over and let a hook discover what `npm run check` would have told you a minute
+earlier. A hook firing means the process already failed. Until they are installed there is no
+backstop at all.
+
+**If vitest will not start**, saying "Cannot find native binding", npm has pruned an optional
+platform package - it does that when a dependency is added. `rm -rf node_modules package-lock.json
+&& npm install`. See [CONTROLS.md](./CONTROLS.md).
 
 See [CONTROLS.md](./CONTROLS.md) for what the checks are and how each layer is enforced.
 

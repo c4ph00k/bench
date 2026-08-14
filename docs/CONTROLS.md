@@ -1,16 +1,25 @@
 # Controls - lint, static analysis and enforcement
 
-**None of this is built yet.** This records decisions taken on 2026-08-14 so the work can be picked
-up without relitigating them. Every decision below is settled; nothing here is still under
-discussion. There is no linter in the repo today and none of the commands below exist yet.
+This records the decisions taken on 2026-08-14 and what has since been built against them. Every
+decision below is settled; nothing here is still under discussion.
 
-Two things already partly exist: **coverage** thresholds, which are configured and passing at a
-narrower scope than intended - see [F](#f-coverage-thresholds) - and the **process rules** in
-[PROCESS.md](./PROCESS.md) and [STANDARDS.md](./STANDARDS.md), which are already written for the
-world this lands in. PROCESS.md says so at the top, so nobody runs `npm run check` and wonders why
-it is missing.
+## Status
 
-Build it in the order given at the end of this document.
+| Step                                                                  | State                                                  |
+| --------------------------------------------------------------------- | ------------------------------------------------------ |
+| 1. ESLint, Prettier, the reformat commit, `lint` / `format` / `check` | **Done**                                               |
+| 2. Fix what strict finds                                              | **Done** - 1,586 errors to 0                           |
+| 3. knip, jscpd, no-restricted-imports, gitleaks, check-secrets        | **Done**                                               |
+| 4. Coverage widened to every app, then 80%                            | **Part done** - widened; at 52%, threshold not yet met |
+| 5. Enforcement: prebuild, lefthook, Stop hook, GitHub Action          | **Not started**                                        |
+
+`npm run check` runs today and passes every step except coverage, which fails the 80% threshold on
+purpose: the bar is set where it is meant to end up, and the tests to reach it are the outstanding
+work. See [F](#f-coverage-thresholds) for exactly what is missing.
+
+**Nothing enforces any of this yet.** Until step 5 lands, `npm run check` is something you run, not
+something that runs itself - so run it. [What implementation changed](#what-implementation-changed)
+records the decisions that could only be made with the code in front of us.
 
 ## The toolset
 
@@ -77,6 +86,77 @@ fix is to give the queries real row types rather than to silence the rule.
 `api.patch` in `Pipeline.tsx` is the known one. Those want `void` or an awaited call, decided case
 by case; the optimistic update is intentional and must keep working.
 
+That is what happened. It came to 1,586 errors, and they are all fixed - see below for the shape of
+the work and for the rules that turned out not to fit.
+
+## What implementation changed
+
+Decisions that could only be taken with the code in front of us. The plan above stands; these are
+the places reality argued back.
+
+### TypeScript 7 cannot drive type-aware linting
+
+**This is the one to know about.** TypeScript 7 is the native Go compiler: `node_modules/typescript`
+ships `tsc.js` and nothing else, and the JS compiler API that type-aware linting is built on is
+gone. typescript-eslint peer-requires `<6.1.0` and refuses to install alongside 7 at all; its own
+issue tracker says the programmatic API for tsgo lands in 7.1. So `strictTypeChecked` - the whole
+point of the toolset - cannot run against the compiler this project builds with.
+
+The resolution: **two TypeScripts, deliberately.** The root pins `typescript` to 5.9.3 purely as
+ESLint's analysis engine; both workspaces keep `^7.0.2` and `tsc --noEmit` still runs 7.
+
+That has one consequence worth knowing. Hoisting 5.9 to the root pushes 7 down into the workspaces,
+and npm does not install the optional platform binaries of a nested package, so `tsc` died with
+"Unable to resolve @typescript/typescript-darwin-arm64". The **root `optionalDependencies` block**
+exists for that: it lists all twenty `@typescript/typescript-*` platform packages so they hoist
+where the nested compiler can find them. npm installs only the one matching the machine. Delete
+that block and `tsc` stops working; it is not stray.
+
+They also disagree, rarely. TS 5.9 and TS 7 infer some generics differently, so `eslint --fix` once
+removed an assertion that `tsc` then demanded back. `npm run check` runs typecheck **and** lint for
+that reason - neither is a substitute for the other, and after any `--fix` run, typecheck.
+
+### npm drops platform binaries on every install
+
+Adding any dependency with `npm install -D <pkg>` rewrites the lockfile and can silently prune
+optional platform packages that are already on disk - [npm/cli#4828]. It happened twice here, both
+times taking out `@rolldown/binding-darwin-arm64`, and both times vitest failed to start with
+"Cannot find native binding" rather than anything about npm. The fix is
+`rm -rf node_modules package-lock.json && npm install`. Check it before debugging vitest.
+
+[npm/cli#4828]: https://github.com/npm/cli/issues/4828
+
+### Rules that did not fit, and why
+
+Each of these was measured before it was switched off. They are in `eslint.config.js` with the same
+reasons, next to the rule.
+
+| Rule                                                                                              | Why not                                                                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sonarjs/prefer-read-only-props`                                                                  | `Readonly<Props>` on 61 component signatures, for a mutation this codebase never makes and which `Readonly` is too shallow to prevent                                                                                      |
+| `@typescript-eslint/no-non-null-assertion`                                                        | Contradicts `non-nullable-type-assertion-style`, also on, which asks for `x!` over `x as T`. Every site is one TypeScript's narrowing cannot follow                                                                        |
+| `@typescript-eslint/no-unnecessary-type-parameters`                                               | Flags `useFetch<Deal[]>(url)`, which is the JSON boundary. Moving the cast to each call site would not make it any more checked                                                                                            |
+| `sonarjs/function-return-type`                                                                    | A sort key is a number for a numeric column and a string otherwise; collapsing it would sort 10 before 9                                                                                                                   |
+| `prefer-nullish-coalescing` (strings only)                                                        | `job_title \|\| "—"` is deliberate - `??` would render the empty string                                                                                                                                                    |
+| `restrict-template-expressions` (numbers only)                                                    | Interpolating a number is unambiguous; `string \| undefined` printing "undefined" still errors                                                                                                                             |
+| `no-confusing-void-expression` (arrow shorthand)                                                  | The braced form it wants at ~190 React handlers reads worse                                                                                                                                                                |
+| In `e2e/` and `scripts/`: `sonarjs/assertions-in-tests`, `no-os-command-from-path`                | Plugin limits, not findings: it does not recognise `await expect.poll(...)`, and its PATH rule is aimed at services, not a local run of this repo's own toolchain                                                          |
+| In `web/src/groove/audio/**`: `complexity`, `max-params`, `cognitive-complexity`, `pseudo-random` | Building a Web Audio graph is long and linear, a voice's parameters are its signal inputs, and EXPLORATORY.md records that none of it has automated coverage - a refactor to satisfy a metric could only be checked by ear |
+
+### Size thresholds
+
+CONTROLS.md never named numbers. They are `max-lines` 500, `max-lines-per-function` 200,
+`complexity` 15, `max-depth` 4, `max-params` 5, with seed and patch modules (literal data) exempt
+from the line counts and `max-lines-per-function` off for `.tsx`, whose bodies are mostly a JSX
+tree the rule counts as logic. `complexity` and `cognitive-complexity` are the rules that measure
+whether a function is actually hard to follow, and they stay strict everywhere outside Groove's
+audio.
+
+Those numbers were calibrated against the codebase rather than picked round, and they still bit:
+`databasesRouter` was split into four registration groups, `matchesFilter` became a lookup table,
+and the contact and organization detail pages gave up a duplicated deals list to a shared
+component.
+
 ## A. npm scripts
 
 The base layer every other layer calls.
@@ -99,7 +179,10 @@ it before every commit. Unit tests run **with coverage** inside it, so the 80% t
 gate rather than a report.
 
 `jscpd` stays outside it: duplication findings are advisory rather than pass/fail, so they should
-not gate a green run.
+not gate a green run. It reports 2.2% across the tree today.
+
+All of these exist and run. `knip` needed `knip.json` to be told the multi-page entry points, or it
+reports all 48 web source files as unused.
 
 ## B. npm lifecycle
 
@@ -177,18 +260,29 @@ Measured on 2026-08-14 with `npm run coverage`:
 **Decided: 80% goes into `npm run check`, measured across every app.** Two consequences, both real
 work rather than configuration:
 
-**The `include` widens from `src/space/**` to all of `src/**`.** That brings in two apps with almost
-no unit tests:
+**The `include` widens from `src/space/**` to all of `src/**`.** Done. That brought in two apps with
+almost no unit tests, and closing that gap is **the outstanding work on this whole document**.
 
-| App              | Source in scope              | Unit test files     | Coverage today |
-| ---------------- | ---------------------------- | ------------------- | -------------- |
-| `web/src/space`  | 2,817 lines                  | 11                  | 86%            |
-| `web/src/crm`    | 2,378 lines                  | 1 (`types.test.ts`) | 9.78%          |
-| `web/src/groove` | 1,689 lines (audio excluded) | 0                   | 0%             |
-| `web/src/home`   | 59 lines                     | 0                   | 0%             |
+Where it stands, measured with `npm run coverage`:
 
-So roughly **4,100 lines of untested UI** need tests before this threshold can be turned on. Do it
-app by app, not in one pass, and do not lower the bar to make a red run green.
+| Scope                       | Statements | What is missing                                |
+| --------------------------- | ---------- | ---------------------------------------------- |
+| `server/src`                | 82%        | nothing - already over                         |
+| `web/src/space`             | 92%        | nothing - already over                         |
+| `web/src/crm`               | 81%        | that is the non-component code only; see below |
+| `web/src/crm/components`    | **0%**     | every form, table, chart and chip              |
+| `web/src/crm/pages`         | **0%**     | all eight pages                                |
+| `web/src/groove`            | 54%        | `App.tsx`; the pure modules are done           |
+| `web/src/groove/components` | **0%**     | all eleven components                          |
+| `web/src/home`              | **0%**     | the launcher, 59 lines                         |
+| **web overall**             | **52%**    | against a threshold of 80                      |
+
+Written so far: Groove's note and chord maths, the filter curve and its readout, the shipped
+patches, the param specs, and the CRM's fetch wrapper and formatters. What remains is component and
+page rendering - the largest single piece of work left in this document. Do it app by app, not in
+one pass, and **do not lower the bar to make a red run green.**
+
+Until it is met, `npm run check` fails on coverage and only on coverage.
 
 **`web/src/groove/audio/**` is excluded from the `include`** - 1,053 lines across four files. jsdom
 has no `AudioContext`, so they cannot be unit tested without a mock that would assert nothing about
@@ -306,6 +400,10 @@ strings, all of them deliberate fixture data.
   `555-01xx` range pass.** That is the NANP block reserved for fiction, it cannot dial a real
   person, and the existing fixtures in the server tests and `e2e/crm/records.spec.ts` already use
   it.
+- The same idea, added while building it: **addresses on a reserved domain pass** - `example.com`,
+  `.net`, `.org`, and the `.test`, `.invalid` and `.localhost` TLDs. RFC 2606 and RFC 6761 reserve
+  those for exactly this, and a fixture using one cannot reach a real person. Four server fixtures
+  moved onto `example.com` rather than take a suppression; that is the outcome the control is for.
 
 **No generic entropy check.** It is the classic false-positive engine - hashes, minified output,
 base64 data URIs - and with gitleaks handling real credential patterns it would add noise and
@@ -343,17 +441,18 @@ This work lives on the **`controls`** branch, cut from `main` on 2026-08-14.
 
 The pieces depend on each other, so build them in this order:
 
-1. ESLint config, Prettier and the reformat commit, `npm run lint` / `format` / `check`.
-2. Fix what strict finds - the `any` removal is the bulk of it.
-3. `knip`, `jscpd`, `no-restricted-imports`, `gitleaks` (with a one-off history scan) and
-   `check:secrets`.
-4. Coverage: widen the `include`, then write tests app by app until 80% holds.
-5. Enforcement last - `prebuild`, lefthook, the stop hook, the GitHub Action. Wiring these up before
-   the tree is green just means everything is blocked.
+1. ~~ESLint config, Prettier and the reformat commit, `npm run lint` / `format` / `check`.~~ Done.
+2. ~~Fix what strict finds - the `any` removal is the bulk of it.~~ Done.
+3. ~~`knip`, `jscpd`, `no-restricted-imports`, `gitleaks` (with a one-off history scan) and
+   `check:secrets`.~~ Done; history was clean across all 27 commits.
+4. Coverage: `include` is widened. **Still to do:** tests for CRM's components and pages, Groove's
+   components and `App.tsx`, and the launcher, until 80% holds. See [F](#f-coverage-thresholds).
+5. Enforcement last - `prebuild`, lefthook, the stop hook, the GitHub Action. **Not started.**
+   Wiring these up before the tree is green just means everything is blocked, and coverage is not
+   green yet.
 
 ## Related documents
 
-- [PROCESS.md](./PROCESS.md) - implementing a change and testing it. Its finishing checklist will
-  need a lint step once this exists.
+- [PROCESS.md](./PROCESS.md) - implementing a change and testing it.
 - [STANDARDS.md](./STANDARDS.md) - the coding standards these rules mechanise.
 - [PROJECT.md](./PROJECT.md) - layout and architectural decisions.

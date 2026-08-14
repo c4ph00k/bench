@@ -4,7 +4,7 @@ import { GripVertical } from "lucide-react";
 import type { Block } from "../api";
 import ContentEditable from "./ContentEditable";
 
-export interface BlockHandlers {
+interface BlockHandlers {
   onTextInput: (id: string, text: string, caret: number) => void;
   onKeyDown: (e: React.KeyboardEvent<HTMLDivElement>, id: string) => void;
   onBlur: (id: string) => void;
