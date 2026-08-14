@@ -78,7 +78,9 @@ test("melodic steps carry their unit name so the four grids stay distinguishable
 test("switching patches changes the tempo", async ({ page }) => {
   await page.goto("/groove/");
   const bpm = () =>
-    page.evaluate(() => /(\d+)BPM/.exec(document.body.textContent)?.[1]);
+    // Bounded rather than `\d+`: a tempo is at most four digits, and an unbounded quantifier
+    // scanning the whole document backtracks badly.
+    page.evaluate(() => /(\d{1,4})BPM/.exec(document.body.textContent)?.[1]);
 
   const first = await bpm();
   await page.getByRole("button", { name: /BASALT/ }).click();
@@ -101,7 +103,11 @@ test("running the sequencer logs no console errors", async ({ page }) => {
 
   await page.goto("/groove/");
   await transport(page).click();
-  await page.waitForTimeout(2000);
+  // Let it run most of a bar. The playhead is driven by the transport that schedules the audio,
+  // so waiting for it to reach a late step proves the sequencer really ran.
+  await expect
+    .poll(() => playhead(page), { timeout: 10_000 })
+    .toBeGreaterThan(12);
   await transport(page).click();
 
   expect(errors).toEqual([]);

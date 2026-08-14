@@ -1,4 +1,5 @@
 import { test, expect } from "../fixtures";
+import { json, type SpaceDatabase, type TreeNode } from "../api";
 import type { Page } from "@playwright/test";
 
 async function openTripPlanner(page: Page) {
@@ -59,15 +60,17 @@ test("board groups by Status and dragging a card changes the value everywhere", 
   page,
 }) => {
   // reset Lisbon to Planning via the API so retries start from a known state
-  const tree = await (await page.request.get("/api/space/tree")).json();
-  const travel = tree.find((n: any) => n.title === "Travel");
-  const dbId = travel.children.find((n: any) => n.title === "Trip Planner").id;
-  const db = await (
-    await page.request.get(`/api/space/databases/${dbId}`)
-  ).json();
-  const status = db.properties.find((p: any) => p.name === "Status");
-  const planningOpt = status.options.find((o: any) => o.name === "Planning").id;
-  const lisbon = db.rows.find((r: any) => r.title === "Lisbon long weekend");
+  const tree = await json<TreeNode[]>(
+    await page.request.get("/api/space/tree"),
+  );
+  const travel = tree.find((n) => n.title === "Travel")!;
+  const dbId = travel.children.find((n) => n.title === "Trip Planner")!.id;
+  const db = await json<SpaceDatabase>(
+    await page.request.get(`/api/space/databases/${dbId}`),
+  );
+  const status = db.properties.find((p) => p.name === "Status")!;
+  const planningOpt = status.options.find((o) => o.name === "Planning")!.id;
+  const lisbon = db.rows.find((r) => r.title === "Lisbon long weekend")!;
   await page.request.patch(`/api/space/rows/${lisbon.id}/values`, {
     data: { propertyId: status.id, value: planningOpt },
   });

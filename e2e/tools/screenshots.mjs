@@ -87,7 +87,7 @@ for (const theme of ["light", "dark"]) {
   await page
     .locator(".menu-overlay")
     .click({ position: { x: 5, y: 5 } })
-    .catch(() => {});
+    .catch(() => undefined);
 
   // Search modal
   await page.keyboard.press("ControlOrMeta+k");

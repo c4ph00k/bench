@@ -1,5 +1,15 @@
 import { test, expect } from "../fixtures";
+import { savedBlockTexts } from "../api";
 import type { Page } from "@playwright/test";
+
+/** The editor autosaves on a debounce, so specs wait for the write rather than for a duration. */
+const blockSaved = (page: Page) =>
+  page.waitForResponse(
+    (r) =>
+      r.url().includes("/api/space/blocks/") &&
+      r.request().method() === "PATCH" &&
+      r.ok(),
+  );
 
 /** Create a fresh page and focus its first (auto-created) empty block. */
 async function freshPage(page: Page, title: string) {
@@ -16,12 +26,13 @@ test("typing into a page autosaves and survives a refresh", async ({
 }) => {
   const title = `Editor Typing ${Date.now()}`;
   await freshPage(page, title);
+  const saved = blockSaved(page);
   await page.keyboard.type("Hello, autosaved world");
   await expect(page.locator(".block-text").first()).toHaveText(
     "Hello, autosaved world",
   );
+  await saved;
 
-  await page.waitForTimeout(800);
   await page.reload();
   await expect(page.locator(".block-text").first()).toHaveText(
     "Hello, autosaved world",
@@ -55,12 +66,7 @@ test("slash menu inserts a heading using the keyboard alone", async ({
   await page.keyboard.press("Enter");
   await expect(page.getByRole("listbox")).toHaveCount(0);
 
-  const saved = page.waitForResponse(
-    (r) =>
-      r.url().includes("/api/space/blocks/") &&
-      r.request().method() === "PATCH" &&
-      r.ok(),
-  );
+  const saved = blockSaved(page);
   await page.keyboard.type("Section title");
   await expect(page.locator(".b-h2")).toHaveText("Section title");
   await saved;
@@ -85,8 +91,9 @@ test("to-do checkboxes toggle and persist", async ({ page }) => {
   await page.keyboard.type("Ship phase two");
   const checkbox = page.getByRole("checkbox", { name: "Ship phase two" });
   await expect(checkbox).not.toBeChecked();
+  const saved = blockSaved(page);
   await checkbox.check();
-  await page.waitForTimeout(400);
+  await saved;
 
   await page.reload();
   await expect(
@@ -103,7 +110,10 @@ test("blocks drag to a new position and the order survives a refresh", async ({
   await page.keyboard.type("Beta");
   await page.keyboard.press("Enter");
   await page.keyboard.type("Gamma");
-  await page.waitForTimeout(800);
+  // Each block saves on its own timer, so wait for all three to be on the server.
+  await expect
+    .poll(() => savedBlockTexts(page))
+    .toEqual(["Alpha", "Beta", "Gamma"]);
 
   const rowTexts = () =>
     page.locator(".block-row .block-text").allTextContents();

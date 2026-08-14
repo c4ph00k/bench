@@ -109,6 +109,15 @@ export default tseslint.config(
   {
     files: ["e2e/**/*.ts"],
     extends: [playwright.configs["flat/recommended"]],
+    rules: {
+      // `await expect.poll(...)` is how this suite asserts on anything eventually consistent, and
+      // the rule does not recognise it, so it reports those tests as having no assertion at all.
+      "sonarjs/assertions-in-tests": "off",
+
+      // The harness spawns this repo's own toolchain on a developer machine. The rule is aimed at
+      // services where PATH is attacker-influenced, which a local Playwright run is not.
+      "sonarjs/no-os-command-from-path": "off",
+    },
   },
 
   {

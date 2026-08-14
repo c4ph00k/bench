@@ -3,13 +3,38 @@
  * deep-link fallback. These are what the merge introduced, so they are what regresses.
  */
 import { test, expect } from "./fixtures";
-import type { Page } from "@playwright/test";
+import { json, type Organization, type TreeNode } from "./api";
+import type { Locator, Page } from "@playwright/test";
 
-const APPS = [
-  { path: "/", title: "Bench" },
-  { path: "/crm/", title: "Personal CRM" },
-  { path: "/space/", title: "Personal Space" },
-  { path: "/groove/", title: "GROOVEBOX GX-4" },
+/**
+ * `ready` is something each app only renders once it has actually mounted and fetched, which is
+ * what the console-error check needs to wait for. A load state would pass before any of that.
+ */
+const APPS: {
+  path: string;
+  title: string;
+  ready: (page: Page) => Locator;
+}[] = [
+  {
+    path: "/",
+    title: "Bench",
+    ready: (p) => p.getByRole("link", { name: /^CRM/i }),
+  },
+  {
+    path: "/crm/",
+    title: "Personal CRM",
+    ready: (p) => p.getByTestId("dash-total"),
+  },
+  {
+    path: "/space/",
+    title: "Personal Space",
+    ready: (p) => p.getByRole("treeitem").first(),
+  },
+  {
+    path: "/groove/",
+    title: "GROOVEBOX GX-4",
+    ready: (p) => p.getByRole("region", { name: "RHYTHM" }),
+  },
 ];
 
 /** Collect console and page errors for the lifetime of a page. */
@@ -62,11 +87,11 @@ test("both API namespaces answer and stay separate", async ({
 }) => {
   const orgs = await page.request.get(`${baseURL}/api/crm/organizations`);
   expect(orgs.ok()).toBeTruthy();
-  expect((await orgs.json()).length).toBeGreaterThan(0);
+  expect((await json<Organization[]>(orgs)).length).toBeGreaterThan(0);
 
   const tree = await page.request.get(`${baseURL}/api/space/tree`);
   expect(tree.ok()).toBeTruthy();
-  expect((await tree.json()).length).toBeGreaterThan(0);
+  expect((await json<TreeNode[]>(tree)).length).toBeGreaterThan(0);
 
   // The pre-merge, un-namespaced paths must not resolve.
   expect(
@@ -93,7 +118,7 @@ test("each app boots without console errors", async ({ page }) => {
   for (const app of APPS) {
     const errors = watchErrors(page);
     await page.goto(app.path);
-    await page.waitForLoadState("networkidle");
+    await expect(app.ready(page)).toBeVisible();
     expect(errors, `${app.path} logged errors`).toEqual([]);
   }
 });

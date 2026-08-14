@@ -3,6 +3,7 @@
  * revenue must move with it - on the pipeline itself and on the dashboard.
  */
 import { test, expect } from "../fixtures";
+import { json, type Deal } from "../api";
 import type { Page } from "@playwright/test";
 
 /** Parse "$119,450" into 119450 so figures can be compared as numbers. */
@@ -37,14 +38,18 @@ async function dragToNextStage(page: Page, name: string) {
  * Guarantee a deal sits in the given stage, moving one there if an earlier test in this worker
  * already used it up. Call this before loading the page under test, not after.
  */
-async function dealInStage(page: Page, baseURL: string, stage: string) {
-  const deals = await (
-    await page.request.get(`${baseURL}/api/crm/deals`)
-  ).json();
-  const found = deals.find((d: { stage: string }) => d.stage === stage);
+async function dealInStage(
+  page: Page,
+  baseURL: string,
+  stage: string,
+): Promise<Deal> {
+  const deals = await json<Deal[]>(
+    await page.request.get(`${baseURL}/api/crm/deals`),
+  );
+  const found = deals.find((d) => d.stage === stage);
   if (found) return found;
 
-  const candidate = deals.find((d: { stage: string }) => d.stage !== stage);
+  const candidate = deals.find((d) => d.stage !== stage)!;
   await page.request.patch(`${baseURL}/api/crm/deals/${candidate.id}/stage`, {
     data: { stage },
   });
@@ -55,9 +60,9 @@ test("stage defaults set each deal's probability", async ({
   page,
   baseURL,
 }) => {
-  const deals = await (
-    await page.request.get(`${baseURL}/api/crm/deals`)
-  ).json();
+  const deals = await json<Deal[]>(
+    await page.request.get(`${baseURL}/api/crm/deals`),
+  );
   const expected: Record<string, number> = {
     New: 10,
     Qualified: 25,
@@ -155,12 +160,10 @@ test("winning a deal moves its value out of the pipeline and into revenue", asyn
   await expect
     .poll(() => money(page, "pipeline-total"), { timeout: 5000 })
     .toBe(totalBefore - deal.value);
-  const updated = await (
-    await page.request.get(`${baseURL}/api/crm/deals`)
-  ).json();
-  expect(
-    updated.find((d: { id: number }) => d.id === deal.id).probability,
-  ).toBe(100);
+  const updated = await json<Deal[]>(
+    await page.request.get(`${baseURL}/api/crm/deals`),
+  );
+  expect(updated.find((d) => d.id === deal.id)!.probability).toBe(100);
 });
 
 test("the deals table shows probability and expected value per row", async ({

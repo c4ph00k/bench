@@ -1,5 +1,6 @@
 /** Per-row edit and delete icons, and the richer table chrome around them. */
 import { test, expect } from "../fixtures";
+import { json, type Contact, type Organization } from "../api";
 
 test("the edit icon on a row opens that record's form", async ({ page }) => {
   await page.goto("/crm/organizations");
@@ -76,31 +77,29 @@ test("row action clicks do not navigate to the detail page", async ({
 
 test("tables summarise their contents in a footer", async ({ page }) => {
   await page.goto("/crm/organizations");
-  await expect(page.getByText(/\d+ organizations/)).toBeVisible();
+  await expect(page.getByText(/\d{1,6} organizations/)).toBeVisible();
   await expect(page.getByText(/Open pipeline \$/)).toBeVisible();
 
   await page.goto("/crm/deals");
-  await expect(page.getByText(/Total \$.*Expected \$/)).toBeVisible();
+  const footer = page.getByText(/Total \$/);
+  await expect(footer).toBeVisible();
+  await expect(footer).toContainText("Expected $");
 });
 
 test("organization rows count their contacts and open deals", async ({
   page,
   baseURL,
 }) => {
-  const orgs = await (
-    await page.request.get(`${baseURL}/api/crm/organizations`)
-  ).json();
-  const contacts = await (
-    await page.request.get(`${baseURL}/api/crm/contacts`)
-  ).json();
-  const target = orgs.find((o: { id: number }) =>
-    contacts.some(
-      (c: { organization_id: number }) => c.organization_id === o.id,
-    ),
+  const orgs = await json<Organization[]>(
+    await page.request.get(`${baseURL}/api/crm/organizations`),
   );
-  const count = contacts.filter(
-    (c: { organization_id: number }) => c.organization_id === target.id,
-  ).length;
+  const contacts = await json<Contact[]>(
+    await page.request.get(`${baseURL}/api/crm/contacts`),
+  );
+  const target = orgs.find((o) =>
+    contacts.some((c) => c.organization_id === o.id),
+  )!;
+  const count = contacts.filter((c) => c.organization_id === target.id).length;
 
   await page.goto("/crm/organizations");
   const row = page.getByRole("row", {

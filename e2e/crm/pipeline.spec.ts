@@ -4,6 +4,7 @@
  * coordinate and viewport fragility that mouse-simulated drags suffer from.
  */
 import { test, expect } from "../fixtures";
+import { json, type Deal } from "../api";
 import type { Page } from "@playwright/test";
 
 const STAGES = ["New", "Qualified", "Proposal", "Negotiation", "Won", "Lost"];
@@ -14,10 +15,10 @@ async function stageOf(
   baseURL: string,
   name: string,
 ): Promise<string> {
-  const deals = await (
-    await page.request.get(`${baseURL}/api/crm/deals`)
-  ).json();
-  return deals.find((d: { name: string }) => d.name === name).stage;
+  const deals = await json<Deal[]>(
+    await page.request.get(`${baseURL}/api/crm/deals`),
+  );
+  return deals.find((d) => d.name === name)!.stage;
 }
 
 function card(page: Page, name: string) {
@@ -36,19 +37,19 @@ test("keyboard-dragging a card moves the deal to the next stage", async ({
   baseURL,
 }) => {
   await page.goto("/crm/pipeline");
-  const deals = await (
-    await page.request.get(`${baseURL}/api/crm/deals`)
-  ).json();
-  const deal = deals.find((d: { stage: string }) => d.stage === "New");
+  const deals = await json<Deal[]>(
+    await page.request.get(`${baseURL}/api/crm/deals`),
+  );
+  const deal = deals.find((d) => d.stage === "New");
   expect(deal, "seed data should contain a deal in New").toBeTruthy();
 
-  await card(page, deal.name).focus();
+  await card(page, deal!.name).focus();
   await page.keyboard.press("Space");
   await page.keyboard.press("ArrowRight");
   await page.keyboard.press("Space");
 
   await expect
-    .poll(() => stageOf(page, baseURL!, deal.name), { timeout: 5000 })
+    .poll(() => stageOf(page, baseURL!, deal!.name), { timeout: 5000 })
     .toBe("Qualified");
 });
 
@@ -57,10 +58,10 @@ test("a stage change survives a reload and shows on the deals list", async ({
   baseURL,
 }) => {
   await page.goto("/crm/pipeline");
-  const deals = await (
-    await page.request.get(`${baseURL}/api/crm/deals`)
-  ).json();
-  const deal = deals.find((d: { stage: string }) => d.stage === "New");
+  const deals = await json<Deal[]>(
+    await page.request.get(`${baseURL}/api/crm/deals`),
+  );
+  const deal = deals.find((d) => d.stage === "New")!;
 
   await card(page, deal.name).focus();
   await page.keyboard.press("Space");
@@ -84,10 +85,10 @@ test("dropping a card back returns it to the original stage", async ({
   baseURL,
 }) => {
   await page.goto("/crm/pipeline");
-  const deals = await (
-    await page.request.get(`${baseURL}/api/crm/deals`)
-  ).json();
-  const deal = deals.find((d: { stage: string }) => d.stage === "Qualified");
+  const deals = await json<Deal[]>(
+    await page.request.get(`${baseURL}/api/crm/deals`),
+  );
+  const deal = deals.find((d) => d.stage === "Qualified")!;
 
   await card(page, deal.name).focus();
   await page.keyboard.press("Space");
@@ -104,17 +105,26 @@ test("escape cancels a lift and leaves the deal where it was", async ({
   baseURL,
 }) => {
   await page.goto("/crm/pipeline");
-  const deals = await (
-    await page.request.get(`${baseURL}/api/crm/deals`)
-  ).json();
-  const deal = deals.find((d: { stage: string }) => d.stage === "New");
+  const deals = await json<Deal[]>(
+    await page.request.get(`${baseURL}/api/crm/deals`),
+  );
+  const deal = deals.find((d) => d.stage === "New")!;
+
+  // A cancelled lift must send no stage change at all. Watching for the request and finding none
+  // says that directly; a fixed wait only hopes one would have arrived by then.
+  const stagePatch = page
+    .waitForRequest(
+      (r) => r.url().includes("/stage") && r.method() === "PATCH",
+      { timeout: 1500 },
+    )
+    .catch(() => null);
 
   await card(page, deal.name).focus();
   await page.keyboard.press("Space");
   await page.keyboard.press("ArrowRight");
   await page.keyboard.press("Escape");
 
-  await page.waitForTimeout(500);
+  expect(await stagePatch).toBeNull();
   expect(await stageOf(page, baseURL!, deal.name)).toBe("New");
 });
 

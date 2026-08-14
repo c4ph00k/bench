@@ -1,4 +1,5 @@
 import { test, expect } from "../fixtures";
+import { savedBlockTexts } from "../api";
 import type { Page } from "@playwright/test";
 
 async function freshPage(page: Page, title: string) {
@@ -32,7 +33,9 @@ test("script-looking titles and block text render inert", async ({ page }) => {
   const name = `<img src=x onerror=alert(1)> ${Date.now()}`;
   await freshPage(page, name);
   await page.keyboard.type('<script>alert("xss")</script> & <b>not bold</b>');
-  await page.waitForTimeout(700);
+  await expect
+    .poll(() => savedBlockTexts(page))
+    .toEqual(['<script>alert("xss")</script> & <b>not bold</b>']);
   await page.reload();
 
   await expect(page.locator(".block-text").first()).toHaveText(
@@ -75,13 +78,14 @@ test("hammering Enter keeps block order intact after reload", async ({
     await page.keyboard.press("Enter");
   }
   await page.keyboard.type("last");
-  await page.waitForTimeout(900);
-  await page.reload();
-  const texts = await page.locator(".block-text").allTextContents();
-  expect(texts).toEqual([
+  const expected = [
     ...Array.from({ length: 12 }, (_, i) => `line${i + 1}`),
     "last",
-  ]);
+  ];
+  // Thirteen blocks, each on its own save timer: wait for every one to reach the server.
+  await expect.poll(() => savedBlockTexts(page)).toEqual(expected);
+  await page.reload();
+  await expect(page.locator(".block-text")).toHaveText(expected);
   await deletePage(page, /Enter Storm/);
 });
 
