@@ -20,7 +20,9 @@ function watchErrors(page: Page): string[] {
   return errors;
 }
 
-test("every app serves its own document from its own entry point", async ({ page }) => {
+test("every app serves its own document from its own entry point", async ({
+  page,
+}) => {
   for (const app of APPS) {
     await page.goto(app.path);
     await expect(page).toHaveTitle(app.title);
@@ -40,15 +42,24 @@ test("deep links load the owning app, not the launcher", async ({ page }) => {
   }
 });
 
-test("a refreshed deep link keeps the app mounted under its basename", async ({ page }) => {
+test("a refreshed deep link keeps the app mounted under its basename", async ({
+  page,
+}) => {
   await page.goto("/crm/contacts");
-  await expect(page.getByRole("heading", { name: /Contacts/i }).first()).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /Contacts/i }).first(),
+  ).toBeVisible();
   await page.reload();
-  await expect(page.getByRole("heading", { name: /Contacts/i }).first()).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /Contacts/i }).first(),
+  ).toBeVisible();
   expect(new URL(page.url()).pathname).toBe("/crm/contacts");
 });
 
-test("both API namespaces answer and stay separate", async ({ page, baseURL }) => {
+test("both API namespaces answer and stay separate", async ({
+  page,
+  baseURL,
+}) => {
   const orgs = await page.request.get(`${baseURL}/api/crm/organizations`);
   expect(orgs.ok()).toBeTruthy();
   expect((await orgs.json()).length).toBeGreaterThan(0);
@@ -58,11 +69,15 @@ test("both API namespaces answer and stay separate", async ({ page, baseURL }) =
   expect((await tree.json()).length).toBeGreaterThan(0);
 
   // The pre-merge, un-namespaced paths must not resolve.
-  expect((await page.request.get(`${baseURL}/api/organizations`)).status()).toBe(404);
+  expect(
+    (await page.request.get(`${baseURL}/api/organizations`)).status(),
+  ).toBe(404);
   expect((await page.request.get(`${baseURL}/api/tree`)).status()).toBe(404);
 });
 
-test("the launcher links into each app and the back button returns", async ({ page }) => {
+test("the launcher links into each app and the back button returns", async ({
+  page,
+}) => {
   await page.goto("/");
   // Names are matched case-insensitively: the cards are uppercased by CSS, which the accessible
   // name computation does not apply.
@@ -96,8 +111,13 @@ test("every app has a Home link back to the launcher", async ({ page }) => {
 test("each app keeps its own stylesheet", async ({ page }) => {
   // One bundle per document; if the apps ever share one, these backgrounds collide.
   await page.goto("/crm/");
-  const crmSidebar = await page.locator(".sidebar").first().evaluate((el) => getComputedStyle(el).backgroundColor);
+  const crmSidebar = await page
+    .locator(".sidebar")
+    .first()
+    .evaluate((el) => getComputedStyle(el).backgroundColor);
   await page.goto("/groove/");
-  const grooveBody = await page.locator("body").evaluate((el) => getComputedStyle(el).backgroundColor);
+  const grooveBody = await page
+    .locator("body")
+    .evaluate((el) => getComputedStyle(el).backgroundColor);
   expect(crmSidebar).not.toBe(grooveBody);
 });

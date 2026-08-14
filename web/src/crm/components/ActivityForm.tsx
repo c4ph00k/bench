@@ -1,33 +1,38 @@
-import { FormEvent, useState } from 'react'
-import Modal from './Modal'
-import { api } from '../api'
-import { ACTIVITY_TYPES, ActivityType } from '../types'
+import { FormEvent, useState } from "react";
+import Modal from "./Modal";
+import { api } from "../api";
+import { ACTIVITY_TYPES, ActivityType } from "../types";
 
 interface Props {
-  contactId?: number
-  dealId?: number
-  onSaved: () => void
-  onClose: () => void
+  contactId?: number;
+  dealId?: number;
+  onSaved: () => void;
+  onClose: () => void;
 }
 
-export default function ActivityForm({ contactId, dealId, onSaved, onClose }: Props) {
+export default function ActivityForm({
+  contactId,
+  dealId,
+  onSaved,
+  onClose,
+}: Props) {
   const [form, setForm] = useState({
-    type: 'note' as ActivityType,
-    description: '',
-    due_date: '',
-  })
+    type: "note" as ActivityType,
+    description: "",
+    due_date: "",
+  });
 
   async function submit(e: FormEvent) {
-    e.preventDefault()
-    await api.post('/api/crm/activities', {
+    e.preventDefault();
+    await api.post("/api/crm/activities", {
       type: form.type,
       description: form.description,
       contact_id: contactId ?? null,
       deal_id: dealId ?? null,
       due_date: form.due_date || null,
-    })
-    onSaved()
-    onClose()
+    });
+    onSaved();
+    onClose();
   }
 
   return (
@@ -36,7 +41,13 @@ export default function ActivityForm({ contactId, dealId, onSaved, onClose }: Pr
         <div className="form-row">
           <div className="field">
             <label htmlFor="act-type">Type</label>
-            <select id="act-type" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as ActivityType })}>
+            <select
+              id="act-type"
+              value={form.type}
+              onChange={(e) =>
+                setForm({ ...form, type: e.target.value as ActivityType })
+              }
+            >
               {ACTIVITY_TYPES.map((t) => (
                 <option key={t} value={t}>
                   {t}
@@ -46,7 +57,12 @@ export default function ActivityForm({ contactId, dealId, onSaved, onClose }: Pr
           </div>
           <div className="field">
             <label htmlFor="act-due">Follow-up due date (optional)</label>
-            <input id="act-due" type="date" value={form.due_date} onChange={(e) => setForm({ ...form, due_date: e.target.value })} />
+            <input
+              id="act-due"
+              type="date"
+              value={form.due_date}
+              onChange={(e) => setForm({ ...form, due_date: e.target.value })}
+            />
           </div>
         </div>
         <div className="field">
@@ -69,5 +85,5 @@ export default function ActivityForm({ contactId, dealId, onSaved, onClose }: Pr
         </div>
       </form>
     </Modal>
-  )
+  );
 }

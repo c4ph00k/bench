@@ -122,7 +122,7 @@ elements around it, above and below included.
 - **Delete tests that no longer describe intended behaviour.** A test kept alive by workarounds is
   worse than no test.
 - **Do not state test counts in the docs.** They are stale by the next commit. `npx playwright
-  test --list` answers it on demand.
+test --list` answers it on demand.
 - When you deliberately leave something uncovered, say so in `e2e/EXPLORATORY.md` rather than
   letting a green suite imply coverage it does not have. Groove's audio is the standing example.
 

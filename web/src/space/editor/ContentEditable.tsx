@@ -28,7 +28,15 @@ function readText(el: HTMLElement): string {
  * so the caret is left alone. A `version` bump forces a programmatic text reset.
  */
 const ContentEditable = memo(
-  function ContentEditable({ blockId, initialText, className, placeholder, onTextInput, onKeyDown, onBlur }: Props) {
+  function ContentEditable({
+    blockId,
+    initialText,
+    className,
+    placeholder,
+    onTextInput,
+    onKeyDown,
+    onBlur,
+  }: Props) {
     return (
       <div
         className={className}

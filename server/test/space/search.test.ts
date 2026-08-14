@@ -12,10 +12,22 @@ let app: express.Express;
 beforeEach(async () => {
   db = openDb(":memory:");
   app = createApp({ crm: openCrmDb(":memory:"), space: db });
-  const parent = (await request(app).post("/api/space/pages").send({ title: "Travel", icon: "✈️" })).body;
-  await request(app).post("/api/space/pages").send({ title: "Japan Trip", parentId: parent.id });
-  const dbPage = (await request(app).post("/api/space/pages").send({ title: "Reading List", type: "database" })).body;
-  await request(app).post(`/api/space/databases/${dbPage.id}/rows`).send({ title: "Japanese Cooking" });
+  const parent = (
+    await request(app)
+      .post("/api/space/pages")
+      .send({ title: "Travel", icon: "✈️" })
+  ).body;
+  await request(app)
+    .post("/api/space/pages")
+    .send({ title: "Japan Trip", parentId: parent.id });
+  const dbPage = (
+    await request(app)
+      .post("/api/space/pages")
+      .send({ title: "Reading List", type: "database" })
+  ).body;
+  await request(app)
+    .post(`/api/space/databases/${dbPage.id}/rows`)
+    .send({ title: "Japanese Cooking" });
 });
 
 describe("search API", () => {

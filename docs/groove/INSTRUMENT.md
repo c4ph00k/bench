@@ -12,12 +12,12 @@ no audio libraries.
 
 Four units share one transport, one tempo and one 16-step loop:
 
-| Unit | Voice | Sculpting |
-| --- | --- | --- |
-| **RHYTHM DR-16** | six synthesised drums — kick, snare, clap, closed/open hat, FM perc | tune/decay/punch per voice, kick sub, bit crush, bus drive, six level faders |
-| **BASS MB-1** | mono saw/square/pulse + sub oscillator | pulse width, resonant filter with envelope, accent depth, filter wobble LFO, glide, drive |
-| **PADS PX-4** | polyphonic detuned-saw chords | voicing, detune, stereo width, filter motion LFO, octave shimmer, sub, drive |
-| **LEAD LX-2** | mono saw/pulse/triangle/FM | shape, detune, filter envelope, sustain, vibrato + rate, glide, drive |
+| Unit             | Voice                                                               | Sculpting                                                                                 |
+| ---------------- | ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| **RHYTHM DR-16** | six synthesised drums — kick, snare, clap, closed/open hat, FM perc | tune/decay/punch per voice, kick sub, bit crush, bus drive, six level faders              |
+| **BASS MB-1**    | mono saw/square/pulse + sub oscillator                              | pulse width, resonant filter with envelope, accent depth, filter wobble LFO, glide, drive |
+| **PADS PX-4**    | polyphonic detuned-saw chords                                       | voicing, detune, stereo width, filter motion LFO, octave shimmer, sub, drive              |
+| **LEAD LX-2**    | mono saw/pulse/triangle/FM                                          | shape, detune, filter envelope, sustain, vibrato + rate, glide, drive                     |
 
 ## Master section
 

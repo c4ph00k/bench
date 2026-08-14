@@ -59,7 +59,8 @@ CREATE TABLE IF NOT EXISTS views (
 
 /** Open (creating if needed) the SQLite database and ensure the schema exists. */
 export function openDb(dbPath: string): Database.Database {
-  if (dbPath !== ":memory:") mkdirSync(path.dirname(dbPath), { recursive: true });
+  if (dbPath !== ":memory:")
+    mkdirSync(path.dirname(dbPath), { recursive: true });
   const db = new Database(dbPath);
   db.pragma("journal_mode = WAL");
   db.pragma("foreign_keys = ON");

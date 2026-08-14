@@ -19,7 +19,10 @@ export function searchRouter(db: Database.Database): Router {
          ORDER BY CASE WHEN p.title LIKE ? ESCAPE '\\' COLLATE NOCASE THEN 0 ELSE 1 END, length(p.title)
          LIMIT 20`,
       )
-      .all(`%${q.replace(/[%_\\]/g, "\\$&")}%`, `${q.replace(/[%_\\]/g, "\\$&")}%`);
+      .all(
+        `%${q.replace(/[%_\\]/g, "\\$&")}%`,
+        `${q.replace(/[%_\\]/g, "\\$&")}%`,
+      );
     res.json(results);
   });
 

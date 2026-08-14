@@ -15,8 +15,11 @@ function appFallback(): PluginOption {
     configureServer(server) {
       server.middlewares.use((req, _res, next) => {
         const { pathname } = new URL(req.url ?? "/", "http://localhost");
-        const app = APPS.find((name) => pathname === `/${name}` || pathname.startsWith(`/${name}/`));
-        if (app && !/\.[a-z0-9]+$/i.test(pathname)) req.url = `/${app}/index.html`;
+        const app = APPS.find(
+          (name) => pathname === `/${name}` || pathname.startsWith(`/${name}/`),
+        );
+        if (app && !/\.[a-z0-9]+$/i.test(pathname))
+          req.url = `/${app}/index.html`;
         next();
       });
     },

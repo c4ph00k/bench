@@ -14,11 +14,14 @@ const UNITS = ["RHYTHM", "BASS", "PADS", "LEAD"];
 /** Index of the lit step in the master LED strip, or -1 when the transport is stopped. */
 function playhead(page: Page): Promise<number> {
   return page.evaluate(() =>
-    Array.from(document.querySelectorAll(".master-leds .led")).findIndex((el) => el.className.includes("on")),
+    Array.from(document.querySelectorAll(".master-leds .led")).findIndex((el) =>
+      el.className.includes("on"),
+    ),
   );
 }
 
-const transport = (page: Page) => page.getByRole("button", { name: /(PLAY|STOP)/ });
+const transport = (page: Page) =>
+  page.getByRole("button", { name: /(PLAY|STOP)/ });
 
 test("the instrument boots with all four units", async ({ page }) => {
   await page.goto("/groove/");
@@ -28,7 +31,9 @@ test("the instrument boots with all four units", async ({ page }) => {
   await expect(transport(page)).toContainText("PLAY");
 });
 
-test("the transport starts and stops, and the playhead follows it", async ({ page }) => {
+test("the transport starts and stops, and the playhead follows it", async ({
+  page,
+}) => {
   await page.goto("/groove/");
   expect(await playhead(page)).toBe(-1);
 
@@ -36,7 +41,9 @@ test("the transport starts and stops, and the playhead follows it", async ({ pag
   await expect(transport(page)).toContainText("STOP");
 
   // The clock is running if a step lights at all, then moves on.
-  await expect.poll(() => playhead(page), { timeout: 5000 }).toBeGreaterThanOrEqual(0);
+  await expect
+    .poll(() => playhead(page), { timeout: 5000 })
+    .toBeGreaterThanOrEqual(0);
   const first = await playhead(page);
   await expect.poll(() => playhead(page), { timeout: 5000 }).not.toBe(first);
 
@@ -45,7 +52,9 @@ test("the transport starts and stops, and the playhead follows it", async ({ pag
   await expect.poll(() => playhead(page), { timeout: 3000 }).toBe(-1);
 });
 
-test("drum steps are individually addressable and toggle through their states", async ({ page }) => {
+test("drum steps are individually addressable and toggle through their states", async ({
+  page,
+}) => {
   await page.goto("/groove/");
   const step = page.getByRole("button", { name: "KICK step 3", exact: true });
   await expect(step).toBeVisible();
@@ -55,16 +64,21 @@ test("drum steps are individually addressable and toggle through their states", 
   await expect(step).not.toHaveAttribute("aria-pressed", before!);
 });
 
-test("melodic steps carry their unit name so the four grids stay distinguishable", async ({ page }) => {
+test("melodic steps carry their unit name so the four grids stay distinguishable", async ({
+  page,
+}) => {
   await page.goto("/groove/");
   for (const unit of ["BASS", "PADS", "LEAD"]) {
-    await expect(page.getByRole("button", { name: `${unit} step 1`, exact: true })).toHaveCount(1);
+    await expect(
+      page.getByRole("button", { name: `${unit} step 1`, exact: true }),
+    ).toHaveCount(1);
   }
 });
 
 test("switching patches changes the tempo", async ({ page }) => {
   await page.goto("/groove/");
-  const bpm = () => page.evaluate(() => document.body.textContent?.match(/(\d+)BPM/)?.[1]);
+  const bpm = () =>
+    page.evaluate(() => document.body.textContent?.match(/(\d+)BPM/)?.[1]);
 
   const first = await bpm();
   await page.getByRole("button", { name: /BASALT/ }).click();

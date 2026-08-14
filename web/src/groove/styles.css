@@ -37,7 +37,8 @@ body,
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  font-family:
+    ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
   font-size: var(--f-sm);
   letter-spacing: 0.04em;
   overflow: hidden;

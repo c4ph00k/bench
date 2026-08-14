@@ -21,7 +21,11 @@ describe("api client", () => {
     fetchMock.mockResolvedValue(ok([{ id: "a" }]));
     const tree = await api.tree();
     expect(tree).toEqual([{ id: "a" }]);
-    expect(fetchMock).toHaveBeenCalledWith("/api/space/tree", { method: "GET", headers: undefined, body: undefined });
+    expect(fetchMock).toHaveBeenCalledWith("/api/space/tree", {
+      method: "GET",
+      headers: undefined,
+      body: undefined,
+    });
   });
 
   it("POSTs JSON bodies with the right headers", async () => {
@@ -49,7 +53,9 @@ describe("api client", () => {
       status: 500,
       json: () => Promise.reject(new Error("bad json")),
     } as Response);
-    await expect(api.deletePage("x")).rejects.toThrow("DELETE /api/space/pages/x failed (500)");
+    await expect(api.deletePage("x")).rejects.toThrow(
+      "DELETE /api/space/pages/x failed (500)",
+    );
   });
 
   it("hits the expected endpoints for blocks, databases, and search", async () => {

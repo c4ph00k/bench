@@ -5,22 +5,22 @@ import {
   getCoreRowModel,
   getSortedRowModel,
   useReactTable,
-} from '@tanstack/react-table'
-import { ReactNode, useState } from 'react'
-import { IconEdit, IconTrash } from './Icons'
+} from "@tanstack/react-table";
+import { ReactNode, useState } from "react";
+import { IconEdit, IconTrash } from "./Icons";
 
 interface Props<T> {
-  data: T[]
-  columns: ColumnDef<T, any>[]
-  onRowClick?: (row: T) => void
-  onEdit?: (row: T) => void
-  onDelete?: (row: T) => void
+  data: T[];
+  columns: ColumnDef<T, any>[];
+  onRowClick?: (row: T) => void;
+  onEdit?: (row: T) => void;
+  onDelete?: (row: T) => void;
   /** Names a row for the action buttons, so "Edit Bluepeak Software" reads correctly. */
-  rowLabel?: (row: T) => string
-  emptyMessage?: string
+  rowLabel?: (row: T) => string;
+  emptyMessage?: string;
   /** Shown on the right of the footer, e.g. a total. */
-  summary?: ReactNode
-  noun?: string
+  summary?: ReactNode;
+  noun?: string;
 }
 
 export default function DataTable<T>({
@@ -30,11 +30,11 @@ export default function DataTable<T>({
   onEdit,
   onDelete,
   rowLabel,
-  emptyMessage = 'Nothing here yet.',
+  emptyMessage = "Nothing here yet.",
   summary,
-  noun = 'record',
+  noun = "record",
 }: Props<T>) {
-  const [sorting, setSorting] = useState<SortingState>([])
+  const [sorting, setSorting] = useState<SortingState>([]);
   const table = useReactTable({
     data,
     columns,
@@ -42,10 +42,10 @@ export default function DataTable<T>({
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
-  })
+  });
 
-  const hasActions = Boolean(onEdit || onDelete)
-  const label = (row: T) => (rowLabel ? rowLabel(row) : '')
+  const hasActions = Boolean(onEdit || onDelete);
+  const label = (row: T) => (rowLabel ? rowLabel(row) : "");
 
   return (
     <div className="table-card">
@@ -55,21 +55,38 @@ export default function DataTable<T>({
             {table.getHeaderGroups().map((hg) => (
               <tr key={hg.id}>
                 {hg.headers.map((header) => {
-                  const sortable = header.column.getCanSort()
-                  const dir = header.column.getIsSorted()
+                  const sortable = header.column.getCanSort();
+                  const dir = header.column.getIsSorted();
                   return (
                     <th
                       key={header.id}
-                      className={sortable ? 'sortable' : undefined}
-                      aria-sort={dir === 'asc' ? 'ascending' : dir === 'desc' ? 'descending' : undefined}
-                      onClick={sortable ? header.column.getToggleSortingHandler() : undefined}
+                      className={sortable ? "sortable" : undefined}
+                      aria-sort={
+                        dir === "asc"
+                          ? "ascending"
+                          : dir === "desc"
+                            ? "descending"
+                            : undefined
+                      }
+                      onClick={
+                        sortable
+                          ? header.column.getToggleSortingHandler()
+                          : undefined
+                      }
                     >
                       <span className="th-inner">
-                        {flexRender(header.column.columnDef.header, header.getContext())}
-                        {sortable && <span className={`sort-arrow${dir ? ' active' : ''}`}>{dir === 'desc' ? '↓' : '↑'}</span>}
+                        {flexRender(
+                          header.column.columnDef.header,
+                          header.getContext(),
+                        )}
+                        {sortable && (
+                          <span className={`sort-arrow${dir ? " active" : ""}`}>
+                            {dir === "desc" ? "↓" : "↑"}
+                          </span>
+                        )}
                       </span>
                     </th>
-                  )
+                  );
                 })}
                 {hasActions && <th className="col-actions" />}
               </tr>
@@ -79,11 +96,15 @@ export default function DataTable<T>({
             {table.getRowModel().rows.map((row) => (
               <tr
                 key={row.id}
-                className={onRowClick ? 'clickable' : undefined}
-                onClick={onRowClick ? () => onRowClick(row.original) : undefined}
+                className={onRowClick ? "clickable" : undefined}
+                onClick={
+                  onRowClick ? () => onRowClick(row.original) : undefined
+                }
               >
                 {row.getVisibleCells().map((cell) => (
-                  <td key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>
+                  <td key={cell.id}>
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </td>
                 ))}
                 {hasActions && (
                   <td className="col-actions">
@@ -95,8 +116,8 @@ export default function DataTable<T>({
                           aria-label={`Edit ${label(row.original)}`}
                           title="Edit"
                           onClick={(e) => {
-                            e.stopPropagation()
-                            onEdit(row.original)
+                            e.stopPropagation();
+                            onEdit(row.original);
                           }}
                         >
                           <IconEdit size={16} />
@@ -109,8 +130,8 @@ export default function DataTable<T>({
                           aria-label={`Delete ${label(row.original)}`}
                           title="Delete"
                           onClick={(e) => {
-                            e.stopPropagation()
-                            onDelete(row.original)
+                            e.stopPropagation();
+                            onDelete(row.original);
                           }}
                         >
                           <IconTrash size={16} />
@@ -129,11 +150,11 @@ export default function DataTable<T>({
         <div className="table-foot">
           <span>
             {data.length} {noun}
-            {data.length === 1 ? '' : 's'}
+            {data.length === 1 ? "" : "s"}
           </span>
           {summary && <span className="table-summary">{summary}</span>}
         </div>
       )}
     </div>
-  )
+  );
 }

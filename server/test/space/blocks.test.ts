@@ -13,11 +13,16 @@ let pageId: string;
 beforeEach(async () => {
   db = openDb(":memory:");
   app = createApp({ crm: openCrmDb(":memory:"), space: db });
-  pageId = (await request(app).post("/api/space/pages").send({ title: "Doc" })).body.id;
+  pageId = (await request(app).post("/api/space/pages").send({ title: "Doc" }))
+    .body.id;
 });
 
 const addBlock = async (type: string, text: string, index?: number) =>
-  (await request(app).post(`/api/space/pages/${pageId}/blocks`).send({ type, content: { text }, index })).body;
+  (
+    await request(app)
+      .post(`/api/space/pages/${pageId}/blocks`)
+      .send({ type, content: { text }, index })
+  ).body;
 
 const blockTitles = async () => {
   const page = (await request(app).get(`/api/space/pages/${pageId}`)).body;
@@ -36,14 +41,22 @@ describe("blocks API", () => {
   it("accepts a client-provided id", async () => {
     const res = await request(app)
       .post(`/api/space/pages/${pageId}/blocks`)
-      .send({ id: "client-id-1", type: "todo", content: { text: "task", checked: false } });
+      .send({
+        id: "client-id-1",
+        type: "todo",
+        content: { text: "task", checked: false },
+      });
     expect(res.body.id).toBe("client-id-1");
   });
 
   it("rejects unknown block types and missing pages", async () => {
-    const bad = await request(app).post(`/api/space/pages/${pageId}/blocks`).send({ type: "gif" });
+    const bad = await request(app)
+      .post(`/api/space/pages/${pageId}/blocks`)
+      .send({ type: "gif" });
     expect(bad.status).toBe(400);
-    const missing = await request(app).post("/api/space/pages/nope/blocks").send({ type: "paragraph" });
+    const missing = await request(app)
+      .post("/api/space/pages/nope/blocks")
+      .send({ type: "paragraph" });
     expect(missing.status).toBe(404);
   });
 
@@ -54,8 +67,16 @@ describe("blocks API", () => {
       .send({ type: "quote", content: { text: "hello!" } });
     expect(patched.body.type).toBe("quote");
     expect(patched.body.content.text).toBe("hello!");
-    expect((await request(app).patch(`/api/space/blocks/${b.id}`).send({ type: "gif" })).status).toBe(400);
-    expect((await request(app).patch("/api/space/blocks/none").send({})).status).toBe(404);
+    expect(
+      (
+        await request(app)
+          .patch(`/api/space/blocks/${b.id}`)
+          .send({ type: "gif" })
+      ).status,
+    ).toBe(400);
+    expect(
+      (await request(app).patch("/api/space/blocks/none").send({})).status,
+    ).toBe(404);
   });
 
   it("deletes a block and compacts positions", async () => {
@@ -66,7 +87,9 @@ describe("blocks API", () => {
     expect(await blockTitles()).toEqual(["b", "c"]);
     const page = (await request(app).get(`/api/space/pages/${pageId}`)).body;
     expect(page.blocks.map((b: any) => b.position)).toEqual([0, 1]);
-    expect((await request(app).delete("/api/space/blocks/none")).status).toBe(404);
+    expect((await request(app).delete("/api/space/blocks/none")).status).toBe(
+      404,
+    );
   });
 
   it("reorders blocks with a full permutation", async () => {
@@ -83,7 +106,9 @@ describe("blocks API", () => {
   it("rejects partial or foreign id lists on reorder", async () => {
     const a = await addBlock("paragraph", "a");
     await addBlock("paragraph", "b");
-    const partial = await request(app).put(`/api/space/pages/${pageId}/blocks/order`).send({ ids: [a.id] });
+    const partial = await request(app)
+      .put(`/api/space/pages/${pageId}/blocks/order`)
+      .send({ ids: [a.id] });
     expect(partial.status).toBe(400);
     const foreign = await request(app)
       .put(`/api/space/pages/${pageId}/blocks/order`)

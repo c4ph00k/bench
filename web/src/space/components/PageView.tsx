@@ -27,7 +27,8 @@ export default function PageView({ onTreeChange }: Props) {
       .getPage(pageId)
       .then((p) => {
         setPage(p);
-        if ((location.state as { isNew?: boolean } | null)?.isNew) titleRef.current?.focus();
+        if ((location.state as { isNew?: boolean } | null)?.isNew)
+          titleRef.current?.focus();
       })
       .catch(() => setMissing(true));
   }, [pageId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -65,10 +66,16 @@ export default function PageView({ onTreeChange }: Props) {
   const header = (
     <header className="page-header">
       <div className="page-icon-wrap">
-        <button className="page-icon" aria-label="Change icon" onClick={() => setPickerOpen((v) => !v)}>
+        <button
+          className="page-icon"
+          aria-label="Change icon"
+          onClick={() => setPickerOpen((v) => !v)}
+        >
           {page.icon ?? (page.type === "database" ? "🗃️" : "📄")}
         </button>
-        {pickerOpen && <EmojiPicker onPick={setIcon} onClose={() => setPickerOpen(false)} />}
+        {pickerOpen && (
+          <EmojiPicker onPick={setIcon} onClose={() => setPickerOpen(false)} />
+        )}
       </div>
       <input
         ref={titleRef}
@@ -97,7 +104,13 @@ export default function PageView({ onTreeChange }: Props) {
   );
 }
 
-function RowPageBody({ page, header }: { page: PageData; header: React.ReactNode }) {
+function RowPageBody({
+  page,
+  header,
+}: {
+  page: PageData;
+  header: React.ReactNode;
+}) {
   const [row, setRow] = useRow(page.id);
   return (
     <div className="page">

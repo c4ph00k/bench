@@ -19,26 +19,26 @@ rather than one per workspace: type-aware linting reaches both tsconfigs through
 `projectService`, and one config means one process and one cache. Rules are **strict** -
 `strictTypeChecked` plus `stylisticTypeChecked`.
 
-| Package | Job |
-| --- | --- |
-| `eslint` | The runner, flat config |
-| `typescript-eslint` | Type-aware TS rules. The strict core |
-| `eslint-plugin-sonarjs` | Code smells: cognitive complexity, duplicated blocks, identical functions, dead stores |
-| `eslint-plugin-react-hooks` | Rules of hooks, exhaustive-deps |
-| `eslint-plugin-react-refresh` | Export shapes that break Vite HMR |
-| `eslint-plugin-jsx-a11y` | Accessibility - the e2e suite selects by role and label, so a11y regressions break tests |
-| `@vitest/eslint-plugin` | No focused or skipped tests left behind |
-| `eslint-plugin-playwright` | No conditional expects, no `waitForTimeout` |
-| `prettier` | Formatting. See [G](#g-prettier) |
-| `eslint-config-prettier` | Switches off the ESLint rules that would fight Prettier |
+| Package                       | Job                                                                                      |
+| ----------------------------- | ---------------------------------------------------------------------------------------- |
+| `eslint`                      | The runner, flat config                                                                  |
+| `typescript-eslint`           | Type-aware TS rules. The strict core                                                     |
+| `eslint-plugin-sonarjs`       | Code smells: cognitive complexity, duplicated blocks, identical functions, dead stores   |
+| `eslint-plugin-react-hooks`   | Rules of hooks, exhaustive-deps                                                          |
+| `eslint-plugin-react-refresh` | Export shapes that break Vite HMR                                                        |
+| `eslint-plugin-jsx-a11y`      | Accessibility - the e2e suite selects by role and label, so a11y regressions break tests |
+| `@vitest/eslint-plugin`       | No focused or skipped tests left behind                                                  |
+| `eslint-plugin-playwright`    | No conditional expects, no `waitForTimeout`                                              |
+| `prettier`                    | Formatting. See [G](#g-prettier)                                                         |
+| `eslint-config-prettier`      | Switches off the ESLint rules that would fight Prettier                                  |
 
 Three standalone tools, not ESLint plugins:
 
-| Tool | Job |
-| --- | --- |
-| `knip` | Unused files, exports and dependencies - dead code ESLint structurally cannot see |
-| `jscpd` | Copy-paste detection *across* files; SonarJS only sees duplication within one |
-| `gitleaks` | Leaked credentials, working tree and git history. See [H](#h-secrets-and-pii) |
+| Tool       | Job                                                                               |
+| ---------- | --------------------------------------------------------------------------------- |
+| `knip`     | Unused files, exports and dependencies - dead code ESLint structurally cannot see |
+| `jscpd`    | Copy-paste detection _across_ files; SonarJS only sees duplication within one     |
+| `gitleaks` | Leaked credentials, working tree and git history. See [H](#h-secrets-and-pii)     |
 
 Plus two things that need no package, only configuration:
 
@@ -138,7 +138,7 @@ defines. It needs `gitleaks` installed; use the official `gitleaks/gitleaks-acti
 **Branch protection on `main` requires it to pass before merge.**
 
 This is the only layer that cannot be bypassed. "Nothing lands unless it passes" means nothing is
-*merged* - not that nothing is *committed*, which no client-side hook can guarantee.
+_merged_ - not that nothing is _committed_, which no client-side hook can guarantee.
 
 ## E. Claude Code Stop hook
 
@@ -168,11 +168,11 @@ run on every turn end; and pass ESLint's actual messages back through the hook o
 
 Measured on 2026-08-14 with `npm run coverage`:
 
-| Scope | Statements | Branches | Functions |
-| --- | --- | --- | --- |
-| `server/src` | 81.58% | 73.01% | 67.82% |
-| `web/src/space` | 86.11% | 73.43% | 86.98% |
-| `web/src/crm` (not currently measured) | **9.78%** | 4.08% | 8.39% |
+| Scope                                  | Statements | Branches | Functions |
+| -------------------------------------- | ---------- | -------- | --------- |
+| `server/src`                           | 81.58%     | 73.01%   | 67.82%    |
+| `web/src/space`                        | 86.11%     | 73.43%   | 86.98%    |
+| `web/src/crm` (not currently measured) | **9.78%**  | 4.08%    | 8.39%     |
 
 **Decided: 80% goes into `npm run check`, measured across every app.** Two consequences, both real
 work rather than configuration:
@@ -180,12 +180,12 @@ work rather than configuration:
 **The `include` widens from `src/space/**` to all of `src/**`.** That brings in two apps with almost
 no unit tests:
 
-| App | Source in scope | Unit test files | Coverage today |
-| --- | --- | --- | --- |
-| `web/src/space` | 2,817 lines | 11 | 86% |
-| `web/src/crm` | 2,378 lines | 1 (`types.test.ts`) | 9.78% |
-| `web/src/groove` | 1,689 lines (audio excluded) | 0 | 0% |
-| `web/src/home` | 59 lines | 0 | 0% |
+| App              | Source in scope              | Unit test files     | Coverage today |
+| ---------------- | ---------------------------- | ------------------- | -------------- |
+| `web/src/space`  | 2,817 lines                  | 11                  | 86%            |
+| `web/src/crm`    | 2,378 lines                  | 1 (`types.test.ts`) | 9.78%          |
+| `web/src/groove` | 1,689 lines (audio excluded) | 0                   | 0%             |
+| `web/src/home`   | 59 lines                     | 0                   | 0%             |
 
 So roughly **4,100 lines of untested UI** need tests before this threshold can be turned on. Do it
 app by app, not in one pass, and do not lower the bar to make a red run green.
@@ -208,10 +208,10 @@ a branches threshold at 80 fails today. Revisit once the statement threshold hol
 The tree currently carries two styles, split cleanly along the lines of the repos the apps came
 from:
 
-| Area | Semicolons | Quotes |
-| --- | --- | --- |
-| `server/src`, `web/src/space`, `e2e` | yes | double |
-| `web/src/crm`, `web/src/groove` | no | single |
+| Area                                 | Semicolons | Quotes |
+| ------------------------------------ | ---------- | ------ |
+| `server/src`, `web/src/space`, `e2e` | yes        | double |
+| `web/src/crm`, `web/src/groove`      | no         | single |
 
 So [STANDARDS.md](./STANDARDS.md)'s "match the file around you" currently means two different things
 depending on which app you are in. Prettier ends that, which is the main prize - but it means
@@ -240,12 +240,12 @@ How to land it:
 Formatting must happen automatically, not by remembering to run it. Four places, and the split
 between which ones **write** and which ones **check** matters:
 
-| Where | Covers | Action |
-| --- | --- | --- |
-| Editor on save | Ed, in VS Code | write |
-| `npm run format`, in the finishing steps | The agent's edits | write |
-| lefthook pre-commit | Anything that slipped past both | write, then re-stage |
-| `npm run check`, `prebuild`, CI | The gate | **check only** |
+| Where                                    | Covers                          | Action               |
+| ---------------------------------------- | ------------------------------- | -------------------- |
+| Editor on save                           | Ed, in VS Code                  | write                |
+| `npm run format`, in the finishing steps | The agent's edits               | write                |
+| lefthook pre-commit                      | Anything that slipped past both | write, then re-stage |
+| `npm run check`, `prebuild`, CI          | The gate                        | **check only**       |
 
 - **On save** needs `.vscode/settings.json` with `editor.formatOnSave` and Prettier as the default
   formatter, plus `.vscode/extensions.json` recommending the extension. Note that `.gitignore`

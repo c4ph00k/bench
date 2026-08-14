@@ -38,19 +38,31 @@ export default tseslint.config(
   {
     linterOptions: { reportUnusedDisableDirectives: "error" },
     languageOptions: {
-      parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname },
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
     },
     rules: {
       // `onChange={(e) => setName(e.target.value)}` is the React idiom and reads better than the
       // braced form the rule would otherwise demand at ~190 call sites. The rule still catches the
       // case worth catching: `return someVoidCall()` from a normal function.
-      "@typescript-eslint/no-confusing-void-expression": ["error", { ignoreArrowShorthand: true }],
+      "@typescript-eslint/no-confusing-void-expression": [
+        "error",
+        { ignoreArrowShorthand: true },
+      ],
 
       // These are what enforce "short functions, short modules" from STANDARDS.md.
       complexity: ["error", 15],
       "max-depth": ["error", 4],
-      "max-lines": ["error", { max: 300, skipBlankLines: true, skipComments: true }],
-      "max-lines-per-function": ["error", { max: 80, skipBlankLines: true, skipComments: true }],
+      "max-lines": [
+        "error",
+        { max: 300, skipBlankLines: true, skipComments: true },
+      ],
+      "max-lines-per-function": [
+        "error",
+        { max: 80, skipBlankLines: true, skipComments: true },
+      ],
       "max-params": ["error", 5],
     },
   },
@@ -65,7 +77,10 @@ export default tseslint.config(
 
   {
     files: ["web/src/**/*.{ts,tsx}"],
-    extends: [reactHooks.configs.flat["recommended-latest"], jsxA11y.flatConfigs.recommended],
+    extends: [
+      reactHooks.configs.flat["recommended-latest"],
+      jsxA11y.flatConfigs.recommended,
+    ],
     languageOptions: { globals: globals.browser },
   },
 
@@ -75,7 +90,12 @@ export default tseslint.config(
   },
 
   {
-    files: ["server/**/*.ts", "e2e/**/*.ts", "playwright.config.ts", "scripts/**"],
+    files: [
+      "server/**/*.ts",
+      "e2e/**/*.ts",
+      "playwright.config.ts",
+      "scripts/**",
+    ],
     languageOptions: { globals: globals.node },
   },
 

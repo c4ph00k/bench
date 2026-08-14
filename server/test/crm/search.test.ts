@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from "vitest";
 import {
   DB,
   openDb,
@@ -8,84 +8,123 @@ import {
   listContacts,
   createDeal,
   listDeals,
-} from '../../src/crm/db.js'
+} from "../../src/crm/db.js";
 
-let db: DB
+let db: DB;
 
 beforeEach(() => {
-  db = openDb(':memory:')
-  createOrganization(db, { name: 'Northwind Logistics', industry: 'Transportation' })
-  const bluepeak = createOrganization(db, { name: 'Bluepeak Software', website: 'bluepeak.io', industry: 'Software' })
-  createContact(db, { name: 'Maria Delgado', email: 'maria@northwind.com', status: 'customer' })
-  const jonas = createContact(db, { name: 'Jonas Lindqvist', email: 'jonas@bluepeak.io', status: 'qualified' })
-  createContact(db, { name: 'Sam Okafor', email: 'sam@quarry.com', status: 'lead' })
+  db = openDb(":memory:");
+  createOrganization(db, {
+    name: "Northwind Logistics",
+    industry: "Transportation",
+  });
+  const bluepeak = createOrganization(db, {
+    name: "Bluepeak Software",
+    website: "bluepeak.io",
+    industry: "Software",
+  });
+  createContact(db, {
+    name: "Maria Delgado",
+    email: "maria@northwind.com",
+    status: "customer",
+  });
+  const jonas = createContact(db, {
+    name: "Jonas Lindqvist",
+    email: "jonas@bluepeak.io",
+    status: "qualified",
+  });
+  createContact(db, {
+    name: "Sam Okafor",
+    email: "sam@quarry.com",
+    status: "lead",
+  });
   createDeal(db, {
-    name: 'Enterprise upgrade',
+    name: "Enterprise upgrade",
     organization_id: bluepeak.id,
     contact_id: jonas.id,
-    stage: 'Negotiation',
+    stage: "Negotiation",
     value: 120000,
-  })
-  createDeal(db, { name: 'Loyalty program', stage: 'Qualified', value: 38000 })
-})
+  });
+  createDeal(db, { name: "Loyalty program", stage: "Qualified", value: 38000 });
+});
 
-describe('organization search', () => {
-  it('matches by name, case-insensitively', () => {
-    expect(listOrganizations(db, 'northwind').map((o) => o.name)).toEqual(['Northwind Logistics'])
-  })
+describe("organization search", () => {
+  it("matches by name, case-insensitively", () => {
+    expect(listOrganizations(db, "northwind").map((o) => o.name)).toEqual([
+      "Northwind Logistics",
+    ]);
+  });
 
-  it('matches by website and industry', () => {
-    expect(listOrganizations(db, 'bluepeak.io')).toHaveLength(1)
-    expect(listOrganizations(db, 'Transport')).toHaveLength(1)
-  })
+  it("matches by website and industry", () => {
+    expect(listOrganizations(db, "bluepeak.io")).toHaveLength(1);
+    expect(listOrganizations(db, "Transport")).toHaveLength(1);
+  });
 
-  it('returns nothing for a non-match', () => {
-    expect(listOrganizations(db, 'zzz')).toHaveLength(0)
-  })
-})
+  it("returns nothing for a non-match", () => {
+    expect(listOrganizations(db, "zzz")).toHaveLength(0);
+  });
+});
 
-describe('contact search and filter', () => {
-  it('searches by name', () => {
-    expect(listContacts(db, { q: 'maria' }).map((c) => c.name)).toEqual(['Maria Delgado'])
-  })
+describe("contact search and filter", () => {
+  it("searches by name", () => {
+    expect(listContacts(db, { q: "maria" }).map((c) => c.name)).toEqual([
+      "Maria Delgado",
+    ]);
+  });
 
-  it('searches by email', () => {
-    expect(listContacts(db, { q: 'bluepeak.io' }).map((c) => c.name)).toEqual(['Jonas Lindqvist'])
-  })
+  it("searches by email", () => {
+    expect(listContacts(db, { q: "bluepeak.io" }).map((c) => c.name)).toEqual([
+      "Jonas Lindqvist",
+    ]);
+  });
 
-  it('filters by status', () => {
-    expect(listContacts(db, { status: 'lead' }).map((c) => c.name)).toEqual(['Sam Okafor'])
-  })
+  it("filters by status", () => {
+    expect(listContacts(db, { status: "lead" }).map((c) => c.name)).toEqual([
+      "Sam Okafor",
+    ]);
+  });
 
-  it('combines search and status filter', () => {
-    expect(listContacts(db, { q: 'sam', status: 'customer' })).toHaveLength(0)
-    expect(listContacts(db, { q: 'sam', status: 'lead' })).toHaveLength(1)
-  })
-})
+  it("combines search and status filter", () => {
+    expect(listContacts(db, { q: "sam", status: "customer" })).toHaveLength(0);
+    expect(listContacts(db, { q: "sam", status: "lead" })).toHaveLength(1);
+  });
+});
 
-describe('deal search', () => {
-  it('searches by name', () => {
-    expect(listDeals(db, { q: 'upgrade' }).map((d) => d.name)).toEqual(['Enterprise upgrade'])
-  })
+describe("deal search", () => {
+  it("searches by name", () => {
+    expect(listDeals(db, { q: "upgrade" }).map((d) => d.name)).toEqual([
+      "Enterprise upgrade",
+    ]);
+  });
 
-  it('searches by the organization the deal is with', () => {
-    expect(listDeals(db, { q: 'Bluepeak' }).map((d) => d.name)).toEqual(['Enterprise upgrade'])
-  })
+  it("searches by the organization the deal is with", () => {
+    expect(listDeals(db, { q: "Bluepeak" }).map((d) => d.name)).toEqual([
+      "Enterprise upgrade",
+    ]);
+  });
 
-  it('searches by the primary contact', () => {
-    expect(listDeals(db, { q: 'Jonas' }).map((d) => d.name)).toEqual(['Enterprise upgrade'])
-  })
+  it("searches by the primary contact", () => {
+    expect(listDeals(db, { q: "Jonas" }).map((d) => d.name)).toEqual([
+      "Enterprise upgrade",
+    ]);
+  });
 
-  it('still matches a deal that has no organization or contact', () => {
-    expect(listDeals(db, { q: 'Loyalty' }).map((d) => d.name)).toEqual(['Loyalty program'])
-  })
+  it("still matches a deal that has no organization or contact", () => {
+    expect(listDeals(db, { q: "Loyalty" }).map((d) => d.name)).toEqual([
+      "Loyalty program",
+    ]);
+  });
 
-  it('combines search with the stage filter', () => {
-    expect(listDeals(db, { q: 'Bluepeak', stage: 'Negotiation' })).toHaveLength(1)
-    expect(listDeals(db, { q: 'Bluepeak', stage: 'Qualified' })).toHaveLength(0)
-  })
+  it("combines search with the stage filter", () => {
+    expect(listDeals(db, { q: "Bluepeak", stage: "Negotiation" })).toHaveLength(
+      1,
+    );
+    expect(listDeals(db, { q: "Bluepeak", stage: "Qualified" })).toHaveLength(
+      0,
+    );
+  });
 
-  it('returns nothing for a non-match', () => {
-    expect(listDeals(db, { q: 'zzz' })).toHaveLength(0)
-  })
-})
+  it("returns nothing for a non-match", () => {
+    expect(listDeals(db, { q: "zzz" })).toHaveLength(0);
+  });
+});

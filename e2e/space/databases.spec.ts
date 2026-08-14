@@ -1,13 +1,17 @@
 import { test, expect } from "../fixtures";
 
-test("create a database, add properties, rows, edit cells, and reopen after refresh", async ({ page }) => {
+test("create a database, add properties, rows, edit cells, and reopen after refresh", async ({
+  page,
+}) => {
   const name = `Tasks DB ${Date.now()}`;
   await page.goto("/space/");
   await page.getByRole("button", { name: "New database" }).click();
   const title = page.getByPlaceholder("Untitled");
   await expect(title).toHaveValue("");
   await title.fill(name);
-  await expect(page.getByRole("treeitem", { name: new RegExp(name) })).toBeVisible();
+  await expect(
+    page.getByRole("treeitem", { name: new RegExp(name) }),
+  ).toBeVisible();
 
   // add a text property and a select property
   await page.getByRole("button", { name: "Add property" }).click();
@@ -36,25 +40,37 @@ test("create a database, add properties, rows, edit cells, and reopen after refr
   await page.getByLabel("Stage for Write the report").click();
   await page.getByPlaceholder("Select or create…").fill("Drafting");
   await page.getByRole("button", { name: "Create “Drafting”" }).click();
-  await expect(page.getByLabel("Stage for Write the report").getByText("Drafting")).toBeVisible();
+  await expect(
+    page.getByLabel("Stage for Write the report").getByText("Drafting"),
+  ).toBeVisible();
 
   await page.getByLabel("Stage for Review the report").click();
   await expect(page.getByRole("dialog").getByText("Drafting")).toBeVisible();
   await page.getByRole("dialog").getByText("Drafting").click();
-  await expect(page.getByLabel("Stage for Review the report").getByText("Drafting")).toBeVisible();
+  await expect(
+    page.getByLabel("Stage for Review the report").getByText("Drafting"),
+  ).toBeVisible();
 
   // everything survives a refresh
   await page.reload();
   await expect(page.getByRole("columnheader", { name: "Owner" })).toBeVisible();
-  await expect(page.getByLabel("Title for row Write the report")).toHaveValue("Write the report");
+  await expect(page.getByLabel("Title for row Write the report")).toHaveValue(
+    "Write the report",
+  );
   await expect(page.getByLabel("Owner for Write the report")).toHaveValue("Ed");
-  await expect(page.getByLabel("Stage for Review the report").getByText("Drafting")).toBeVisible();
+  await expect(
+    page.getByLabel("Stage for Review the report").getByText("Drafting"),
+  ).toBeVisible();
 });
 
-test("seeded Reading List: edit cells in place, values persist", async ({ page }) => {
+test("seeded Reading List: edit cells in place, values persist", async ({
+  page,
+}) => {
   await page.goto("/space/");
   await page.getByRole("treeitem", { name: /Reading List/ }).click();
-  await expect(page.getByRole("columnheader", { name: "Author" })).toBeVisible();
+  await expect(
+    page.getByRole("columnheader", { name: "Author" }),
+  ).toBeVisible();
 
   const rating = page.getByLabel("Rating for Piranesi");
   await rating.fill("4");
@@ -72,7 +88,9 @@ test("seeded Reading List: edit cells in place, values persist", async ({ page }
   await page.getByLabel("Owned for Piranesi").uncheck();
 });
 
-test("a row opens as a page with properties on top and editable blocks below", async ({ page }) => {
+test("a row opens as a page with properties on top and editable blocks below", async ({
+  page,
+}) => {
   await page.goto("/space/");
   await page.getByRole("treeitem", { name: /Reading List/ }).click();
   const duneTitle = page.getByLabel("Title for row Dune");
@@ -81,12 +99,18 @@ test("a row opens as a page with properties on top and editable blocks below", a
 
   await expect(page.locator(".row-breadcrumb")).toHaveText(/Reading List/);
   await expect(page.getByLabel("Author for Dune")).toHaveValue("Frank Herbert");
-  await expect(page.locator(".b-quote-text")).toHaveText("Fear is the mind-killer.");
+  await expect(page.locator(".b-quote-text")).toHaveText(
+    "Fear is the mind-killer.",
+  );
 
   // edit a property and a block, both persist
   await page.getByLabel("Author for Dune").fill("F. Herbert");
   await page.getByLabel("Author for Dune").press("Enter");
-  const saved = page.waitForResponse((r) => r.url().includes("/api/space/blocks/") && r.request().method() === "PATCH");
+  const saved = page.waitForResponse(
+    (r) =>
+      r.url().includes("/api/space/blocks/") &&
+      r.request().method() === "PATCH",
+  );
   const para = page.locator(".block-text").last();
   await para.click();
   await page.keyboard.press("End");
@@ -107,5 +131,8 @@ test("date and checkbox editors fit their types", async ({ page }) => {
   await page.getByRole("treeitem", { name: /Reading List/ }).click();
   const date = page.getByLabel("Finished on for Dune");
   await expect(date).toHaveAttribute("type", "date");
-  await expect(page.getByLabel("Owned for Dune")).toHaveAttribute("type", "checkbox");
+  await expect(page.getByLabel("Owned for Dune")).toHaveAttribute(
+    "type",
+    "checkbox",
+  );
 });

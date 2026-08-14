@@ -12,11 +12,18 @@ interface Props {
 
 export default function Menu({ at, items, onClose }: Props) {
   return (
-    <div className="menu-overlay" onMouseDown={onClose} onClick={(e) => e.stopPropagation()}>
+    <div
+      className="menu-overlay"
+      onMouseDown={onClose}
+      onClick={(e) => e.stopPropagation()}
+    >
       <div
         className="menu"
         role="menu"
-        style={{ left: Math.min(at.x, window.innerWidth - 180), top: Math.min(at.y, window.innerHeight - items.length * 36 - 16) }}
+        style={{
+          left: Math.min(at.x, window.innerWidth - 180),
+          top: Math.min(at.y, window.innerHeight - items.length * 36 - 16),
+        }}
         onMouseDown={(e) => e.stopPropagation()}
       >
         {items.map((item) => (

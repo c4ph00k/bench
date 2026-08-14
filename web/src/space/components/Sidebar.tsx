@@ -18,7 +18,9 @@ export function subtreeContains(node: TreeNode, id: string): boolean {
 
 function loadExpanded(): Set<string> {
   try {
-    return new Set(JSON.parse(localStorage.getItem("ps.expanded") ?? "[]") as string[]);
+    return new Set(
+      JSON.parse(localStorage.getItem("ps.expanded") ?? "[]") as string[],
+    );
   } catch {
     return new Set();
   }
@@ -38,7 +40,10 @@ export default function Sidebar({ tree, onChange, onSearch }: Props) {
     localStorage.setItem("ps.expanded", JSON.stringify([...next]));
   };
 
-  const createPage = async (parentId: string | null, type: "page" | "database" = "page") => {
+  const createPage = async (
+    parentId: string | null,
+    type: "page" | "database" = "page",
+  ) => {
     const page = await api.createPage({ parentId, title: "", type });
     if (parentId && !expanded.has(parentId)) toggle(parentId);
     await onChange();
@@ -89,13 +94,18 @@ export default function Sidebar({ tree, onChange, onSearch }: Props) {
           <Plus size={16} />
           New page
         </button>
-        <button className="sidebar-action" onClick={() => createPage(null, "database")}>
+        <button
+          className="sidebar-action"
+          onClick={() => createPage(null, "database")}
+        >
           <Database size={15} />
           New database
         </button>
         <button
           className="sidebar-action"
-          aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          aria-label={
+            theme === "dark" ? "Switch to light mode" : "Switch to dark mode"
+          }
           onClick={() => setTheme(toggleTheme())}
         >
           {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}

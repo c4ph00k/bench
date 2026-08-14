@@ -10,18 +10,29 @@ async function openSection(page: Page, name: string) {
 
 test("the dashboard summarises seeded data", async ({ page }) => {
   await page.goto("/crm/");
-  await expect(page.getByRole("heading", { name: "Dashboard", level: 1 })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Dashboard", level: 1 }),
+  ).toBeVisible();
   await expect(page.getByText("Open deals")).toBeVisible();
-  for (const chart of ["Revenue and deal volume", "Revenue funnel", "Win rate", "Top organizations"]) {
+  for (const chart of [
+    "Revenue and deal volume",
+    "Revenue funnel",
+    "Win rate",
+    "Top organizations",
+  ]) {
     await expect(page.getByRole("heading", { name: chart })).toBeVisible();
   }
-  await expect(page.getByRole("heading", { name: "Recent activity" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Recent activity" }),
+  ).toBeVisible();
   await expect(page.getByRole("heading", { name: "Follow-ups" })).toBeVisible();
   // Follow-ups are seeded, and each is a checkbox you can tick off.
   await expect(page.getByRole("checkbox").first()).toBeVisible();
 });
 
-test("create an organization, see it listed, then delete it", async ({ page }) => {
+test("create an organization, see it listed, then delete it", async ({
+  page,
+}) => {
   await openSection(page, "Organizations");
   const before = await page.locator("tbody tr").count();
 
@@ -32,17 +43,26 @@ test("create an organization, see it listed, then delete it", async ({ page }) =
   await dialog.getByLabel("Industry").fill("Manufacturing");
   await dialog.getByRole("button", { name: "Save" }).click();
 
-  await expect(page.getByRole("row", { name: /Test Industries Ltd/ })).toBeVisible();
+  await expect(
+    page.getByRole("row", { name: /Test Industries Ltd/ }),
+  ).toBeVisible();
   expect(await page.locator("tbody tr").count()).toBe(before + 1);
 
   await page.getByRole("row", { name: /Test Industries Ltd/ }).click();
-  await expect(page.getByRole("heading", { name: "Test Industries Ltd", level: 1 })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Test Industries Ltd", level: 1 }),
+  ).toBeVisible();
   expect(new URL(page.url()).pathname).toMatch(/^\/crm\/organizations\/\d+$/);
 
   await page.getByRole("button", { name: "Delete", exact: true }).click();
-  await page.getByRole("dialog").getByRole("button", { name: "Delete" }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Delete" })
+    .click();
   await expect(page).toHaveURL(/\/crm\/organizations$/);
-  await expect(page.getByRole("row", { name: /Test Industries Ltd/ })).toHaveCount(0);
+  await expect(
+    page.getByRole("row", { name: /Test Industries Ltd/ }),
+  ).toHaveCount(0);
 });
 
 test("cancelling a delete keeps the record", async ({ page }) => {
@@ -52,11 +72,18 @@ test("cancelling a delete keeps the record", async ({ page }) => {
 
   await row.click();
   await page.getByRole("button", { name: "Delete", exact: true }).click();
-  await page.getByRole("dialog").getByRole("button", { name: "Cancel" }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Cancel" })
+    .click();
 
   await expect(page.getByRole("heading", { name, level: 1 })).toBeVisible();
   await openSection(page, "Organizations");
-  await expect(page.getByRole("row", { name: new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")) })).toBeVisible();
+  await expect(
+    page.getByRole("row", {
+      name: new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+    }),
+  ).toBeVisible();
 });
 
 test("editing an organization persists across a reload", async ({ page }) => {
@@ -73,7 +100,9 @@ test("editing an organization persists across a reload", async ({ page }) => {
   await expect(page.getByText("Rewritten Industry").first()).toBeVisible();
 });
 
-test("search narrows the contact list and clearing restores it", async ({ page }) => {
+test("search narrows the contact list and clearing restores it", async ({
+  page,
+}) => {
   await openSection(page, "Contacts");
   const all = await page.locator("tbody tr").count();
   expect(all).toBeGreaterThan(1);
@@ -97,13 +126,17 @@ test("the status filter shows only matching contacts", async ({ page }) => {
   }
 });
 
-test("a search with no matches leaves an empty table rather than stale rows", async ({ page }) => {
+test("a search with no matches leaves an empty table rather than stale rows", async ({
+  page,
+}) => {
   await openSection(page, "Contacts");
   await page.getByPlaceholder("Search contacts…").fill("zzzznotarealcontact");
   await expect(page.locator("tbody tr")).toHaveCount(0);
 });
 
-test("create a contact against an organization and open it from the detail page", async ({ page }) => {
+test("create a contact against an organization and open it from the detail page", async ({
+  page,
+}) => {
   await openSection(page, "Contacts");
   await page.getByRole("button", { name: "Add contact" }).click();
 
@@ -115,11 +148,15 @@ test("create a contact against an organization and open it from the detail page"
 
   await expect(page.getByRole("row", { name: /Test Person/ })).toBeVisible();
   await page.getByRole("row", { name: /Test Person/ }).click();
-  await expect(page.getByRole("heading", { name: "Test Person", level: 1 })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Test Person", level: 1 }),
+  ).toBeVisible();
   await expect(page.getByText("test.person@example.com")).toBeVisible();
 });
 
-test("a deal detail page lists its activities and accepts a new note", async ({ page }) => {
+test("a deal detail page lists its activities and accepts a new note", async ({
+  page,
+}) => {
   await openSection(page, "Deals");
   await page.locator("tbody tr").first().click();
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();

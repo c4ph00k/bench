@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   DndContext,
   PointerSensor,
@@ -7,7 +13,11 @@ import {
   useSensors,
   type DragEndEvent,
 } from "@dnd-kit/core";
-import { SortableContext, arrayMove, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import {
+  SortableContext,
+  arrayMove,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { api, type Block } from "../api";
 import { caretOffset, focusBlock, selectionCollapsed } from "./caret";
@@ -16,7 +26,13 @@ import BlockRow from "./BlockRow";
 import SlashMenu from "./SlashMenu";
 
 const LIST_TYPES = new Set(["bulleted", "numbered", "todo"]);
-const EMPTY_ENTER_RESETS = new Set(["bulleted", "numbered", "todo", "quote", "callout"]);
+const EMPTY_ENTER_RESETS = new Set([
+  "bulleted",
+  "numbered",
+  "todo",
+  "quote",
+  "callout",
+]);
 
 interface SlashState {
   blockId: string;
@@ -32,7 +48,11 @@ interface Props {
 }
 
 /** Move activeId to overId's position; returns a new array (or the same one if a no-op). */
-export function applyReorder(blocks: Block[], activeId: string, overId: string): Block[] {
+export function applyReorder(
+  blocks: Block[],
+  activeId: string,
+  overId: string,
+): Block[] {
   const from = blocks.findIndex((b) => b.id === activeId);
   const to = blocks.findIndex((b) => b.id === overId);
   if (from < 0 || to < 0 || from === to) return blocks;
@@ -42,7 +62,9 @@ export function applyReorder(blocks: Block[], activeId: string, overId: string):
 export default function Editor({ pageId, initialBlocks }: Props) {
   const [blocks, setBlocks] = useState<Block[]>(() =>
     initialBlocks.map((b) =>
-      b.content && typeof b.content === "object" && !Array.isArray(b.content) ? b : { ...b, content: {} },
+      b.content && typeof b.content === "object" && !Array.isArray(b.content)
+        ? b
+        : { ...b, content: {} },
     ),
   );
   const blocksRef = useRef(blocks);
@@ -52,14 +74,18 @@ export default function Editor({ pageId, initialBlocks }: Props) {
   const slashRef = useRef(slash);
   slashRef.current = slash;
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
-  const pendingFocus = useRef<{ id: string; offset: number | "end" } | null>(null);
+  const pendingFocus = useRef<{ id: string; offset: number | "end" } | null>(
+    null,
+  );
   const queue = useRef<Promise<unknown>>(Promise.resolve());
   /** Serialize block mutations so they reach the server in the order they happened. */
   const enqueue = useCallback((op: () => Promise<unknown>) => {
     queue.current = queue.current.then(op, op);
   }, []);
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+  );
 
   useEffect(() => {
     const flushAll = () => {
@@ -87,8 +113,23 @@ export default function Editor({ pageId, initialBlocks }: Props) {
   useEffect(() => {
     if (blocksRef.current.length === 0) {
       const id = crypto.randomUUID();
-      setBlocks([{ id, page_id: pageId, type: "paragraph", content: { text: "" }, position: 0 }]);
-      enqueue(() => api.createBlock(pageId, { id, type: "paragraph", content: { text: "" }, index: 0 }));
+      setBlocks([
+        {
+          id,
+          page_id: pageId,
+          type: "paragraph",
+          content: { text: "" },
+          position: 0,
+        },
+      ]);
+      enqueue(() =>
+        api.createBlock(pageId, {
+          id,
+          type: "paragraph",
+          content: { text: "" },
+          index: 0,
+        }),
+      );
     }
   }, [pageId]);
 
@@ -112,21 +153,30 @@ export default function Editor({ pageId, initialBlocks }: Props) {
     (id: string) => {
       const timer = timers.current.get(id);
       if (timer) clearTimeout(timer);
-      timers.current.set(id, setTimeout(() => flushSave(id), 500));
+      timers.current.set(
+        id,
+        setTimeout(() => flushSave(id), 500),
+      );
     },
     [flushSave],
   );
 
   const setText = useCallback(
     (id: string, text: string, programmatic = false) => {
-      setBlocks((bs) => bs.map((b) => (b.id === id ? { ...b, content: { ...b.content, text } } : b)));
+      setBlocks((bs) =>
+        bs.map((b) =>
+          b.id === id ? { ...b, content: { ...b.content, text } } : b,
+        ),
+      );
       if (programmatic) {
         setVersions((v) => ({ ...v, [id]: (v[id] ?? 0) + 1 }));
         const timer = timers.current.get(id);
         if (timer) clearTimeout(timer);
         timers.current.delete(id);
         const block = blocksRef.current.find((b) => b.id === id);
-        enqueue(() => api.updateBlock(id, { content: { ...block?.content, text } }));
+        enqueue(() =>
+          api.updateBlock(id, { content: { ...block?.content, text } }),
+        );
       } else {
         scheduleSave(id);
       }
@@ -135,15 +185,27 @@ export default function Editor({ pageId, initialBlocks }: Props) {
   );
 
   const insertBlock = useCallback(
-    (index: number, type: string, content: Record<string, unknown>, focusOffset: number | "end" | null = 0) => {
+    (
+      index: number,
+      type: string,
+      content: Record<string, unknown>,
+      focusOffset: number | "end" | null = 0,
+    ) => {
       const id = crypto.randomUUID();
       setBlocks((bs) => {
         const next = [...bs];
-        next.splice(index, 0, { id, page_id: pageId, type, content, position: index });
+        next.splice(index, 0, {
+          id,
+          page_id: pageId,
+          type,
+          content,
+          position: index,
+        });
         return next;
       });
       enqueue(() => api.createBlock(pageId, { id, type, content, index }));
-      if (focusOffset !== null) pendingFocus.current = { id, offset: focusOffset };
+      if (focusOffset !== null)
+        pendingFocus.current = { id, offset: focusOffset };
       return id;
     },
     [pageId],
@@ -154,13 +216,20 @@ export default function Editor({ pageId, initialBlocks }: Props) {
     enqueue(() => api.deleteBlock(id));
   }, []);
 
-  const convertType = useCallback((id: string, type: string, content?: Record<string, unknown>) => {
-    setBlocks((bs) =>
-      bs.map((b) => (b.id === id ? { ...b, type, content: content ?? b.content } : b)),
-    );
-    const block = blocksRef.current.find((b) => b.id === id);
-    enqueue(() => api.updateBlock(id, { type, content: content ?? block?.content }));
-  }, []);
+  const convertType = useCallback(
+    (id: string, type: string, content?: Record<string, unknown>) => {
+      setBlocks((bs) =>
+        bs.map((b) =>
+          b.id === id ? { ...b, type, content: content ?? b.content } : b,
+        ),
+      );
+      const block = blocksRef.current.find((b) => b.id === id);
+      enqueue(() =>
+        api.updateBlock(id, { type, content: content ?? block?.content }),
+      );
+    },
+    [],
+  );
 
   const handleEnter = useCallback(
     (id: string, el: HTMLElement, shift: boolean) => {
@@ -211,7 +280,8 @@ export default function Editor({ pageId, initialBlocks }: Props) {
         e.preventDefault();
         removeBlock(id);
         if (prev) pendingFocus.current = { id: prev.id, offset: "end" };
-        else if (bs[i + 1]) pendingFocus.current = { id: bs[i + 1].id, offset: 0 };
+        else if (bs[i + 1])
+          pendingFocus.current = { id: bs[i + 1].id, offset: 0 };
         return;
       }
       if (prev && prev.type !== "divider") {
@@ -235,7 +305,8 @@ export default function Editor({ pageId, initialBlocks }: Props) {
       if (i < 0) return;
       const block = bs[i];
       const text = (block.content.text as string) ?? "";
-      const newText = text.slice(0, s.index) + text.slice(s.index + 1 + s.query.length);
+      const newText =
+        text.slice(0, s.index) + text.slice(s.index + 1 + s.query.length);
       if (type === "divider") {
         convertType(block.id, "divider", {});
         insertBlock(i + 1, "paragraph", { text: newText }, 0);
@@ -258,7 +329,8 @@ export default function Editor({ pageId, initialBlocks }: Props) {
         // the filter runs from the slash to the caret, so text after the caret is left alone
         const end = caret > s.index ? caret : undefined;
         if (text[s.index] !== "/") setSlash(null);
-        else setSlash({ ...s, query: text.slice(s.index + 1, end), selected: 0 });
+        else
+          setSlash({ ...s, query: text.slice(s.index + 1, end), selected: 0 });
       }
     },
     [setText],
@@ -276,7 +348,10 @@ export default function Editor({ pageId, initialBlocks }: Props) {
         }
         if (e.key === "ArrowUp" && items.length > 0) {
           e.preventDefault();
-          setSlash({ ...s, selected: (s.selected - 1 + items.length) % items.length });
+          setSlash({
+            ...s,
+            selected: (s.selected - 1 + items.length) % items.length,
+          });
           return;
         }
         if (e.key === "Enter" && items[s.selected]) {
@@ -320,7 +395,9 @@ export default function Editor({ pageId, initialBlocks }: Props) {
 
   const onToggleTodo = useCallback((id: string, checked: boolean) => {
     setBlocks((bs) => {
-      const next = bs.map((b) => (b.id === id ? { ...b, content: { ...b.content, checked } } : b));
+      const next = bs.map((b) =>
+        b.id === id ? { ...b, content: { ...b.content, checked } } : b,
+      );
       const block = next.find((b) => b.id === id);
       if (block) enqueue(() => api.updateBlock(id, { content: block.content }));
       return next;
@@ -348,7 +425,11 @@ export default function Editor({ pageId, initialBlocks }: Props) {
       if (e.target !== e.currentTarget) return;
       const bs = blocksRef.current;
       const last = bs[bs.length - 1];
-      if (last && last.type === "paragraph" && !((last.content.text as string) ?? "")) {
+      if (
+        last &&
+        last.type === "paragraph" &&
+        !((last.content.text as string) ?? "")
+      ) {
         focusBlock(last.id, "end");
       } else {
         insertBlock(bs.length, "paragraph", { text: "" }, 0);
@@ -366,7 +447,10 @@ export default function Editor({ pageId, initialBlocks }: Props) {
         modifiers={[restrictToVerticalAxis]}
         onDragEnd={onDragEnd}
       >
-        <SortableContext items={blocks.map((b) => b.id)} strategy={verticalListSortingStrategy}>
+        <SortableContext
+          items={blocks.map((b) => b.id)}
+          strategy={verticalListSortingStrategy}
+        >
           {blocks.map((block) => {
             numberCounter = block.type === "numbered" ? numberCounter + 1 : 0;
             return (
@@ -390,7 +474,9 @@ export default function Editor({ pageId, initialBlocks }: Props) {
           selected={slash.selected}
           anchor={slash.anchor}
           onPick={pickSlash}
-          onHover={(i) => setSlash((cur) => (cur ? { ...cur, selected: i } : cur))}
+          onHover={(i) =>
+            setSlash((cur) => (cur ? { ...cur, selected: i } : cur))
+          }
         />
       )}
     </div>

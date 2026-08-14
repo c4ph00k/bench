@@ -12,7 +12,9 @@ export function node(partial: Partial<TreeNode> & { id: string }): TreeNode {
   };
 }
 
-export function pageData(partial: Partial<PageData> & { id: string }): PageData {
+export function pageData(
+  partial: Partial<PageData> & { id: string },
+): PageData {
   return {
     parent_id: null,
     type: "page",

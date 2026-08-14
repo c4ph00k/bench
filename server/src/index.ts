@@ -7,7 +7,10 @@ import { openDb as openSpaceDb } from "./space/db.js";
 import { seedIfEmpty } from "./space/seed.js";
 import { createApp } from "./app.js";
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+const root = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "../..",
+);
 const dataDir = path.resolve(root, process.env.DATA_DIR ?? "data");
 const port = Number(process.env.PORT ?? 8100);
 

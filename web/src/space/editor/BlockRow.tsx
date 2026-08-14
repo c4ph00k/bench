@@ -43,8 +43,20 @@ const PLACEHOLDERS: Record<string, string> = {
   callout: "Callout",
 };
 
-export default function BlockRow({ block, number, version, ...handlers }: Props) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id });
+export default function BlockRow({
+  block,
+  number,
+  version,
+  ...handlers
+}: Props) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: block.id });
   const text = (block.content.text as string) ?? "";
   const checked = Boolean(block.content.checked);
 
@@ -94,7 +106,9 @@ export default function BlockRow({ block, number, version, ...handlers }: Props)
               className="b-checkbox"
               checked={checked}
               aria-label={text || "To-do"}
-              onChange={(e) => handlers.onToggleTodo(block.id, e.target.checked)}
+              onChange={(e) =>
+                handlers.onToggleTodo(block.id, e.target.checked)
+              }
             />
             {editable(checked ? " b-done" : "")}
           </div>
@@ -126,7 +140,12 @@ export default function BlockRow({ block, number, version, ...handlers }: Props)
       className={`block-row bt-${block.type}${isDragging ? " dragging" : ""}`}
       data-block-id={block.id}
     >
-      <button className="drag-handle" aria-label="Drag block" {...attributes} {...listeners}>
+      <button
+        className="drag-handle"
+        aria-label="Drag block"
+        {...attributes}
+        {...listeners}
+      >
         <GripVertical size={15} />
       </button>
       <div className="block-content">{inner()}</div>

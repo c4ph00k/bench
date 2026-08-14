@@ -3,11 +3,11 @@
 Three local-first apps behind one server. No login, no cloud - everything runs on your machine and
 your data lives in local SQLite files.
 
-| | | |
-| --- | --- | --- |
-| **CRM** | `/crm` | Personal sales CRM: organizations, contacts, deals, a drag-and-drop pipeline, activities and a dashboard. |
-| **Space** | `/space` | Personal knowledge manager: pages and blocks, databases with table / board / list views, quick find, light and dark themes. |
-| **Groove** | `/groove` | Browser groovebox: four synth units, one transport, a master DJ filter. All Web Audio, no samples. |
+|            |           |                                                                                                                             |
+| ---------- | --------- | --------------------------------------------------------------------------------------------------------------------------- |
+| **CRM**    | `/crm`    | Personal sales CRM: organizations, contacts, deals, a drag-and-drop pipeline, activities and a dashboard.                   |
+| **Space**  | `/space`  | Personal knowledge manager: pages and blocks, databases with table / board / list views, quick find, light and dark themes. |
+| **Groove** | `/groove` | Browser groovebox: four synth units, one transport, a master DJ filter. All Web Audio, no samples.                          |
 
 ## Run it
 

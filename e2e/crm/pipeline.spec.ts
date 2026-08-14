@@ -9,8 +9,14 @@ import type { Page } from "@playwright/test";
 const STAGES = ["New", "Qualified", "Proposal", "Negotiation", "Won", "Lost"];
 
 /** Read a deal's stage straight from the API, so assertions do not trust the UI alone. */
-async function stageOf(page: Page, baseURL: string, name: string): Promise<string> {
-  const deals = await (await page.request.get(`${baseURL}/api/crm/deals`)).json();
+async function stageOf(
+  page: Page,
+  baseURL: string,
+  name: string,
+): Promise<string> {
+  const deals = await (
+    await page.request.get(`${baseURL}/api/crm/deals`)
+  ).json();
   return deals.find((d: { name: string }) => d.name === name).stage;
 }
 
@@ -25,9 +31,14 @@ test("the board shows every stage as a column", async ({ page }) => {
   }
 });
 
-test("keyboard-dragging a card moves the deal to the next stage", async ({ page, baseURL }) => {
+test("keyboard-dragging a card moves the deal to the next stage", async ({
+  page,
+  baseURL,
+}) => {
   await page.goto("/crm/pipeline");
-  const deals = await (await page.request.get(`${baseURL}/api/crm/deals`)).json();
+  const deals = await (
+    await page.request.get(`${baseURL}/api/crm/deals`)
+  ).json();
   const deal = deals.find((d: { stage: string }) => d.stage === "New");
   expect(deal, "seed data should contain a deal in New").toBeTruthy();
 
@@ -41,27 +52,41 @@ test("keyboard-dragging a card moves the deal to the next stage", async ({ page,
     .toBe("Qualified");
 });
 
-test("a stage change survives a reload and shows on the deals list", async ({ page, baseURL }) => {
+test("a stage change survives a reload and shows on the deals list", async ({
+  page,
+  baseURL,
+}) => {
   await page.goto("/crm/pipeline");
-  const deals = await (await page.request.get(`${baseURL}/api/crm/deals`)).json();
+  const deals = await (
+    await page.request.get(`${baseURL}/api/crm/deals`)
+  ).json();
   const deal = deals.find((d: { stage: string }) => d.stage === "New");
 
   await card(page, deal.name).focus();
   await page.keyboard.press("Space");
   await page.keyboard.press("ArrowRight");
   await page.keyboard.press("Space");
-  await expect.poll(() => stageOf(page, baseURL!, deal.name), { timeout: 5000 }).toBe("Qualified");
+  await expect
+    .poll(() => stageOf(page, baseURL!, deal.name), { timeout: 5000 })
+    .toBe("Qualified");
 
   await page.reload();
   await expect(card(page, deal.name)).toBeVisible();
 
   await page.goto("/crm/deals");
-  await expect(page.getByRole("row", { name: new RegExp(deal.name) })).toContainText("Qualified");
+  await expect(
+    page.getByRole("row", { name: new RegExp(deal.name) }),
+  ).toContainText("Qualified");
 });
 
-test("dropping a card back returns it to the original stage", async ({ page, baseURL }) => {
+test("dropping a card back returns it to the original stage", async ({
+  page,
+  baseURL,
+}) => {
   await page.goto("/crm/pipeline");
-  const deals = await (await page.request.get(`${baseURL}/api/crm/deals`)).json();
+  const deals = await (
+    await page.request.get(`${baseURL}/api/crm/deals`)
+  ).json();
   const deal = deals.find((d: { stage: string }) => d.stage === "Qualified");
 
   await card(page, deal.name).focus();
@@ -69,12 +94,19 @@ test("dropping a card back returns it to the original stage", async ({ page, bas
   await page.keyboard.press("ArrowLeft");
   await page.keyboard.press("Space");
 
-  await expect.poll(() => stageOf(page, baseURL!, deal.name), { timeout: 5000 }).toBe("New");
+  await expect
+    .poll(() => stageOf(page, baseURL!, deal.name), { timeout: 5000 })
+    .toBe("New");
 });
 
-test("escape cancels a lift and leaves the deal where it was", async ({ page, baseURL }) => {
+test("escape cancels a lift and leaves the deal where it was", async ({
+  page,
+  baseURL,
+}) => {
   await page.goto("/crm/pipeline");
-  const deals = await (await page.request.get(`${baseURL}/api/crm/deals`)).json();
+  const deals = await (
+    await page.request.get(`${baseURL}/api/crm/deals`)
+  ).json();
   const deal = deals.find((d: { stage: string }) => d.stage === "New");
 
   await card(page, deal.name).focus();
@@ -86,7 +118,9 @@ test("escape cancels a lift and leaves the deal where it was", async ({ page, ba
   expect(await stageOf(page, baseURL!, deal.name)).toBe("New");
 });
 
-test("opening a deal from its card keeps the /crm basename", async ({ page }) => {
+test("opening a deal from its card keeps the /crm basename", async ({
+  page,
+}) => {
   await page.goto("/crm/pipeline");
   await page.locator(".deal-card, [data-rbd-draggable-id]").first().click();
   await expect(page).toHaveURL(/\/crm\/deals\/\d+/);

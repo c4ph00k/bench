@@ -8,11 +8,25 @@ interface Props {
   onHover: (index: number) => void;
 }
 
-export default function SlashMenu({ query, selected, anchor, onPick, onHover }: Props) {
+export default function SlashMenu({
+  query,
+  selected,
+  anchor,
+  onPick,
+  onHover,
+}: Props) {
   const items = filterBlockTypes(query);
-  const top = Math.min(anchor.top + 6, window.innerHeight - Math.min(items.length, 8) * 40 - 20);
+  const top = Math.min(
+    anchor.top + 6,
+    window.innerHeight - Math.min(items.length, 8) * 40 - 20,
+  );
   return (
-    <div className="slash-menu" role="listbox" aria-label="Block types" style={{ left: anchor.left, top }}>
+    <div
+      className="slash-menu"
+      role="listbox"
+      aria-label="Block types"
+      style={{ left: anchor.left, top }}
+    >
       {items.length === 0 && <div className="slash-empty">No results</div>}
       {items.map((item, i) => (
         <button

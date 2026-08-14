@@ -11,7 +11,8 @@ export function applyTheme(theme: Theme): void {
 }
 
 export function initTheme(): void {
-  if (localStorage.getItem("ps.theme") === "dark") document.documentElement.dataset.theme = "dark";
+  if (localStorage.getItem("ps.theme") === "dark")
+    document.documentElement.dataset.theme = "dark";
 }
 
 export function toggleTheme(): Theme {

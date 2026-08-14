@@ -4,11 +4,11 @@ Three local-first apps, merged from three separate repos into one project with *
 server and one backend server**. Everything runs on your own machine: no login, no cloud, no
 external services, no secrets. Data lives in local SQLite files.
 
-| App | Path | What it is | Backend |
-| --- | --- | --- | --- |
-| **CRM** | `/crm` | Personal sales CRM: organizations, contacts, deals, drag-and-drop pipeline, activities, dashboard | `data/crm.sqlite` |
-| **Space** | `/space` | Personal knowledge manager, a single-user Notion: pages and blocks, databases with table/board/list views, search, light and dark themes | `data/personal-space.db` |
-| **Groove** | `/groove` | Browser groovebox instrument: four synth units, one transport, a master DJ filter | none - pure Web Audio, no data |
+| App        | Path      | What it is                                                                                                                               | Backend                        |
+| ---------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| **CRM**    | `/crm`    | Personal sales CRM: organizations, contacts, deals, drag-and-drop pipeline, activities, dashboard                                        | `data/crm.sqlite`              |
+| **Space**  | `/space`  | Personal knowledge manager, a single-user Notion: pages and blocks, databases with table/board/list views, search, light and dark themes | `data/personal-space.db`       |
+| **Groove** | `/groove` | Browser groovebox instrument: four synth units, one transport, a master DJ filter                                                        | none - pure Web Audio, no data |
 
 A launcher at `/` links to all three.
 
@@ -17,10 +17,10 @@ A launcher at `/` links to all three.
 One directory per app. Read these on demand - they are not loaded into context by default. Open the
 app you are working in before changing its behaviour.
 
-| App | Implementation | Requirements | Also |
-| --- | --- | --- | --- |
-| CRM | [crm/IMPLEMENTATION.md](./crm/IMPLEMENTATION.md) | [crm/REQUIREMENTS.md](./crm/REQUIREMENTS.md) | |
-| Space | [space/IMPLEMENTATION.md](./space/IMPLEMENTATION.md) | [space/REQUIREMENTS.md](./space/REQUIREMENTS.md) | |
+| App    | Implementation                                         | Requirements                                       | Also                                                            |
+| ------ | ------------------------------------------------------ | -------------------------------------------------- | --------------------------------------------------------------- |
+| CRM    | [crm/IMPLEMENTATION.md](./crm/IMPLEMENTATION.md)       | [crm/REQUIREMENTS.md](./crm/REQUIREMENTS.md)       |                                                                 |
+| Space  | [space/IMPLEMENTATION.md](./space/IMPLEMENTATION.md)   | [space/REQUIREMENTS.md](./space/REQUIREMENTS.md)   |                                                                 |
 | Groove | [groove/IMPLEMENTATION.md](./groove/IMPLEMENTATION.md) | [groove/REQUIREMENTS.md](./groove/REQUIREMENTS.md) | [groove/INSTRUMENT.md](./groove/INSTRUMENT.md) - player's guide |
 
 **IMPLEMENTATION.md** is how the app is built now: structure, domain rules, and the traps.

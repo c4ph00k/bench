@@ -6,7 +6,10 @@ import { fileURLToPath } from "node:url";
 import { crmRouter } from "./crm/routes.js";
 import { spaceRouter } from "./space/routes/index.js";
 
-const webDist = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../web/dist");
+const webDist = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "../../web/dist",
+);
 
 /** The apps with their own HTML entry point in web/dist, for deep-link fallback. */
 const APPS = ["crm", "space", "groove"];
@@ -27,7 +30,9 @@ export function createApp(dbs: Dbs): express.Express {
     app.use(express.static(webDist));
     app.use((req, res, next) => {
       if (req.method !== "GET" || req.path.startsWith("/api")) return next();
-      const owner = APPS.find((name) => req.path === `/${name}` || req.path.startsWith(`/${name}/`));
+      const owner = APPS.find(
+        (name) => req.path === `/${name}` || req.path.startsWith(`/${name}/`),
+      );
       res.sendFile(path.join(webDist, owner ?? "", "index.html"));
     });
   }

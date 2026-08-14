@@ -7,7 +7,13 @@ interface Props {
   properties: Property[];
 }
 
-export function ValuePreview({ property, value }: { property: Property; value: unknown }) {
+export function ValuePreview({
+  property,
+  value,
+}: {
+  property: Property;
+  value: unknown;
+}) {
   if (value == null || value === "") return null;
   switch (property.type) {
     case "select": {
@@ -40,7 +46,11 @@ export default function ListView({ rows, properties }: Props) {
   return (
     <div className="list-view">
       {rows.map((row) => (
-        <button key={row.id} className="list-row" onClick={() => navigate(`/p/${row.id}`)}>
+        <button
+          key={row.id}
+          className="list-row"
+          onClick={() => navigate(`/p/${row.id}`)}
+        >
           <span className="list-title">{row.title || "Untitled"}</span>
           <span className="list-props">
             {shown.map((p) => (

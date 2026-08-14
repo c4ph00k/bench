@@ -1,26 +1,32 @@
-import { useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router'
-import { api } from '../api'
-import { useFetch } from '../hooks'
-import { Contact, Deal, Organization } from '../types'
-import OrganizationForm from '../components/OrganizationForm'
-import ConfirmDialog from '../components/ConfirmDialog'
-import { StageChip, StatusChip, formatMoney } from '../components/Chips'
+import { useState } from "react";
+import { Link, useNavigate, useParams } from "react-router";
+import { api } from "../api";
+import { useFetch } from "../hooks";
+import { Contact, Deal, Organization } from "../types";
+import OrganizationForm from "../components/OrganizationForm";
+import ConfirmDialog from "../components/ConfirmDialog";
+import { StageChip, StatusChip, formatMoney } from "../components/Chips";
 
 export default function OrganizationDetail() {
-  const { id } = useParams()
-  const navigate = useNavigate()
-  const [editing, setEditing] = useState(false)
-  const [deleting, setDeleting] = useState(false)
-  const { data: org, reload } = useFetch<Organization>(`/api/crm/organizations/${id}`)
-  const { data: contacts } = useFetch<Contact[]>(`/api/crm/contacts?organization_id=${id}`)
-  const { data: deals } = useFetch<Deal[]>(`/api/crm/deals?organization_id=${id}`)
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [editing, setEditing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const { data: org, reload } = useFetch<Organization>(
+    `/api/crm/organizations/${id}`,
+  );
+  const { data: contacts } = useFetch<Contact[]>(
+    `/api/crm/contacts?organization_id=${id}`,
+  );
+  const { data: deals } = useFetch<Deal[]>(
+    `/api/crm/deals?organization_id=${id}`,
+  );
 
-  if (!org) return null
+  if (!org) return null;
 
   async function remove() {
-    await api.delete(`/api/crm/organizations/${id}`)
-    navigate('/organizations')
+    await api.delete(`/api/crm/organizations/${id}`);
+    navigate("/organizations");
   }
 
   return (
@@ -31,9 +37,9 @@ export default function OrganizationDetail() {
       <div className="page-header">
         <div>
           <h1>{org.name}</h1>
-          <p className="page-sub">{org.industry || 'Organization'}</p>
+          <p className="page-sub">{org.industry || "Organization"}</p>
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div style={{ display: "flex", gap: 10 }}>
           <button className="btn btn-ghost" onClick={() => setEditing(true)}>
             Edit
           </button>
@@ -47,11 +53,11 @@ export default function OrganizationDetail() {
           <h2>Details</h2>
           <dl className="props">
             <dt>Website</dt>
-            <dd>{org.website || '—'}</dd>
+            <dd>{org.website || "—"}</dd>
             <dt>Industry</dt>
-            <dd>{org.industry || '—'}</dd>
+            <dd>{org.industry || "—"}</dd>
             <dt>Notes</dt>
-            <dd>{org.notes || '—'}</dd>
+            <dd>{org.notes || "—"}</dd>
           </dl>
         </div>
         <div className="card">
@@ -64,7 +70,7 @@ export default function OrganizationDetail() {
                     <Link className="entity-link" to={`/contacts/${c.id}`}>
                       {c.name}
                     </Link>
-                    <div className="muted">{c.job_title || c.email || ''}</div>
+                    <div className="muted">{c.job_title || c.email || ""}</div>
                   </div>
                   <StatusChip status={c.status} />
                 </div>
@@ -95,7 +101,13 @@ export default function OrganizationDetail() {
           )}
         </div>
       </div>
-      {editing && <OrganizationForm existing={org} onSaved={reload} onClose={() => setEditing(false)} />}
+      {editing && (
+        <OrganizationForm
+          existing={org}
+          onSaved={reload}
+          onClose={() => setEditing(false)}
+        />
+      )}
       {deleting && (
         <ConfirmDialog
           title="Delete organization"
@@ -105,5 +117,5 @@ export default function OrganizationDetail() {
         />
       )}
     </>
-  )
+  );
 }

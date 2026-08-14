@@ -19,12 +19,25 @@ export function nextColor(existing: PropertyOption[]): string {
   return OPTION_COLORS[existing.length % OPTION_COLORS.length];
 }
 
-export function Chip({ option, onRemove }: { option: PropertyOption; onRemove?: () => void }) {
+export function Chip({
+  option,
+  onRemove,
+}: {
+  option: PropertyOption;
+  onRemove?: () => void;
+}) {
   return (
     <span className={`chip chip-${option.color}`}>
       {option.name}
       {onRemove && (
-        <button className="chip-x" aria-label={`Remove ${option.name}`} onClick={(e) => { e.stopPropagation(); onRemove(); }}>
+        <button
+          className="chip-x"
+          aria-label={`Remove ${option.name}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove();
+          }}
+        >
           <X size={11} />
         </button>
       )}
@@ -40,7 +53,13 @@ interface CellProps {
   onCreateOption?: (name: string) => Promise<PropertyOption>;
 }
 
-function TextLikeCell({ property, value, rowLabel, onChange, kind }: CellProps & { kind: "text" | "url" | "number" }) {
+function TextLikeCell({
+  property,
+  value,
+  rowLabel,
+  onChange,
+  kind,
+}: CellProps & { kind: "text" | "url" | "number" }) {
   const [draft, setDraft] = useState(value == null ? "" : String(value));
   useEffect(() => {
     setDraft(value == null ? "" : String(value));
@@ -67,7 +86,13 @@ function TextLikeCell({ property, value, rowLabel, onChange, kind }: CellProps &
         }}
       />
       {kind === "url" && typeof value === "string" && value && (
-        <a className="cell-link" href={value.startsWith("http") ? value : `https://${value}`} target="_blank" rel="noreferrer" aria-label={`Open link ${value}`}>
+        <a
+          className="cell-link"
+          href={value.startsWith("http") ? value : `https://${value}`}
+          target="_blank"
+          rel="noreferrer"
+          aria-label={`Open link ${value}`}
+        >
           <ExternalLink size={13} />
         </a>
       )}
@@ -117,11 +142,20 @@ function OptionPicker({
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => inputRef.current?.focus(), []);
-  const matches = property.options.filter((o) => o.name.toLowerCase().includes(query.trim().toLowerCase()));
+  const matches = property.options.filter((o) =>
+    o.name.toLowerCase().includes(query.trim().toLowerCase()),
+  );
   const canCreate =
-    query.trim() !== "" && !property.options.some((o) => o.name.toLowerCase() === query.trim().toLowerCase());
+    query.trim() !== "" &&
+    !property.options.some(
+      (o) => o.name.toLowerCase() === query.trim().toLowerCase(),
+    );
   return (
-    <div className="option-picker" role="dialog" aria-label={`${property.name} options`}>
+    <div
+      className="option-picker"
+      role="dialog"
+      aria-label={`${property.name} options`}
+    >
       <input
         ref={inputRef}
         className="option-search"
@@ -170,13 +204,21 @@ function OptionPicker({
             <Plus size={13} /> Create “{query.trim()}”
           </button>
         )}
-        {matches.length === 0 && !canCreate && <div className="option-empty">No options</div>}
+        {matches.length === 0 && !canCreate && (
+          <div className="option-empty">No options</div>
+        )}
       </div>
     </div>
   );
 }
 
-function SelectCell({ property, value, rowLabel, onChange, onCreateOption }: CellProps) {
+function SelectCell({
+  property,
+  value,
+  rowLabel,
+  onChange,
+  onCreateOption,
+}: CellProps) {
   const [open, setOpen] = useState(false);
   const selected = property.options.find((o) => o.id === value);
   return (
@@ -186,7 +228,11 @@ function SelectCell({ property, value, rowLabel, onChange, onCreateOption }: Cel
         aria-label={`${property.name} for ${rowLabel}`}
         onClick={() => setOpen((v) => !v)}
       >
-        {selected ? <Chip option={selected} /> : <span className="cell-empty">—</span>}
+        {selected ? (
+          <Chip option={selected} />
+        ) : (
+          <span className="cell-empty">—</span>
+        )}
       </button>
       {open && (
         <>
@@ -205,17 +251,33 @@ function SelectCell({ property, value, rowLabel, onChange, onCreateOption }: Cel
   );
 }
 
-function MultiSelectCell({ property, value, rowLabel, onChange, onCreateOption }: CellProps) {
+function MultiSelectCell({
+  property,
+  value,
+  rowLabel,
+  onChange,
+  onCreateOption,
+}: CellProps) {
   const [open, setOpen] = useState(false);
   const ids = Array.isArray(value) ? (value as string[]) : [];
-  const chosen = ids.map((id) => property.options.find((o) => o.id === id)).filter(Boolean) as PropertyOption[];
+  const chosen = ids
+    .map((id) => property.options.find((o) => o.id === id))
+    .filter(Boolean) as PropertyOption[];
   const toggle = (id: string) => {
     onChange(ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]);
   };
   return (
     <div className="cell-select-wrap">
-      <button className="cell-select" aria-label={`${property.name} for ${rowLabel}`} onClick={() => setOpen((v) => !v)}>
-        {chosen.length > 0 ? chosen.map((o) => <Chip key={o.id} option={o} />) : <span className="cell-empty">—</span>}
+      <button
+        className="cell-select"
+        aria-label={`${property.name} for ${rowLabel}`}
+        onClick={() => setOpen((v) => !v)}
+      >
+        {chosen.length > 0 ? (
+          chosen.map((o) => <Chip key={o.id} option={o} />)
+        ) : (
+          <span className="cell-empty">—</span>
+        )}
       </button>
       {open && (
         <>

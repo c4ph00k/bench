@@ -5,7 +5,9 @@ import { api, type RowData } from "../api";
 import Cell, { nextColor } from "./cells";
 import { PROPERTY_TYPE_LABELS } from "./TableView";
 
-export function useRow(rowId: string): [RowData | null, (r: RowData | null) => void] {
+export function useRow(
+  rowId: string,
+): [RowData | null, (r: RowData | null) => void] {
   const [row, setRow] = useState<RowData | null>(null);
   useEffect(() => {
     setRow(null);
@@ -37,7 +39,10 @@ export function RowPropsGrid({
 
   const createOption = async (propertyId: string, name: string) => {
     const prop = row.properties.find((p) => p.id === propertyId);
-    const option = await api.addOption(propertyId, { name, color: nextColor(prop?.options ?? []) });
+    const option = await api.addOption(propertyId, {
+      name,
+      color: nextColor(prop?.options ?? []),
+    });
     onRowChange({
       ...row,
       properties: row.properties.map((p) =>

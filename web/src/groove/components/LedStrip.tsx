@@ -1,4 +1,4 @@
-import { STEPS } from '../types'
+import { STEPS } from "../types";
 
 export function LedStrip({ current }: { current: number }) {
   return (
@@ -6,9 +6,9 @@ export function LedStrip({ current }: { current: number }) {
       {Array.from({ length: STEPS }, (_, i) => (
         <span
           key={i}
-          className={`led${i === current ? ' on' : ''}${i % 4 === 0 ? ' beat' : ''}`}
+          className={`led${i === current ? " on" : ""}${i % 4 === 0 ? " beat" : ""}`}
         />
       ))}
     </div>
-  )
+  );
 }

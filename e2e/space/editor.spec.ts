@@ -11,19 +11,27 @@ async function freshPage(page: Page, title: string) {
   await page.locator(".block-text").first().click();
 }
 
-test("typing into a page autosaves and survives a refresh", async ({ page }) => {
+test("typing into a page autosaves and survives a refresh", async ({
+  page,
+}) => {
   const title = `Editor Typing ${Date.now()}`;
   await freshPage(page, title);
   await page.keyboard.type("Hello, autosaved world");
-  await expect(page.locator(".block-text").first()).toHaveText("Hello, autosaved world");
+  await expect(page.locator(".block-text").first()).toHaveText(
+    "Hello, autosaved world",
+  );
 
   await page.waitForTimeout(800);
   await page.reload();
-  await expect(page.locator(".block-text").first()).toHaveText("Hello, autosaved world");
+  await expect(page.locator(".block-text").first()).toHaveText(
+    "Hello, autosaved world",
+  );
   await expect(page.getByRole("button", { name: /^Save$/ })).toHaveCount(0);
 });
 
-test("Enter creates a block below; Backspace on an empty block removes it", async ({ page }) => {
+test("Enter creates a block below; Backspace on an empty block removes it", async ({
+  page,
+}) => {
   await freshPage(page, `Editor Keys ${Date.now()}`);
   await page.keyboard.type("First");
   await page.keyboard.press("Enter");
@@ -36,7 +44,9 @@ test("Enter creates a block below; Backspace on an empty block removes it", asyn
   await expect(page.locator(".block-row")).toHaveCount(2);
 });
 
-test("slash menu inserts a heading using the keyboard alone", async ({ page }) => {
+test("slash menu inserts a heading using the keyboard alone", async ({
+  page,
+}) => {
   await freshPage(page, `Slash Keyboard ${Date.now()}`);
   await page.keyboard.type("/head");
   await expect(page.getByRole("listbox")).toBeVisible();
@@ -46,7 +56,10 @@ test("slash menu inserts a heading using the keyboard alone", async ({ page }) =
   await expect(page.getByRole("listbox")).toHaveCount(0);
 
   const saved = page.waitForResponse(
-    (r) => r.url().includes("/api/space/blocks/") && r.request().method() === "PATCH" && r.ok(),
+    (r) =>
+      r.url().includes("/api/space/blocks/") &&
+      r.request().method() === "PATCH" &&
+      r.ok(),
   );
   await page.keyboard.type("Section title");
   await expect(page.locator(".b-h2")).toHaveText("Section title");
@@ -76,10 +89,14 @@ test("to-do checkboxes toggle and persist", async ({ page }) => {
   await page.waitForTimeout(400);
 
   await page.reload();
-  await expect(page.getByRole("checkbox", { name: "Ship phase two" })).toBeChecked();
+  await expect(
+    page.getByRole("checkbox", { name: "Ship phase two" }),
+  ).toBeChecked();
 });
 
-test("blocks drag to a new position and the order survives a refresh", async ({ page }) => {
+test("blocks drag to a new position and the order survives a refresh", async ({
+  page,
+}) => {
   await freshPage(page, `Drag Order ${Date.now()}`);
   await page.keyboard.type("Alpha");
   await page.keyboard.press("Enter");
@@ -88,23 +105,24 @@ test("blocks drag to a new position and the order survives a refresh", async ({ 
   await page.keyboard.type("Gamma");
   await page.waitForTimeout(800);
 
-  const rowTexts = () => page.locator(".block-row .block-text").allTextContents();
+  const rowTexts = () =>
+    page.locator(".block-row .block-text").allTextContents();
   expect(await rowTexts()).toEqual(["Alpha", "Beta", "Gamma"]);
 
   const gammaRow = page.locator(".block-row", { hasText: "Gamma" });
   await gammaRow.hover();
   const handle = gammaRow.locator(".drag-handle");
   const from = (await handle.boundingBox())!;
-  const target = (await page.locator(".block-row", { hasText: "Alpha" }).boundingBox())!;
+  const target = (await page
+    .locator(".block-row", { hasText: "Alpha" })
+    .boundingBox())!;
 
   await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
   await page.mouse.down();
   await page.mouse.move(target.x + 40, target.y + 2, { steps: 12 });
   await page.mouse.up();
 
-  await expect
-    .poll(async () => rowTexts())
-    .toEqual(["Gamma", "Alpha", "Beta"]);
+  await expect.poll(async () => rowTexts()).toEqual(["Gamma", "Alpha", "Beta"]);
 
   await page.reload();
   await expect.poll(async () => rowTexts()).toEqual(["Gamma", "Alpha", "Beta"]);

@@ -1,151 +1,202 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { DrumLane, MelodicStep, Patch, UnitId } from './types'
-import { UNIT_IDS } from './types'
-import { PATCHES, clonePatch } from './patches'
-import { Engine } from './audio/engine'
-import type { EngineState } from './audio/engine'
-import { Transport } from './components/Transport'
-import { Unit } from './components/Unit'
-import { Master } from './components/Master'
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { DrumLane, MelodicStep, Patch, UnitId } from "./types";
+import { UNIT_IDS } from "./types";
+import { PATCHES, clonePatch } from "./patches";
+import { Engine } from "./audio/engine";
+import type { EngineState } from "./audio/engine";
+import { Transport } from "./components/Transport";
+import { Unit } from "./components/Unit";
+import { Master } from "./components/Master";
 
-type MelodicId = 'bass' | 'pads' | 'lead'
+type MelodicId = "bass" | "pads" | "lead";
 
-function setUnitParam(patch: Patch, unit: UnitId, key: string, v: number): Patch {
+function setUnitParam(
+  patch: Patch,
+  unit: UnitId,
+  key: string,
+  v: number,
+): Patch {
   switch (unit) {
-    case 'drums':
-      return { ...patch, drums: { ...patch.drums, params: { ...patch.drums.params, [key]: v } } }
-    case 'bass':
-      return { ...patch, bass: { ...patch.bass, params: { ...patch.bass.params, [key]: v } } }
-    case 'pads':
-      return { ...patch, pads: { ...patch.pads, params: { ...patch.pads.params, [key]: v } } }
-    case 'lead':
-      return { ...patch, lead: { ...patch.lead, params: { ...patch.lead.params, [key]: v } } }
+    case "drums":
+      return {
+        ...patch,
+        drums: { ...patch.drums, params: { ...patch.drums.params, [key]: v } },
+      };
+    case "bass":
+      return {
+        ...patch,
+        bass: { ...patch.bass, params: { ...patch.bass.params, [key]: v } },
+      };
+    case "pads":
+      return {
+        ...patch,
+        pads: { ...patch.pads, params: { ...patch.pads.params, [key]: v } },
+      };
+    case "lead":
+      return {
+        ...patch,
+        lead: { ...patch.lead, params: { ...patch.lead.params, [key]: v } },
+      };
   }
 }
 
-function setNoteStep(patch: Patch, unit: MelodicId, index: number, step: MelodicStep): Patch {
-  const replace = (steps: MelodicStep[]) => steps.map((s, i) => (i === index ? step : s))
+function setNoteStep(
+  patch: Patch,
+  unit: MelodicId,
+  index: number,
+  step: MelodicStep,
+): Patch {
+  const replace = (steps: MelodicStep[]) =>
+    steps.map((s, i) => (i === index ? step : s));
   switch (unit) {
-    case 'bass':
-      return { ...patch, bass: { ...patch.bass, steps: replace(patch.bass.steps) } }
-    case 'pads':
-      return { ...patch, pads: { ...patch.pads, steps: replace(patch.pads.steps) } }
-    case 'lead':
-      return { ...patch, lead: { ...patch.lead, steps: replace(patch.lead.steps) } }
+    case "bass":
+      return {
+        ...patch,
+        bass: { ...patch.bass, steps: replace(patch.bass.steps) },
+      };
+    case "pads":
+      return {
+        ...patch,
+        pads: { ...patch.pads, steps: replace(patch.pads.steps) },
+      };
+    case "lead":
+      return {
+        ...patch,
+        lead: { ...patch.lead, steps: replace(patch.lead.steps) },
+      };
   }
 }
 
-function setDrumStep(patch: Patch, lane: DrumLane, index: number, value: number): Patch {
+function setDrumStep(
+  patch: Patch,
+  lane: DrumLane,
+  index: number,
+  value: number,
+): Patch {
   return {
     ...patch,
     drums: {
       ...patch.drums,
       steps: {
         ...patch.drums.steps,
-        [lane]: patch.drums.steps[lane].map((v, i) => (i === index ? value : v)),
+        [lane]: patch.drums.steps[lane].map((v, i) =>
+          i === index ? value : v,
+        ),
       },
     },
-  }
+  };
 }
 
-const NO_MUTES: Record<UnitId, boolean> = { drums: false, bass: false, pads: false, lead: false }
+const NO_MUTES: Record<UnitId, boolean> = {
+  drums: false,
+  bass: false,
+  pads: false,
+  lead: false,
+};
 
 export default function App() {
-  const [patches, setPatches] = useState<Patch[]>(() => PATCHES.map(clonePatch))
-  const [index, setIndex] = useState(0)
-  const [mutes, setMutes] = useState(NO_MUTES)
-  const [volume, setVolume] = useState(0.8)
-  const [playing, setPlaying] = useState(false)
-  const [current, setCurrent] = useState(-1)
-  const [engine, setEngine] = useState<Engine | null>(null)
+  const [patches, setPatches] = useState<Patch[]>(() =>
+    PATCHES.map(clonePatch),
+  );
+  const [index, setIndex] = useState(0);
+  const [mutes, setMutes] = useState(NO_MUTES);
+  const [volume, setVolume] = useState(0.8);
+  const [playing, setPlaying] = useState(false);
+  const [current, setCurrent] = useState(-1);
+  const [engine, setEngine] = useState<Engine | null>(null);
 
-  const patch = patches[index]
-  const stateRef = useRef<EngineState>({ patch, mutes, volume })
-  stateRef.current = { patch, mutes, volume }
-
-  useEffect(() => {
-    const e = new Engine(() => stateRef.current)
-    e.onStep = setCurrent
-    setEngine(e)
-  }, [])
+  const patch = patches[index];
+  const stateRef = useRef<EngineState>({ patch, mutes, volume });
+  stateRef.current = { patch, mutes, volume };
 
   useEffect(() => {
-    engine?.applyParams(stateRef.current)
-  }, [engine, patch, mutes, volume])
+    const e = new Engine(() => stateRef.current);
+    e.onStep = setCurrent;
+    setEngine(e);
+  }, []);
+
+  useEffect(() => {
+    engine?.applyParams(stateRef.current);
+  }, [engine, patch, mutes, volume]);
 
   const edit = useCallback(
     (fn: (p: Patch) => Patch) => {
-      setPatches((prev) => prev.map((p, i) => (i === index ? fn(p) : p)))
+      setPatches((prev) => prev.map((p, i) => (i === index ? fn(p) : p)));
     },
     [index],
-  )
+  );
 
   const togglePlay = useCallback(async () => {
-    if (!engine) return
-    await engine.resume()
+    if (!engine) return;
+    await engine.resume();
     if (engine.playing) {
-      engine.stop()
-      setPlaying(false)
+      engine.stop();
+      setPlaying(false);
     } else {
-      engine.start()
-      setPlaying(true)
+      engine.start();
+      setPlaying(true);
     }
-  }, [engine])
+  }, [engine]);
 
   const onParam = useCallback(
-    (unit: UnitId, key: string, value: number) => edit((p) => setUnitParam(p, unit, key, value)),
+    (unit: UnitId, key: string, value: number) =>
+      edit((p) => setUnitParam(p, unit, key, value)),
     [edit],
-  )
+  );
 
   const onMasterParam = useCallback(
-    (key: string, value: number) => edit((p) => ({ ...p, master: { ...p.master, [key]: value } })),
+    (key: string, value: number) =>
+      edit((p) => ({ ...p, master: { ...p.master, [key]: value } })),
     [edit],
-  )
+  );
 
   const onDrumStep = useCallback(
     (lane: DrumLane, i: number, value: number, audition: boolean) => {
-      edit((p) => setDrumStep(p, lane, i, value))
-      if (audition && value > 0) engine?.auditionDrum(lane, value === 2)
+      edit((p) => setDrumStep(p, lane, i, value));
+      if (audition && value > 0) engine?.auditionDrum(lane, value === 2);
     },
     [edit, engine],
-  )
+  );
 
   const onNoteStep = useCallback(
-    (unit: MelodicId, i: number, step: MelodicStep) => edit((p) => setNoteStep(p, unit, i, step)),
+    (unit: MelodicId, i: number, step: MelodicStep) =>
+      edit((p) => setNoteStep(p, unit, i, step)),
     [edit],
-  )
+  );
 
   const onAudition = useCallback(
     (unit: MelodicId, step: MelodicStep) => engine?.auditionNote(unit, step),
     [engine],
-  )
+  );
 
   const edited = useMemo(
     () => JSON.stringify(patch) !== JSON.stringify(PATCHES[index]),
     [patch, index],
-  )
+  );
 
   const getFilter = useCallback(
     () => ({
-      macro: engine?.playing ? engine.filterMacro : stateRef.current.patch.master.filter,
+      macro: engine?.playing
+        ? engine.filterMacro
+        : stateRef.current.patch.master.filter,
       reso: stateRef.current.patch.master.filterReso,
     }),
     [engine],
-  )
+  );
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement) return
-      if (e.code === 'Space') {
-        e.preventDefault()
-        void togglePlay()
-      } else if (e.key >= '1' && e.key <= '4') {
-        setIndex(Number(e.key) - 1)
+      if (e.target instanceof HTMLInputElement) return;
+      if (e.code === "Space") {
+        e.preventDefault();
+        void togglePlay();
+      } else if (e.key >= "1" && e.key <= "4") {
+        setIndex(Number(e.key) - 1);
       }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [togglePlay])
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [togglePlay]);
 
   return (
     <div className="app">
@@ -171,12 +222,12 @@ export default function App() {
           current={current}
           muted={mutes.drums}
           onMute={() => setMutes((m) => ({ ...m, drums: !m.drums }))}
-          onParam={(k, v) => onParam('drums', k, v)}
+          onParam={(k, v) => onParam("drums", k, v)}
           onDrumStep={onDrumStep}
           onNoteStep={() => {}}
           onAudition={() => {}}
         />
-        {(UNIT_IDS.filter((u) => u !== 'drums') as MelodicId[]).map((id) => (
+        {(UNIT_IDS.filter((u) => u !== "drums") as MelodicId[]).map((id) => (
           <Unit
             key={id}
             id={id}
@@ -199,9 +250,13 @@ export default function App() {
         onVolume={setVolume}
         analyser={engine?.analyser ?? null}
         getFilter={getFilter}
-        liveFilter={playing ? (engine?.filterMacro ?? patch.master.filter) : patch.master.filter}
+        liveFilter={
+          playing
+            ? (engine?.filterMacro ?? patch.master.filter)
+            : patch.master.filter
+        }
         sweepPhase={engine?.sweepPhase ?? 0}
       />
     </div>
-  )
+  );
 }

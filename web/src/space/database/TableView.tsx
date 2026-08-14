@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { ArrowUpRight, Plus, Trash2 } from "lucide-react";
-import type { DatabaseData, DbRow, Property, PropertyType, ViewConfig } from "../api";
+import type {
+  DatabaseData,
+  DbRow,
+  Property,
+  PropertyType,
+  ViewConfig,
+} from "../api";
 import Cell from "./cells";
 import type { DbActions } from "./DatabaseView";
 
@@ -23,7 +29,13 @@ interface Props {
   rows?: DbRow[];
 }
 
-function AddPropertyPopover({ onAdd, onClose }: { onAdd: (name: string, type: PropertyType) => void; onClose: () => void }) {
+function AddPropertyPopover({
+  onAdd,
+  onClose,
+}: {
+  onAdd: (name: string, type: PropertyType) => void;
+  onClose: () => void;
+}) {
   const [name, setName] = useState("");
   const [type, setType] = useState<PropertyType>("text");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -70,15 +82,28 @@ function AddPropertyPopover({ onAdd, onClose }: { onAdd: (name: string, type: Pr
   );
 }
 
-function ColumnMenu({ property, actions, onClose }: { property: Property; actions: DbActions; onClose: () => void }) {
+function ColumnMenu({
+  property,
+  actions,
+  onClose,
+}: {
+  property: Property;
+  actions: DbActions;
+  onClose: () => void;
+}) {
   const [name, setName] = useState(property.name);
   const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => inputRef.current?.select(), []);
   const commit = () => {
-    if (name.trim() && name !== property.name) void actions.renameProperty(property.id, name.trim());
+    if (name.trim() && name !== property.name)
+      void actions.renameProperty(property.id, name.trim());
   };
   return (
-    <div className="popover" role="dialog" aria-label={`Property ${property.name}`}>
+    <div
+      className="popover"
+      role="dialog"
+      aria-label={`Property ${property.name}`}
+    >
       <input
         ref={inputRef}
         className="popover-input"
@@ -94,7 +119,9 @@ function ColumnMenu({ property, actions, onClose }: { property: Property; action
           if (e.key === "Escape") onClose();
         }}
       />
-      <div className="popover-label">{PROPERTY_TYPE_LABELS[property.type]} · type is fixed</div>
+      <div className="popover-label">
+        {PROPERTY_TYPE_LABELS[property.type]} · type is fixed
+      </div>
       <button
         className="menu-item danger"
         onClick={() => {
@@ -123,13 +150,23 @@ export default function TableView({ data, actions, rows }: Props) {
             {data.properties.map((p) => (
               <th key={p.id}>
                 <div className="th-wrap">
-                  <button className="th-btn" onClick={() => setMenuFor(menuFor === p.id ? null : p.id)}>
+                  <button
+                    className="th-btn"
+                    onClick={() => setMenuFor(menuFor === p.id ? null : p.id)}
+                  >
                     {p.name}
                   </button>
                   {menuFor === p.id && (
                     <>
-                      <div className="menu-overlay" onMouseDown={() => setMenuFor(null)} />
-                      <ColumnMenu property={p} actions={actions} onClose={() => setMenuFor(null)} />
+                      <div
+                        className="menu-overlay"
+                        onMouseDown={() => setMenuFor(null)}
+                      />
+                      <ColumnMenu
+                        property={p}
+                        actions={actions}
+                        onClose={() => setMenuFor(null)}
+                      />
                     </>
                   )}
                 </div>
@@ -137,14 +174,23 @@ export default function TableView({ data, actions, rows }: Props) {
             ))}
             <th className="col-add">
               <div className="th-wrap">
-                <button className="th-btn add-prop" aria-label="Add property" onClick={() => setAdding((v) => !v)}>
+                <button
+                  className="th-btn add-prop"
+                  aria-label="Add property"
+                  onClick={() => setAdding((v) => !v)}
+                >
                   <Plus size={15} />
                 </button>
                 {adding && (
                   <>
-                    <div className="menu-overlay" onMouseDown={() => setAdding(false)} />
+                    <div
+                      className="menu-overlay"
+                      onMouseDown={() => setAdding(false)}
+                    />
                     <AddPropertyPopover
-                      onAdd={(name, type) => void actions.addProperty(name, type)}
+                      onAdd={(name, type) =>
+                        void actions.addProperty(name, type)
+                      }
                       onClose={() => setAdding(false)}
                     />
                   </>
@@ -163,14 +209,24 @@ export default function TableView({ data, actions, rows }: Props) {
                     aria-label={`Title for row ${row.title || "Untitled"}`}
                     value={row.title}
                     placeholder="Untitled"
-                    onChange={(e) => actions.setRowTitle(row.id, e.target.value)}
+                    onChange={(e) =>
+                      actions.setRowTitle(row.id, e.target.value)
+                    }
                   />
                   <span className="title-actions">
-                    <button className="row-open" aria-label={`Open ${row.title || "Untitled"}`} onClick={() => navigate(`/p/${row.id}`)}>
+                    <button
+                      className="row-open"
+                      aria-label={`Open ${row.title || "Untitled"}`}
+                      onClick={() => navigate(`/p/${row.id}`)}
+                    >
                       <ArrowUpRight size={13} />
                       open
                     </button>
-                    <button className="row-delete" aria-label={`Delete row ${row.title || "Untitled"}`} onClick={() => void actions.deleteRow(row.id)}>
+                    <button
+                      className="row-delete"
+                      aria-label={`Delete row ${row.title || "Untitled"}`}
+                      onClick={() => void actions.deleteRow(row.id)}
+                    >
                       <Trash2 size={13} />
                     </button>
                   </span>

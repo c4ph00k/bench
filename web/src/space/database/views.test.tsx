@@ -37,10 +37,25 @@ const dbData = (): DatabaseData => ({
   id: "db1",
   title: "Work",
   icon: null,
-  properties: [{ id: "who", name: "Who", type: "text", position: 0, options: [] }, statusProp],
+  properties: [
+    { id: "who", name: "Who", type: "text", position: 0, options: [] },
+    statusProp,
+  ],
   rows: [
-    { id: "r1", title: "Alpha", icon: null, position: 0, values: { who: "Ed", status: "todo" } },
-    { id: "r2", title: "Beta", icon: null, position: 1, values: { who: "Sam", status: "doing" } },
+    {
+      id: "r1",
+      title: "Alpha",
+      icon: null,
+      position: 0,
+      values: { who: "Ed", status: "todo" },
+    },
+    {
+      id: "r2",
+      title: "Beta",
+      icon: null,
+      position: 1,
+      values: { who: "Sam", status: "doing" },
+    },
     { id: "r3", title: "Gamma", icon: null, position: 2, values: {} },
   ],
   views: {
@@ -67,12 +82,17 @@ beforeEach(() => {
 describe("view switcher", () => {
   it("switches between table, board, and list over the same rows", async () => {
     renderDb();
-    expect(await screen.findByRole("tab", { name: "Table" })).toHaveAttribute("aria-selected", "true");
+    expect(await screen.findByRole("tab", { name: "Table" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
     expect(screen.getByLabelText("Title for row Alpha")).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("tab", { name: "Board" }));
     expect(screen.getByTestId("board")).toBeInTheDocument();
-    expect(within(screen.getByTestId("board")).getByText("Alpha")).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId("board")).getByText("Alpha"),
+    ).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("tab", { name: "List" }));
     expect(screen.getByText("Gamma")).toBeInTheDocument();
@@ -82,7 +102,10 @@ describe("view switcher", () => {
   it("remembers the chosen view per database", async () => {
     localStorage.setItem("ps.view.db1", "board");
     renderDb();
-    expect(await screen.findByRole("tab", { name: "Board" })).toHaveAttribute("aria-selected", "true");
+    expect(await screen.findByRole("tab", { name: "Board" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
     expect(screen.getByTestId("board")).toBeInTheDocument();
   });
 });
@@ -94,9 +117,15 @@ describe("board", () => {
     const board = await screen.findByTestId("board");
     const cols = board.querySelectorAll(".board-col");
     expect(cols).toHaveLength(3);
-    expect(within(cols[0] as HTMLElement).getByText("Gamma")).toBeInTheDocument();
-    expect(within(cols[1] as HTMLElement).getByText("Alpha")).toBeInTheDocument();
-    expect(within(cols[2] as HTMLElement).getByText("Beta")).toBeInTheDocument();
+    expect(
+      within(cols[0] as HTMLElement).getByText("Gamma"),
+    ).toBeInTheDocument();
+    expect(
+      within(cols[1] as HTMLElement).getByText("Alpha"),
+    ).toBeInTheDocument();
+    expect(
+      within(cols[2] as HTMLElement).getByText("Beta"),
+    ).toBeInTheDocument();
   });
 
   it("moving a card calls the API with the new option", () => {
@@ -129,11 +158,17 @@ describe("filters and sort in the toolbar", () => {
     const value = screen.getByLabelText("Filter value");
     await userEvent.type(value, "alp");
     expect(screen.getByLabelText("Title for row Alpha")).toBeInTheDocument();
-    expect(screen.queryByLabelText("Title for row Beta")).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Title for row Beta"),
+    ).not.toBeInTheDocument();
     expect(api.updateView).toHaveBeenCalledWith(
       "db1",
       "table",
-      expect.objectContaining({ filters: expect.arrayContaining([expect.objectContaining({ operator: "contains" })]) }),
+      expect.objectContaining({
+        filters: expect.arrayContaining([
+          expect.objectContaining({ operator: "contains" }),
+        ]),
+      }),
     );
   });
 
@@ -142,11 +177,22 @@ describe("filters and sort in the toolbar", () => {
     await screen.findByRole("tab", { name: "Table" });
     await userEvent.click(screen.getByRole("button", { name: /Filter/ }));
     await userEvent.click(screen.getByRole("button", { name: "+ Add filter" }));
-    await userEvent.selectOptions(screen.getByLabelText("Filter property"), "status");
-    await userEvent.selectOptions(screen.getByLabelText("Filter operator"), "is");
-    await userEvent.selectOptions(screen.getByLabelText("Filter value"), "doing");
+    await userEvent.selectOptions(
+      screen.getByLabelText("Filter property"),
+      "status",
+    );
+    await userEvent.selectOptions(
+      screen.getByLabelText("Filter operator"),
+      "is",
+    );
+    await userEvent.selectOptions(
+      screen.getByLabelText("Filter value"),
+      "doing",
+    );
     expect(screen.getByLabelText("Title for row Beta")).toBeInTheDocument();
-    expect(screen.queryByLabelText("Title for row Alpha")).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Title for row Alpha"),
+    ).not.toBeInTheDocument();
   });
 
   it("removes a filter", async () => {
@@ -154,7 +200,9 @@ describe("filters and sort in the toolbar", () => {
     await screen.findByRole("tab", { name: "Table" });
     await userEvent.click(screen.getByRole("button", { name: /Filter/ }));
     await userEvent.click(screen.getByRole("button", { name: "+ Add filter" }));
-    await userEvent.click(screen.getByRole("button", { name: "Remove filter" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Remove filter" }),
+    );
     expect(screen.getByText("No filters yet")).toBeInTheDocument();
   });
 
@@ -162,10 +210,19 @@ describe("filters and sort in the toolbar", () => {
     renderDb();
     await screen.findByRole("tab", { name: "Table" });
     await userEvent.click(screen.getByRole("button", { name: "Sort" }));
-    await userEvent.selectOptions(screen.getByLabelText("Sort property"), "who");
-    const titles = () => screen.getAllByLabelText(/Title for row/).map((el) => (el as HTMLInputElement).value);
+    await userEvent.selectOptions(
+      screen.getByLabelText("Sort property"),
+      "who",
+    );
+    const titles = () =>
+      screen
+        .getAllByLabelText(/Title for row/)
+        .map((el) => (el as HTMLInputElement).value);
     expect(titles()).toEqual(["Gamma", "Alpha", "Beta"]);
-    await userEvent.selectOptions(screen.getByLabelText("Sort direction"), "desc");
+    await userEvent.selectOptions(
+      screen.getByLabelText("Sort direction"),
+      "desc",
+    );
     expect(titles()).toEqual(["Beta", "Alpha", "Gamma"]);
     expect(api.updateView).toHaveBeenCalledWith("db1", "table", {
       sort: { propertyId: "who", direction: "desc" },
@@ -178,7 +235,9 @@ describe("filters and sort in the toolbar", () => {
     await screen.findByTestId("board");
     await userEvent.click(screen.getByRole("button", { name: "Group" }));
     await userEvent.click(screen.getByRole("button", { name: "Status" }));
-    expect(api.updateView).toHaveBeenCalledWith("db1", "board", { groupBy: "status" });
+    expect(api.updateView).toHaveBeenCalledWith("db1", "board", {
+      groupBy: "status",
+    });
   });
 });
 
