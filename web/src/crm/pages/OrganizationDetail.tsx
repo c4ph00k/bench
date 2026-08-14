@@ -26,7 +26,7 @@ export default function OrganizationDetail() {
 
   async function remove() {
     await api.delete(`/api/crm/organizations/${id}`);
-    navigate("/organizations");
+    void navigate("/organizations");
   }
 
   return (
@@ -112,7 +112,7 @@ export default function OrganizationDetail() {
         <ConfirmDialog
           title="Delete organization"
           message={`Delete "${org.name}"? Its contacts and deals will be kept but unlinked.`}
-          onConfirm={remove}
+          onConfirm={() => void remove()}
           onCancel={() => setDeleting(false)}
         />
       )}

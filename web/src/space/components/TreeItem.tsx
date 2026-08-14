@@ -79,9 +79,9 @@ export default function TreeItem(props: Props) {
             aria-label="Rename page"
             onChange={(e) => setDraft(e.target.value)}
             onClick={(e) => e.stopPropagation()}
-            onBlur={commitRename}
+            onBlur={() => void commitRename()}
             onKeyDown={(e) => {
-              if (e.key === "Enter") commitRename();
+              if (e.key === "Enter") void commitRename();
               if (e.key === "Escape") {
                 setDraft(node.title);
                 setRenaming(false);

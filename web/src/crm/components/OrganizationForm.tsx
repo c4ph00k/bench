@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { SubmitEvent, useState } from "react";
 import Modal from "./Modal";
 import { api } from "../api";
 import { Organization } from "../types";
@@ -21,7 +21,7 @@ export default function OrganizationForm({
     notes: existing?.notes ?? "",
   });
 
-  async function submit(e: FormEvent) {
+  async function submit(e: SubmitEvent) {
     e.preventDefault();
     if (existing) await api.put(`/api/crm/organizations/${existing.id}`, form);
     else await api.post("/api/crm/organizations", form);
@@ -34,7 +34,7 @@ export default function OrganizationForm({
       title={existing ? "Edit organization" : "Add organization"}
       onClose={onClose}
     >
-      <form className="form-grid" onSubmit={submit}>
+      <form className="form-grid" onSubmit={(e) => void submit(e)}>
         <div className="field">
           <label htmlFor="org-name">Name</label>
           <input

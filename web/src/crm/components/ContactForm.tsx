@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { SubmitEvent, useState } from "react";
 import Modal from "./Modal";
 import { api } from "../api";
 import {
@@ -32,7 +32,7 @@ export default function ContactForm({
     status: existing?.status ?? "lead",
   });
 
-  async function submit(e: FormEvent) {
+  async function submit(e: SubmitEvent) {
     e.preventDefault();
     const body = {
       ...form,
@@ -47,7 +47,7 @@ export default function ContactForm({
 
   return (
     <Modal title={existing ? "Edit contact" : "Add contact"} onClose={onClose}>
-      <form className="form-grid" onSubmit={submit}>
+      <form className="form-grid" onSubmit={(e) => void submit(e)}>
         <div className="field">
           <label htmlFor="ct-name">Name</label>
           <input

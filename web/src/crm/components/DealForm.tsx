@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { SubmitEvent, useState } from "react";
 import Modal from "./Modal";
 import { api } from "../api";
 import {
@@ -39,15 +39,15 @@ export default function DealForm({
     close_date: existing?.close_date ?? "",
   });
 
-  async function submit(e: FormEvent) {
+  async function submit(e: SubmitEvent) {
     e.preventDefault();
     const body = {
       ...form,
       organization_id:
         form.organization_id === "" ? null : Number(form.organization_id),
       contact_id: form.contact_id === "" ? null : Number(form.contact_id),
-      value: Number(form.value),
-      probability: Number(form.probability),
+      value: form.value,
+      probability: form.probability,
       close_date: form.close_date || null,
     };
     if (existing) await api.put(`/api/crm/deals/${existing.id}`, body);
@@ -58,7 +58,7 @@ export default function DealForm({
 
   return (
     <Modal title={existing ? "Edit deal" : "Add deal"} onClose={onClose}>
-      <form className="form-grid" onSubmit={submit}>
+      <form className="form-grid" onSubmit={(e) => void submit(e)}>
         <div className="field">
           <label htmlFor="dl-name">Name</label>
           <input
@@ -170,8 +170,8 @@ export default function DealForm({
             <output className="field-output">
               {formatMoney(
                 expectedValue({
-                  value: Number(form.value),
-                  probability: Number(form.probability),
+                  value: form.value,
+                  probability: form.probability,
                 }),
               )}
             </output>

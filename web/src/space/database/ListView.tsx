@@ -49,7 +49,7 @@ export default function ListView({ rows, properties }: Props) {
         <button
           key={row.id}
           className="list-row"
-          onClick={() => navigate(`/p/${row.id}`)}
+          onClick={() => void navigate(`/p/${row.id}`)}
         >
           <span className="list-title">{row.title || "Untitled"}</span>
           <span className="list-props">

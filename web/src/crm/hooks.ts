@@ -9,7 +9,7 @@ export function useFetch<T>(url: string | null) {
   useEffect(() => {
     if (!url) return;
     let cancelled = false;
-    api.get<T>(url).then((d) => {
+    void api.get<T>(url).then((d) => {
       if (!cancelled) setData(d);
     });
     return () => {

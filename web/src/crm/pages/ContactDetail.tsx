@@ -29,7 +29,7 @@ export default function ContactDetail() {
 
   async function remove() {
     await api.delete(`/api/crm/contacts/${id}`);
-    navigate("/contacts");
+    void navigate("/contacts");
   }
 
   return (
@@ -130,7 +130,7 @@ export default function ContactDetail() {
         <ConfirmDialog
           title="Delete contact"
           message={`Delete "${contact.name}"? This cannot be undone.`}
-          onConfirm={remove}
+          onConfirm={() => void remove()}
           onCancel={() => setDeleting(false)}
         />
       )}

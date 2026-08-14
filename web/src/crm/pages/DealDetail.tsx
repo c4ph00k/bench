@@ -28,7 +28,7 @@ export default function DealDetail() {
 
   async function remove() {
     await api.delete(`/api/crm/deals/${id}`);
-    navigate("/deals");
+    void navigate("/deals");
   }
 
   return (
@@ -118,7 +118,7 @@ export default function DealDetail() {
         <ConfirmDialog
           title="Delete deal"
           message={`Delete "${deal.name}"? This cannot be undone.`}
-          onConfirm={remove}
+          onConfirm={() => void remove()}
           onCancel={() => setDeleting(false)}
         />
       )}

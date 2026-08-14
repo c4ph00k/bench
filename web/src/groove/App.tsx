@@ -205,7 +205,7 @@ export default function App() {
         index={index}
         onSelect={setIndex}
         playing={playing}
-        onPlay={togglePlay}
+        onPlay={() => void togglePlay()}
         bpm={patch.bpm}
         onBpm={(v) => edit((p) => ({ ...p, bpm: v }))}
         swing={patch.swing}

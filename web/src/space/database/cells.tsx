@@ -162,18 +162,18 @@ function OptionPicker({
         placeholder={multi ? "Search or create…" : "Select or create…"}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        onKeyDown={async (e) => {
+        onKeyDown={(e) => {
           if (e.key === "Escape") onClose();
-          if (e.key === "Enter") {
-            if (matches.length > 0) {
-              onToggle(matches[0].id);
-              if (!multi) onClose();
-            } else if (canCreate && onCreateOption) {
-              const opt = await onCreateOption(query.trim());
+          if (e.key !== "Enter") return;
+          if (matches.length > 0) {
+            onToggle(matches[0].id);
+            if (!multi) onClose();
+          } else if (canCreate && onCreateOption) {
+            void onCreateOption(query.trim()).then((opt) => {
               onToggle(opt.id);
               setQuery("");
               if (!multi) onClose();
-            }
+            });
           }
         }}
       />
@@ -194,11 +194,12 @@ function OptionPicker({
         {canCreate && onCreateOption && (
           <button
             className="option-row option-create"
-            onClick={async () => {
-              const opt = await onCreateOption(query.trim());
-              onToggle(opt.id);
-              setQuery("");
-              if (!multi) onClose();
+            onClick={() => {
+              void onCreateOption(query.trim()).then((opt) => {
+                onToggle(opt.id);
+                setQuery("");
+                if (!multi) onClose();
+              });
             }}
           >
             <Plus size={13} /> Create “{query.trim()}”

@@ -214,7 +214,7 @@ export default function Dashboard() {
                 <input
                   type="checkbox"
                   checked={false}
-                  onChange={() => toggleDone(t)}
+                  onChange={() => void toggleDone(t)}
                   aria-label={`Mark done: ${t.description}`}
                 />
                 <div style={{ flex: 1 }}>

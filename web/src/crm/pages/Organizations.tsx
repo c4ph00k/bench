@@ -159,7 +159,7 @@ export default function Organizations() {
         columns={columns}
         noun="organization"
         rowLabel={(o) => o.name}
-        onRowClick={(o) => navigate(`/organizations/${o.id}`)}
+        onRowClick={(o) => void navigate(`/organizations/${o.id}`)}
         onEdit={(o) => setEditing(o)}
         onDelete={(o) => setDeleting(o)}
         emptyMessage={
@@ -181,7 +181,7 @@ export default function Organizations() {
         <ConfirmDialog
           title="Delete organization"
           message={`Delete ${deleting.name}? Its contacts and deals stay, but lose their link to it.`}
-          onConfirm={remove}
+          onConfirm={() => void remove()}
           onCancel={() => setDeleting(null)}
         />
       )}

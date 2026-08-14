@@ -217,7 +217,7 @@ export default function TableView({ data, actions, rows }: Props) {
                     <button
                       className="row-open"
                       aria-label={`Open ${row.title || "Untitled"}`}
-                      onClick={() => navigate(`/p/${row.id}`)}
+                      onClick={() => void navigate(`/p/${row.id}`)}
                     >
                       <ArrowUpRight size={13} />
                       open

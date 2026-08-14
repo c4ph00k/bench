@@ -137,8 +137,10 @@ export function databasesRouter(db: Database.Database): Router {
       res.status(404).json({ error: "database not found" });
       return;
     }
+    // `name` stays unknown: it is untrusted JSON, so the String() below is a real coercion rather
+    // than the redundant one the type would otherwise imply.
     const { name = "", type = "" } = (req.body ?? {}) as {
-      name?: string;
+      name?: unknown;
       type?: string;
     };
     if (!isPropertyType(type)) {
@@ -168,7 +170,7 @@ export function databasesRouter(db: Database.Database): Router {
       return;
     }
     const { name, type } = (req.body ?? {}) as {
-      name?: string;
+      name?: unknown;
       type?: string;
     };
     if (type !== undefined && type !== prop.type) {
@@ -243,7 +245,7 @@ export function databasesRouter(db: Database.Database): Router {
       return;
     }
     const { title = "", values = {} } = (req.body ?? {}) as {
-      title?: string;
+      title?: unknown;
       values?: Record<string, unknown>;
     };
     const { pos } = db

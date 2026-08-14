@@ -112,7 +112,7 @@ export default function Contacts() {
         columns={columns}
         noun="contact"
         rowLabel={(c) => c.name}
-        onRowClick={(c) => navigate(`/contacts/${c.id}`)}
+        onRowClick={(c) => void navigate(`/contacts/${c.id}`)}
         onEdit={(c) => setEditing(c)}
         onDelete={(c) => setDeleting(c)}
         emptyMessage={
@@ -138,10 +138,11 @@ export default function Contacts() {
         <ConfirmDialog
           title="Delete contact"
           message={`Delete ${deleting.name}? This cannot be undone.`}
-          onConfirm={async () => {
-            await api.delete(`/api/crm/contacts/${deleting.id}`);
-            setDeleting(null);
-            reload();
+          onConfirm={() => {
+            void api.delete(`/api/crm/contacts/${deleting.id}`).then(() => {
+              setDeleting(null);
+              reload();
+            });
           }}
           onCancel={() => setDeleting(null)}
         />

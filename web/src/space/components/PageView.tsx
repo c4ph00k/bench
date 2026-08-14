@@ -38,9 +38,8 @@ export default function PageView({ onTreeChange }: Props) {
       if (!pageId) return;
       setPage((p) => (p ? { ...p, title } : p));
       clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(async () => {
-        await api.updatePage(pageId, { title });
-        await onTreeChange();
+      saveTimer.current = setTimeout(() => {
+        void api.updatePage(pageId, { title }).then(onTreeChange);
       }, 350);
     },
     [pageId, onTreeChange],
@@ -74,7 +73,10 @@ export default function PageView({ onTreeChange }: Props) {
           {page.icon ?? (page.type === "database" ? "🗃️" : "📄")}
         </button>
         {pickerOpen && (
-          <EmojiPicker onPick={setIcon} onClose={() => setPickerOpen(false)} />
+          <EmojiPicker
+            onPick={(icon) => void setIcon(icon)}
+            onClose={() => setPickerOpen(false)}
+          />
         )}
       </div>
       <input

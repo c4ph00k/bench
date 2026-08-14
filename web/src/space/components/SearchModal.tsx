@@ -38,17 +38,18 @@ export default function SearchModal({ onClose }: Props) {
       setSelected(0);
       return;
     }
-    timer.current = setTimeout(async () => {
-      const found = await api.search(query.trim());
-      setResults(found);
-      setSelected(0);
+    timer.current = setTimeout(() => {
+      void api.search(query.trim()).then((found) => {
+        setResults(found);
+        setSelected(0);
+      });
     }, 120);
     return () => clearTimeout(timer.current);
   }, [query]);
 
   const open = (result: SearchResult) => {
     onClose();
-    navigate(`/p/${result.id}`);
+    void navigate(`/p/${result.id}`);
   };
 
   const onKeyDown = (e: React.KeyboardEvent) => {

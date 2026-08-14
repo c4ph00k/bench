@@ -61,7 +61,7 @@ function Card({
       {...attributes}
       {...listeners}
       onClick={() => {
-        if (!isDragging && !justDragged.current) navigate(`/p/${row.id}`);
+        if (!isDragging && !justDragged.current) void navigate(`/p/${row.id}`);
       }}
     >
       <div className="board-card-title">{row.title || "Untitled"}</div>

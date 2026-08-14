@@ -12,7 +12,9 @@ export function crmRouter(conn: db.DB): Router {
     res.json(db.listOrganizations(conn, req.query.q as string | undefined)),
   );
   router.post("/organizations", (req, res) =>
-    res.status(201).json(db.createOrganization(conn, req.body)),
+    res
+      .status(201)
+      .json(db.createOrganization(conn, req.body as db.OrganizationInput)),
   );
   router.get("/organizations/:id", (req, res) => {
     const org = db.getOrganization(conn, Number(req.params.id));
@@ -20,7 +22,13 @@ export function crmRouter(conn: db.DB): Router {
     res.json(org);
   });
   router.put("/organizations/:id", (req, res) =>
-    res.json(db.updateOrganization(conn, Number(req.params.id), req.body)),
+    res.json(
+      db.updateOrganization(
+        conn,
+        Number(req.params.id),
+        req.body as db.OrganizationInput,
+      ),
+    ),
   );
   router.delete("/organizations/:id", (req, res) => {
     db.deleteOrganization(conn, Number(req.params.id));
@@ -38,7 +46,7 @@ export function crmRouter(conn: db.DB): Router {
     ),
   );
   router.post("/contacts", (req, res) =>
-    res.status(201).json(db.createContact(conn, req.body)),
+    res.status(201).json(db.createContact(conn, req.body as db.ContactInput)),
   );
   router.get("/contacts/:id", (req, res) => {
     const contact = db.getContact(conn, Number(req.params.id));
@@ -46,7 +54,13 @@ export function crmRouter(conn: db.DB): Router {
     res.json(contact);
   });
   router.put("/contacts/:id", (req, res) =>
-    res.json(db.updateContact(conn, Number(req.params.id), req.body)),
+    res.json(
+      db.updateContact(
+        conn,
+        Number(req.params.id),
+        req.body as db.ContactInput,
+      ),
+    ),
   );
   router.delete("/contacts/:id", (req, res) => {
     db.deleteContact(conn, Number(req.params.id));
@@ -65,7 +79,7 @@ export function crmRouter(conn: db.DB): Router {
     ),
   );
   router.post("/deals", (req, res) =>
-    res.status(201).json(db.createDeal(conn, req.body)),
+    res.status(201).json(db.createDeal(conn, req.body as db.DealInput)),
   );
   router.get("/deals/:id", (req, res) => {
     const deal = db.getDeal(conn, Number(req.params.id));
@@ -73,10 +87,18 @@ export function crmRouter(conn: db.DB): Router {
     res.json(deal);
   });
   router.put("/deals/:id", (req, res) =>
-    res.json(db.updateDeal(conn, Number(req.params.id), req.body)),
+    res.json(
+      db.updateDeal(conn, Number(req.params.id), req.body as db.DealInput),
+    ),
   );
   router.patch("/deals/:id/stage", (req, res) =>
-    res.json(db.updateDealStage(conn, Number(req.params.id), req.body.stage)),
+    res.json(
+      db.updateDealStage(
+        conn,
+        Number(req.params.id),
+        (req.body as { stage: db.DealStage }).stage,
+      ),
+    ),
   );
   router.delete("/deals/:id", (req, res) => {
     db.deleteDeal(conn, Number(req.params.id));
@@ -94,10 +116,16 @@ export function crmRouter(conn: db.DB): Router {
     ),
   );
   router.post("/activities", (req, res) =>
-    res.status(201).json(db.createActivity(conn, req.body)),
+    res.status(201).json(db.createActivity(conn, req.body as db.ActivityInput)),
   );
   router.patch("/activities/:id", (req, res) =>
-    res.json(db.updateActivity(conn, Number(req.params.id), req.body)),
+    res.json(
+      db.updateActivity(
+        conn,
+        Number(req.params.id),
+        req.body as Partial<db.ActivityInput>,
+      ),
+    ),
   );
   router.delete("/activities/:id", (req, res) => {
     db.deleteActivity(conn, Number(req.params.id));

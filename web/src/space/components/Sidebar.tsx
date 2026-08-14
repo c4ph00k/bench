@@ -47,13 +47,13 @@ export default function Sidebar({ tree, onChange, onSearch }: Props) {
     const page = await api.createPage({ parentId, title: "", type });
     if (parentId && !expanded.has(parentId)) toggle(parentId);
     await onChange();
-    navigate(`/p/${page.id}`, { state: { isNew: true } });
+    void navigate(`/p/${page.id}`, { state: { isNew: true } });
   };
 
   const deletePage = async (node: TreeNode) => {
     await api.deletePage(node.id);
     await onChange();
-    if (pageId && subtreeContains(node, pageId)) navigate("/");
+    if (pageId && subtreeContains(node, pageId)) void navigate("/");
   };
 
   return (
@@ -82,21 +82,24 @@ export default function Sidebar({ tree, onChange, onSearch }: Props) {
             activeId={pageId}
             expanded={expanded}
             onToggle={toggle}
-            onNavigate={(id) => navigate(`/p/${id}`)}
-            onCreateChild={createPage}
-            onDelete={deletePage}
+            onNavigate={(id) => void navigate(`/p/${id}`)}
+            onCreateChild={(parentId) => void createPage(parentId)}
+            onDelete={(child) => void deletePage(child)}
             onRenamed={onChange}
           />
         ))}
       </div>
       <div className="sidebar-footer">
-        <button className="sidebar-action" onClick={() => createPage(null)}>
+        <button
+          className="sidebar-action"
+          onClick={() => void createPage(null)}
+        >
           <Plus size={16} />
           New page
         </button>
         <button
           className="sidebar-action"
-          onClick={() => createPage(null, "database")}
+          onClick={() => void createPage(null, "database")}
         >
           <Database size={15} />
           New database

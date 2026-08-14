@@ -58,7 +58,7 @@ export function pagesRouter(db: Database.Database): Router {
       type = "page",
     } = (req.body ?? {}) as {
       parentId?: string | null;
-      title?: string;
+      title?: unknown;
       icon?: string | null;
       type?: string;
     };
@@ -111,7 +111,7 @@ export function pagesRouter(db: Database.Database): Router {
       return;
     }
     const { title, icon } = (req.body ?? {}) as {
-      title?: string;
+      title?: unknown;
       icon?: string | null;
     };
     if (title !== undefined) {

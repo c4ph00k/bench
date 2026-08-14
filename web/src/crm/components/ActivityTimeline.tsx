@@ -53,7 +53,7 @@ export default function ActivityTimeline({ activities, onChanged }: Props) {
               <input
                 type="checkbox"
                 checked={!!a.done}
-                onChange={() => toggleDone(a)}
+                onChange={() => void toggleDone(a)}
               />
               Done
             </label>

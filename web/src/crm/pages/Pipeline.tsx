@@ -49,7 +49,7 @@ export default function Pipeline() {
           : d,
       ),
     );
-    api.patch(`/api/crm/deals/${id}/stage`, { stage });
+    void api.patch(`/api/crm/deals/${id}/stage`, { stage });
   }
 
   const open = deals.filter(isOpen);
@@ -132,7 +132,7 @@ export default function Pipeline() {
                               className={`deal-card${dragSnapshot.isDragging ? " dragging" : ""}`}
                               onClick={(e) => {
                                 if (!e.defaultPrevented)
-                                  navigate(`/deals/${deal.id}`);
+                                  void navigate(`/deals/${deal.id}`);
                               }}
                             >
                               <div className="deal-name">{deal.name}</div>

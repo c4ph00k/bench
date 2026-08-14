@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { SubmitEvent, useState } from "react";
 import Modal from "./Modal";
 import { api } from "../api";
 import { ACTIVITY_TYPES, ActivityType } from "../types";
@@ -22,7 +22,7 @@ export default function ActivityForm({
     due_date: "",
   });
 
-  async function submit(e: FormEvent) {
+  async function submit(e: SubmitEvent) {
     e.preventDefault();
     await api.post("/api/crm/activities", {
       type: form.type,
@@ -37,7 +37,7 @@ export default function ActivityForm({
 
   return (
     <Modal title="Log activity" onClose={onClose}>
-      <form className="form-grid" onSubmit={submit}>
+      <form className="form-grid" onSubmit={(e) => void submit(e)}>
         <div className="form-row">
           <div className="field">
             <label htmlFor="act-type">Type</label>

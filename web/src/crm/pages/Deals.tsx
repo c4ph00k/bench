@@ -160,7 +160,7 @@ export default function Deals() {
         columns={columns}
         noun="deal"
         rowLabel={(d) => d.name}
-        onRowClick={(d) => navigate(`/deals/${d.id}`)}
+        onRowClick={(d) => void navigate(`/deals/${d.id}`)}
         onEdit={(d) => setEditing(d)}
         onDelete={(d) => setDeleting(d)}
         emptyMessage={
@@ -194,7 +194,7 @@ export default function Deals() {
         <ConfirmDialog
           title="Delete deal"
           message={`Delete ${deleting.name}? This cannot be undone.`}
-          onConfirm={remove}
+          onConfirm={() => void remove()}
           onCancel={() => setDeleting(null)}
         />
       )}
