@@ -54,11 +54,16 @@ Two related gaps, now that the components carry unit tests:
 Covered by specs: CRUD for organizations, contacts and deals, search, status filter, keyboard drag
 on the pipeline, delete confirmation, deep links. Left to judgement:
 
-- Dashboard charts: are the axes, currency formatting and month ordering actually right? The specs
-  only check the charts render.
+- Dashboard charts: the unit suite now asserts the month labels, the `$40k` axis shortening, the
+  forecast marker and the funnel's own figures, against a chart given a fixed size. What it cannot
+  see is the picture - whether the bars line up under their months, whether the funnel reads as a
+  funnel, whether anything overlaps at a real width. Look at it.
+- Chart tooltips. They only appear on a real hover, so nothing asserts their wording or their
+  figures. Hover each of the four.
 - Mouse dragging on the pipeline. The specs drag with the keyboard, which is what
-  `@hello-pangea/dnd` supports natively and what makes them stable - so the mouse path is
-  **untested**. Drag a card with the mouse after touching the pipeline.
+  `@hello-pangea/dnd` supports natively and what makes them stable, and the unit suite stubs the
+  library out entirely - so the mouse path is **untested at every level**. Drag a card with the
+  mouse after touching the pipeline.
 - Chart readability: do the funnel proportions, the stacked won-versus-expected bars and the
   probability meters actually communicate at a glance? Only their presence and figures are asserted.
 - The forward half of "Revenue and deal volume" only fills if open deals carry future close dates.

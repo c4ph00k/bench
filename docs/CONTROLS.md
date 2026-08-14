@@ -5,17 +5,17 @@ decision below is settled; nothing here is still under discussion.
 
 ## Status
 
-| Step                                                                  | State                                                 |
-| --------------------------------------------------------------------- | ----------------------------------------------------- |
-| 1. ESLint, Prettier, the reformat commit, `lint` / `format` / `check` | **Done**                                              |
-| 2. Fix what strict finds                                              | **Done** - 1,586 errors to 0                          |
-| 3. knip, jscpd, no-restricted-imports, gitleaks, check-secrets        | **Done**                                              |
-| 4. Coverage widened to every app, then 80%                            | **Part done** - widened; at 69%, CRM's UI still to do |
-| 5. Enforcement: prebuild, lefthook, Stop hook, GitHub Action          | **Not started**                                       |
+| Step                                                                  | State                          |
+| --------------------------------------------------------------------- | ------------------------------ |
+| 1. ESLint, Prettier, the reformat commit, `lint` / `format` / `check` | **Done**                       |
+| 2. Fix what strict finds                                              | **Done** - 1,586 errors to 0   |
+| 3. knip, jscpd, no-restricted-imports, gitleaks, check-secrets        | **Done**                       |
+| 4. Coverage widened to every app, then 80%                            | **Done** - server 82%, web 90% |
+| 5. Enforcement: prebuild, lefthook, Stop hook, GitHub Action          | **Not started**                |
 
-`npm run check` runs today and passes every step except coverage, which fails the 80% threshold on
-purpose: the bar is set where it is meant to end up, and the tests to reach it are the outstanding
-work. See [F](#f-coverage-thresholds) for exactly what is missing.
+**`npm run check` passes end to end.** Typecheck, lint, formatting, gitleaks, secrets, dead code and
+both coverage thresholds are green, so any failure it reports now is yours. See
+[F](#f-coverage-thresholds) for where the coverage sits and what is deliberately left out.
 
 **Nothing enforces any of this yet.** Until step 5 lands, `npm run check` is something you run, not
 something that runs itself - so run it. [What implementation changed](#what-implementation-changed)
@@ -305,32 +305,28 @@ Measured on 2026-08-14 with `npm run coverage`:
 **Decided: 80% goes into `npm run check`, measured across every app.** Two consequences, both real
 work rather than configuration:
 
-**The `include` widens from `src/space/**` to all of `src/**`.** Done. That brought in two apps with
-almost no unit tests, and closing that gap is **the outstanding work on this whole document**.
+**The `include` widened from `src/space/**` to all of `src/**`.** That brought in two apps with
+almost no unit tests, and closing that gap was the outstanding work on this document. It is done.
 
 Where it stands, measured with `npm run coverage`:
 
-| Scope                       | Statements | What is missing                                |
+| Scope                       | Statements | Notes                                          |
 | --------------------------- | ---------- | ---------------------------------------------- |
-| `server/src`                | 82%        | nothing - already over                         |
-| `web/src/space`             | 92%        | nothing - already over                         |
-| `web/src/groove`            | 88%        | done - components, App and the pure modules    |
-| `web/src/groove/components` | 97%        | done                                           |
-| `web/src/home`              | 100%       | done - the launcher                            |
-| `web/src/crm`               | 81%        | that is the non-component code only; see below |
-| `web/src/crm/components`    | **0%**     | every form, table, chart and chip              |
-| `web/src/crm/pages`         | **0%**     | all eight pages                                |
-| **web overall**             | **69%**    | against a threshold of 80                      |
+| `server/src`                | 82%        |                                                |
+| `web/src/space`             | 92%        |                                                |
+| `web/src/groove`            | 88%        | components, `App` and the pure modules         |
+| `web/src/groove/components` | 97%        |                                                |
+| `web/src/home`              | 100%       | the launcher                                   |
+| `web/src/crm`               | 100%       | `App`, the fetch hook, the wrapper, formatters |
+| `web/src/crm/components`    | 95%        | forms, table, charts, timeline, chips          |
+| `web/src/crm/pages`         | 96%        | all eight pages                                |
+| **web overall**             | **90%**    | against a threshold of 80                      |
 
-Written so far: Groove's note and chord maths, the filter curve and its readout, the shipped
-patches, the param specs, the CRM's fetch wrapper and formatters, and now all of Groove's
-components, its `App` and the launcher. **What remains is the CRM's components and pages** - the
-last piece of this document's outstanding work. Do it app by app, not in one pass, and **do not
-lower the bar to make a red run green.**
+**Do not lower the bar to make a red run green.** The remaining gaps are honest ones and named
+below: Groove's audio graph, the two chart-drag paths that only e2e can exercise, and Space's
+`BoardView`, which is the largest single hole left in the tree at 31%.
 
-Until it is met, `npm run check` fails on coverage and only on coverage.
-
-Three things learned writing the Groove suites, all of them jsdom gaps rather than code faults:
+Six things learned writing these suites, all of them jsdom or library gaps rather than code faults:
 
 - **jsdom implements no pointer capture.** Every knob, fader and grid calls `setPointerCapture` on
   pointerdown, so all of them threw until `Element.prototype.setPointerCapture` was stubbed in
@@ -340,6 +336,16 @@ Three things learned writing the Groove suites, all of them jsdom gaps rather th
 - **`exact: true` is a Playwright option, not a Testing Library one.** Testing Library's `name`
   already matches the full string; passing `exact` there is a type error. The warning in
   [PROCESS.md](./PROCESS.md) about substring matching applies to the e2e suite only.
+- **recharts renders nothing without a measured size.** `ResponsiveContainer` reads its parent's
+  box, which is zero in jsdom, so every chart came out empty. `DashboardCharts.test.tsx` mocks the
+  container to hand the chart a fixed 640x240 instead - which is what recharts itself does once it
+  has measured one.
+- **recharts also leaves a text-measurement span on `document.body`**, holding the last label it
+  sized. It survives Testing Library's cleanup, so `screen.getByText` finds a phantom second match
+  for whatever the chart last measured. Query the container `render` returns, not `screen`.
+- **dnd cannot drag in jsdom either** - `@hello-pangea/dnd` measures the boxes it moves.
+  `Pipeline.test.tsx` stubs the library and calls the `onDragEnd` the page hands it, which covers
+  the optimistic re-stage; the real drag stays an e2e test, where it always was.
 
 **`web/src/groove/audio/**` is excluded from the `include`** - 1,053 lines across four files. jsdom
 has no `AudioContext`, so they cannot be unit tested without a mock that would assert nothing about
@@ -349,8 +355,9 @@ testable, and a coverage threshold must not be allowed to imply otherwise - excl
 so is the honest option. Groove's pure modules (`music.ts`, `params.ts`, `patches.ts`, `filter.ts`)
 stay in, and are ordinary logic to test.
 
-**Thresholds stay on `statements` only for now.** Branches sit at ~73% in both workspaces, so adding
-a branches threshold at 80 fails today. Revisit once the statement threshold holds everywhere.
+**Thresholds stay on `statements` only for now.** Branches are at 81% on web but 72% on the server,
+so a branches threshold at 80 would fail there today. Revisit by raising the server's branch
+coverage first; the statement threshold now holds in both workspaces.
 
 ## G. Prettier
 
@@ -502,12 +509,10 @@ The pieces depend on each other, so build them in this order:
 2. ~~Fix what strict finds - the `any` removal is the bulk of it.~~ Done.
 3. ~~`knip`, `jscpd`, `no-restricted-imports`, `gitleaks` (with a one-off history scan) and
    `check:secrets`.~~ Done; history was clean across all 27 commits.
-4. Coverage: `include` is widened, and Groove's components, its `App` and the launcher are done -
-   52% to 69%. **Still to do:** tests for CRM's components and pages, until 80% holds. See
-   [F](#f-coverage-thresholds).
-5. Enforcement last - `prebuild`, lefthook, the stop hook, the GitHub Action. **Not started.**
-   Wiring these up before the tree is green just means everything is blocked, and coverage is not
-   green yet.
+4. ~~Coverage: widen the `include`, then reach 80% - Groove's components, `App` and the launcher,
+   then the CRM's components and pages.~~ Done; 52% to 90% on web. See [F](#f-coverage-thresholds).
+5. Enforcement last - `prebuild`, lefthook, the stop hook, the GitHub Action. **Not started**, and
+   now unblocked: the tree is green, so turning these on gates the work rather than blocking it.
 
 ## Related documents
 

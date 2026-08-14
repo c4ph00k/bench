@@ -4,10 +4,9 @@ Work in small increments and validate each one before moving on. A change is fin
 checks and the e2e suite all pass, you have seen the feature working in a real browser, and it is
 committed.
 
-**`npm run check` fails on coverage today, and only on coverage.** Everything it chains -
-typecheck, lint, formatting, secrets, dead code - passes; the 80% threshold does not, because the
-tests for CRM's and Groove's components are still to be written. So read a `check` run for what it
-says: a coverage failure alone is the known gap, anything else is yours.
+**`npm run check` passes end to end** - typecheck, lint, formatting, secrets, dead code and the 80%
+coverage threshold in both workspaces. There are no known failures to read past, so anything it
+reports is yours.
 
 **No hook enforces any of this yet.** The lefthook pre-commit hook, the Claude Code stop hook and
 the GitHub Action are the last piece of [CONTROLS.md](./CONTROLS.md) and are not installed, so
@@ -44,12 +43,17 @@ Three layers, each with a different job. Add to whichever ones the change touche
 ### Unit tests - `npm test`
 
 vitest, server and web. Server suites live in `server/test/{crm,space}/`; web suites sit beside the
-code they cover. Coverage is measured across every app at 80% statements, with
-`web/src/groove/audio/**` excluded because jsdom has no `AudioContext` - see
-[CONTROLS.md](./CONTROLS.md) for what is still missing.
+code they cover. Coverage is measured across every app at 80% statements and currently sits at 82%
+on the server and 90% on web, with `web/src/groove/audio/**` excluded because jsdom has no
+`AudioContext`.
 
 Use these for logic with edges: calculations, filtering, sorting, migrations, data transforms. A
 new derived value or a new column default should get one.
+
+jsdom implements no layout, no pointer capture, no canvas and no audio, so any component that
+measures itself needs a stub before it will render at all. [CONTROLS.md](./CONTROLS.md) lists the
+six that have bitten so far and what each suite does about them - read it before concluding that a
+component is untestable.
 
 ### End-to-end tests - `npm run e2e`
 
