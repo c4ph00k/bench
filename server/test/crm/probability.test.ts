@@ -11,7 +11,7 @@ import {
   createDeal,
   getDeal,
   updateDeal,
-  updateDealStage,
+  moveDeal,
 } from "../../src/crm/db.js";
 
 let db: DB;
@@ -47,12 +47,12 @@ describe("deal probability", () => {
     const d = deal("New");
     expect(d.probability).toBe(10);
 
-    const moved = updateDealStage(db, d.id, "Negotiation");
+    const moved = moveDeal(db, d.id, "Negotiation");
     expect(moved!.stage).toBe("Negotiation");
     expect(moved!.probability).toBe(STAGE_PROBABILITY.Negotiation);
 
-    expect(updateDealStage(db, d.id, "Won")!.probability).toBe(100);
-    expect(updateDealStage(db, d.id, "Lost")!.probability).toBe(0);
+    expect(moveDeal(db, d.id, "Won")!.probability).toBe(100);
+    expect(moveDeal(db, d.id, "Lost")!.probability).toBe(0);
   });
 
   it("keeps the stage default when an edit does not mention probability", () => {

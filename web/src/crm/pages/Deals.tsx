@@ -17,7 +17,8 @@ import DealForm from "../components/DealForm";
 import ConfirmDialog from "../components/ConfirmDialog";
 import { StageChip } from "../components/Chips";
 import { formatDate, formatMoney } from "../format";
-import { IconPlus, IconSearch } from "../components/Icons";
+import { IconDeals, IconPlus, IconSearch } from "../components/Icons";
+import PageHeader from "../components/PageHeader";
 
 export default function Deals() {
   const [q, setQ] = useState("");
@@ -121,16 +122,16 @@ export default function Deals() {
 
   return (
     <>
-      <div className="page-header">
-        <div>
-          <h1>Deals</h1>
-          <p className="page-sub">The potential sales you're working on</p>
-        </div>
+      <PageHeader
+        icon={<IconDeals size={20} />}
+        title="Deals"
+        sub="The potential sales you're working on"
+      >
         <button className="btn btn-primary" onClick={() => setAdding(true)}>
           <IconPlus size={16} />
           Add deal
         </button>
-      </div>
+      </PageHeader>
       <div className="toolbar">
         <div className="search-field">
           <IconSearch size={15} />

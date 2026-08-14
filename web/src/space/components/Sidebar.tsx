@@ -43,8 +43,10 @@ export default function Sidebar({ tree, onChange, onSearch }: Props) {
   ) => {
     const page = await api.createPage({ parentId, title: "", type });
     if (parentId && !expanded.has(parentId)) toggle(parentId);
-    await onChange();
+    // Open it first, then refresh the tree. The other way round leaves you looking at the old page
+    // for as long as the tree takes to load, which grows with the workspace.
     void navigate(`/p/${page.id}`, { state: { isNew: true } });
+    await onChange();
   };
 
   const deletePage = async (node: TreeNode) => {

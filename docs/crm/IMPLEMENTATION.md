@@ -13,6 +13,10 @@ Four tables in `server/src/crm/db.ts`: `organizations`, `contacts`, `deals`, `ac
 Contacts and deals link to an organization; deals and activities link to a contact. Deleting an
 organization sets those links null rather than cascading.
 
+`deals.board_order` is the card's position within its own pipeline column. Existing databases get
+it added and backfilled by `migrate`, numbering each column by id; a new deal lands at the end of
+its column, and `moveDeal` renumbers a column when a card is dropped into it.
+
 Deal stages, in order: **New, Qualified, Proposal, Negotiation, Won, Lost.**
 Contact statuses: lead, qualified, customer. Activity types: note, call, email.
 
@@ -23,10 +27,11 @@ This is the part of the domain worth reading before changing anything on the pip
 - **Every deal carries a `probability` (0-100).** `STAGE_PROBABILITY` holds the per-stage defaults
   and is declared in **two** places that must agree: `server/src/crm/db.ts` and
   `web/src/crm/types.ts`. New 10, Qualified 25, Proposal 50, Negotiation 75, Won 100, Lost 0.
-- **Moving a deal re-bases its probability on the new stage.** `updateDealStage` does this
-  server-side; the pipeline mirrors it optimistically so the totals move with the card rather than
-  after it; the deal form re-bases on stage change too. This is what makes expected revenue respond
-  to a drag - without it, dragging would only change a column.
+- **Moving a deal re-bases its probability on the new stage.** `moveDeal` does this server-side;
+  the pipeline mirrors it optimistically so the totals move with the card rather than after it; the
+  deal form re-bases on stage change too. This is what makes expected revenue respond to a drag -
+  without it, dragging would only change a column. **Reordering inside one column does not
+  re-base**, or a card could not be moved without losing a probability set by hand.
 - **Expected revenue = value x probability.** `expectedValue`, `sumValue` and `sumExpected` in
   `web/src/crm/types.ts` are the single source; the pipeline header, the stage columns, the deals
   table and the dashboard tiles all read from them.
@@ -43,9 +48,17 @@ This is the part of the domain worth reading before changing anything on the pip
 
 Tiles, then **four charts**, then recent activity and follow-ups.
 
-- Tiles: open deals, pipeline value, expected revenue, deals won (6mo), revenue won (6mo). The two
-  "6 mo" tiles read the **trailing slice** of the month range, not all of it - the range now runs
-  into the future, and a win dated next month is not revenue you have booked.
+- Tiles: open deals, pipeline value, expected revenue, deals won (6mo), revenue won (6mo). Each
+  carries an icon, a supporting line, and a **tone**. The two "6 mo" tiles read the **trailing
+  slice** of the month range, not all of it - the range now runs into the future, and a win dated
+  next month is not revenue you have booked.
+- **One colour, one meaning, across the page.** Purple counts deals, blue is the open pipeline,
+  amber is forecast, green is money already won, red is lost or late. The charts use the same
+  four - won bars green, expected bars amber, the volume line purple, top organizations blue - so a
+  tile and the chart under it agree. `StatTile`'s `tone` sets `--tint` and `--tone`, and the values
+  are the tints and inks the stage and status chips already use. The **stage** colours are a
+  different axis: a scale along the pipeline, gray through to green and red, and the funnel and the
+  board columns read from `STAGE_COLOR` rather than from this scheme.
 - **Revenue and deal volume** (`monthRange`, `monthlyRevenue`) - twelve months, six back and six
   forward, with a dashed marker on the first forecast month. Won value fills the months behind it,
   weighted pipeline the months ahead. The two stack rather than sit side by side: a month is nearly always one or the
@@ -77,9 +90,17 @@ debugging the data.
   drag-over outline all take the stage colour.
 - The board is a **grid** - `repeat(6, minmax(0, 1fr))` - so the columns always fit. Do not go back
   to fixed-width flex columns; that is what produced a horizontal scrollbar.
+- **The board takes the height the window leaves it** - `calc(100vh - 175px)`, that being the nav
+  strip, the content padding and the page header - and each column scrolls its own cards. The
+  droppable is the scrolling list rather than the column, which is what makes a long column
+  auto-scroll while you drag near its edge.
 - Header shows total pipeline and expected revenue; each column shows its own total and expected.
   Those figures carry `data-testid` attributes (`pipeline-total`, `stage-total-<Stage>`, ...) that
   the e2e suite reads.
+- **Cards keep the order you leave them in.** `deals.board_order` is the position within a column;
+  `boardOrder` sorts the fetched list by stage then position, `moveDeal` in `types.ts` computes the
+  optimistic result, and `PATCH /deals/:id/stage` carries `{ stage, index }` so the server can
+  renumber that column. A drop in the same column at the same index sends nothing.
 - **Drag with the keyboard in tests**: Space to lift, arrows, Space to drop. Deterministic and free
   of viewport sensitivity. The mouse path works but is not covered.
 
@@ -101,10 +122,16 @@ rendering `0` while the footer total was correct. Build an enriched row type ins
 
 - Forms are modals (`Modal.tsx`, `role="dialog"` with the title as its accessible name); deletes go
   through `ConfirmDialog`.
-- Money and dates format through `formatMoney` / `formatDate` in `components/Chips.tsx`.
+- Money and dates format through `format.ts`: `formatMoney` / `formatDate` everywhere, plus
+  `formatMoneyCompact` and `formatDateShort` for the pipeline cards, which have no room for a year
+  or a full figure twice.
+- **Every page opens with `PageHeader`** - its section icon, the title, a line of context, then
+  whatever actions the page has. Detail pages use their section's icon too, so a contact and the
+  Contacts list are visibly the same place.
 - Icons are inline SVG in `components/Icons.tsx`, one 24-grid, sized by prop. The app's own mark is
   the odd one out: `IconCrm` comes from `web/src/shared/AppIcons.tsx`, so the brand block and the
-  Bench nav tab show the same glyph.
+  Bench nav tab show the same glyph. `ActivityIcon` picks the note, call or email glyph for a badge
+  shared by the timeline and the dashboard feed.
 - Sidebar: brand, then nav, sharing one icon column - check alignment against the brand when
   touching it. Getting home is the Bench nav's job, above the app.
 

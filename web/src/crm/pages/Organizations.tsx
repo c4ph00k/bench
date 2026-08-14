@@ -8,7 +8,8 @@ import DataTable from "../components/DataTable";
 import OrganizationForm from "../components/OrganizationForm";
 import ConfirmDialog from "../components/ConfirmDialog";
 import { formatMoney } from "../format";
-import { IconPlus, IconSearch } from "../components/Icons";
+import { IconOrganizations, IconPlus, IconSearch } from "../components/Icons";
+import PageHeader from "../components/PageHeader";
 
 interface OrgRow extends Organization {
   contact_count: number;
@@ -132,16 +133,16 @@ export default function Organizations() {
 
   return (
     <>
-      <div className="page-header">
-        <div>
-          <h1>Organizations</h1>
-          <p className="page-sub">The companies you do business with</p>
-        </div>
+      <PageHeader
+        icon={<IconOrganizations size={20} />}
+        title="Organizations"
+        sub="The companies you do business with"
+      >
         <button className="btn btn-primary" onClick={() => setAdding(true)}>
           <IconPlus size={16} />
           Add organization
         </button>
-      </div>
+      </PageHeader>
       <div className="toolbar">
         <div className="search-field">
           <IconSearch size={15} />

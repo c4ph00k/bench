@@ -8,7 +8,8 @@ import DataTable from "../components/DataTable";
 import ContactForm from "../components/ContactForm";
 import ConfirmDialog from "../components/ConfirmDialog";
 import { StatusChip } from "../components/Chips";
-import { IconPlus, IconSearch } from "../components/Icons";
+import { IconContacts, IconPlus, IconSearch } from "../components/Icons";
+import PageHeader from "../components/PageHeader";
 
 export default function Contacts() {
   const [q, setQ] = useState("");
@@ -72,16 +73,16 @@ export default function Contacts() {
 
   return (
     <>
-      <div className="page-header">
-        <div>
-          <h1>Contacts</h1>
-          <p className="page-sub">The people you deal with</p>
-        </div>
+      <PageHeader
+        icon={<IconContacts size={20} />}
+        title="Contacts"
+        sub="The people you deal with"
+      >
         <button className="btn btn-primary" onClick={() => setAdding(true)}>
           <IconPlus size={16} />
           Add contact
         </button>
-      </div>
+      </PageHeader>
       <div className="toolbar">
         <div className="search-field">
           <IconSearch size={15} />

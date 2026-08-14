@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import type {
@@ -89,6 +89,15 @@ const deals = [
     probability: 10,
   }),
   deal({ id: 3, name: "Old contract", stage: "Won", value: 90000 }),
+  // Arrives out of order and second in its column, so the board has both to sort and to reorder.
+  deal({
+    id: 5,
+    name: "Renewal",
+    stage: "New",
+    value: 4000,
+    probability: 10,
+    board_order: 1,
+  }),
 ];
 
 beforeEach(() => {
@@ -115,6 +124,9 @@ function show() {
 
 const column = (stage: string) =>
   document.querySelector<HTMLElement>(`[data-stage="${stage}"]`)!;
+
+const cardNames = (stage: string) =>
+  [...column(stage).querySelectorAll(".deal-name")].map((n) => n.textContent);
 
 const drag = (id: number, to: string, from = "Proposal") => ({
   draggableId: String(id),
@@ -146,16 +158,17 @@ describe("Pipeline", () => {
     expect(within(card).getByText("Bluepeak Software")).toBeInTheDocument();
     expect(within(card).getByText("$40,000")).toBeInTheDocument();
     expect(within(card).getByText("50%")).toBeInTheDocument();
-    expect(within(card).getByText("$20,000 expected")).toBeInTheDocument();
+    expect(within(card).getByText("$20k expected")).toBeInTheDocument();
+    expect(within(card).getByText("Sep 30")).toBeInTheDocument();
   });
 
   it("totals only the open stages at the top, but every stage in its own column", async () => {
     show();
     expect(await screen.findByTestId("pipeline-total")).toHaveTextContent(
-      "$50,000",
+      "$54,000",
     );
     expect(screen.getByTestId("pipeline-expected")).toHaveTextContent(
-      "$21,000",
+      "$21,400",
     );
     expect(screen.getByTestId("stage-total-Won")).toHaveTextContent("$90,000");
   });
@@ -191,14 +204,34 @@ describe("Pipeline", () => {
     ).toBeInTheDocument();
     expect(within(column("Negotiation")).getByText("75%")).toBeInTheDocument();
     expect(screen.getByTestId("pipeline-expected")).toHaveTextContent(
-      "$31,000",
+      "$31,400",
     );
     expect(api.patch).toHaveBeenCalledWith("/api/crm/deals/1/stage", {
       stage: "Negotiation",
+      index: 0,
     });
   });
 
-  it("ignores a drop outside a column, or back into the one it came from", async () => {
+  it("keeps a card where it is dropped within its own column", async () => {
+    show();
+    await screen.findByText("Renewal");
+
+    dropped.end({
+      draggableId: "5",
+      source: { droppableId: "New", index: 1 },
+      destination: { droppableId: "New", index: 0 },
+    } as DropResult);
+
+    await waitFor(() =>
+      expect(cardNames("New")).toEqual(["Renewal", "Support renewal"]),
+    );
+    expect(api.patch).toHaveBeenCalledWith("/api/crm/deals/5/stage", {
+      stage: "New",
+      index: 0,
+    });
+  });
+
+  it("ignores a drop outside a column, or back where it started", async () => {
     show();
     await screen.findByText("Platform rollout");
 

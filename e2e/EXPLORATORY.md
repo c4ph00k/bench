@@ -63,7 +63,11 @@ on the pipeline, delete confirmation, deep links. Left to judgement:
 - Mouse dragging on the pipeline. The specs drag with the keyboard, which is what
   `@hello-pangea/dnd` supports natively and what makes them stable, and the unit suite stubs the
   library out entirely - so the mouse path is **untested at every level**. Drag a card with the
-  mouse after touching the pipeline.
+  mouse after touching the pipeline, between columns and up and down within one, and reload to
+  confirm the order stuck.
+- Whether a column that overflows scrolls sensibly, and whether dragging a card to the bottom edge
+  of a full column auto-scrolls it. The board is sized to the window, so this only shows up with
+  enough deals in one stage, or a short window.
 - Chart readability: do the funnel proportions, the stacked won-versus-expected bars and the
   probability meters actually communicate at a glance? Only their presence and figures are asserted.
 - The forward half of "Revenue and deal volume" only fills if open deals carry future close dates.

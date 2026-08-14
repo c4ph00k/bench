@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { formatDate, formatDateTime, formatMoney } from "./format";
+import {
+  formatDate,
+  formatDateShort,
+  formatDateTime,
+  formatMoney,
+  formatMoneyCompact,
+} from "./format";
 
 describe("formatMoney", () => {
   it("shows whole dollars", () => {
@@ -13,6 +19,28 @@ describe("formatMoney", () => {
 
   it("keeps the sign on a negative", () => {
     expect(formatMoney(-500)).toBe("-$500");
+  });
+});
+
+describe("formatMoneyCompact", () => {
+  it("rounds to thousands, without a trailing zero", () => {
+    expect(formatMoneyCompact(22500)).toBe("$22.5k");
+    expect(formatMoneyCompact(20000)).toBe("$20k");
+  });
+
+  it("leaves anything under a thousand exact", () => {
+    expect(formatMoneyCompact(950)).toBe("$950");
+    expect(formatMoneyCompact(0)).toBe("$0");
+  });
+});
+
+describe("formatDateShort", () => {
+  it("drops the year the cards have no room for", () => {
+    expect(formatDateShort("2026-03-04")).toBe("Mar 4");
+  });
+
+  it("says so when a deal has no close date", () => {
+    expect(formatDateShort(null)).toBe("No close date");
   });
 });
 

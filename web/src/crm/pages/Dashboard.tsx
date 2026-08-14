@@ -23,10 +23,54 @@ import {
   WinRateDonut,
 } from "../components/DashboardCharts";
 import { formatDate, formatDateTime, formatMoney } from "../format";
+import ActivityIcon from "../components/ActivityIcon";
+import PageHeader from "../components/PageHeader";
+import {
+  IconDashboard,
+  IconDeals,
+  IconForecast,
+  IconPipeline,
+  IconRevenue,
+  IconWon,
+} from "../components/Icons";
 
 /** Six months behind and six ahead: what landed, then what is forecast to. */
 const MONTHS_BACK = 5;
 const MONTHS_FORWARD = 6;
+
+/**
+ * One headline figure. The tone is the whole point of the row: purple counts deals, blue is the
+ * open pipeline, amber is forecast, green is money already won - the same meanings the charts
+ * below use.
+ */
+function StatTile({
+  tone,
+  icon,
+  label,
+  value,
+  sub,
+  testId,
+}: {
+  tone: "count" | "open" | "forecast" | "won";
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  sub: string;
+  testId?: string;
+}) {
+  return (
+    <div className={`card stat-tile tone-${tone}`}>
+      <div className="stat-top">
+        <span className="stat-icon">{icon}</span>
+        <span className="stat-label">{label}</span>
+      </div>
+      <div className="stat-value" data-testid={testId}>
+        {value}
+      </div>
+      <div className="stat-sub">{sub}</div>
+    </div>
+  );
+}
 
 export default function Dashboard() {
   const { data: deals } = useFetch<Deal[]>("/api/crm/deals");
@@ -61,7 +105,18 @@ export default function Dashboard() {
   const trailing = monthly.slice(0, MONTHS_BACK + 1);
 
   const openDeals = useMemo(() => (deals ?? []).filter(isOpen), [deals]);
-  const expectedRevenue = useMemo(() => sumExpected(openDeals), [openDeals]);
+  const pipelineValue = sumValue(openDeals);
+  const expectedRevenue = sumExpected(openDeals);
+  const averageDeal = openDeals.length ? pipelineValue / openDeals.length : 0;
+  // Counted here rather than from `byOrg`, which is the chart's top five and would cap at 5.
+  const orgsInPlay = new Set(
+    openDeals.map((d) => d.organization_id).filter((id) => id !== null),
+  ).size;
+  const weighting = pipelineValue
+    ? Math.round((expectedRevenue / pipelineValue) * 100)
+    : 0;
+  const dealsWon = trailing.reduce((s, m) => s + m.won, 0);
+  const revenueWon = trailing.reduce((s, m) => s + m.actual, 0);
 
   const funnel = useMemo(
     () => pipelineFunnel(deals ?? [], months[0].key),
@@ -111,41 +166,49 @@ export default function Dashboard() {
 
   return (
     <>
-      <div className="page-header">
-        <div>
-          <h1>Dashboard</h1>
-          <p className="page-sub">How your sales are going at a glance</p>
-        </div>
-      </div>
+      <PageHeader
+        icon={<IconDashboard size={20} />}
+        title="Dashboard"
+        sub="How your sales are going at a glance"
+      />
       <div className="stat-row">
-        <div className="card stat-tile">
-          <div className="stat-label">Open deals</div>
-          <div className="stat-value">{openDeals.length}</div>
-        </div>
-        <div className="card stat-tile">
-          <div className="stat-label">Pipeline value</div>
-          <div className="stat-value" data-testid="dash-total">
-            {formatMoney(sumValue(openDeals))}
-          </div>
-        </div>
-        <div className="card stat-tile">
-          <div className="stat-label">Expected revenue</div>
-          <div className="stat-value accent" data-testid="dash-expected">
-            {formatMoney(expectedRevenue)}
-          </div>
-        </div>
-        <div className="card stat-tile">
-          <div className="stat-label">Deals won (6 mo)</div>
-          <div className="stat-value">
-            {trailing.reduce((s, m) => s + m.won, 0)}
-          </div>
-        </div>
-        <div className="card stat-tile">
-          <div className="stat-label">Revenue won (6 mo)</div>
-          <div className="stat-value">
-            {formatMoney(trailing.reduce((s, m) => s + m.actual, 0))}
-          </div>
-        </div>
+        <StatTile
+          tone="count"
+          icon={<IconDeals size={17} />}
+          label="Open deals"
+          value={String(openDeals.length)}
+          sub={`${String(orgsInPlay)} organizations in play`}
+        />
+        <StatTile
+          tone="open"
+          icon={<IconPipeline size={17} />}
+          label="Pipeline value"
+          value={formatMoney(pipelineValue)}
+          sub={`${formatMoney(averageDeal)} average deal`}
+          testId="dash-total"
+        />
+        <StatTile
+          tone="forecast"
+          icon={<IconForecast size={17} />}
+          label="Expected revenue"
+          value={formatMoney(expectedRevenue)}
+          sub={`${String(weighting)}% of the open pipeline`}
+          testId="dash-expected"
+        />
+        <StatTile
+          tone="won"
+          icon={<IconWon size={17} />}
+          label="Deals won (6 mo)"
+          value={String(dealsWon)}
+          sub={`${String(rate.rate)}% of everything closed`}
+        />
+        <StatTile
+          tone="won"
+          icon={<IconRevenue size={17} />}
+          label="Revenue won (6 mo)"
+          value={formatMoney(revenueWon)}
+          sub={dealsWon ? `${formatMoney(revenueWon / dealsWon)} a win` : "—"}
+        />
       </div>
       <div className="dash-grid">
         <div className="card">
@@ -189,9 +252,7 @@ export default function Dashboard() {
           <div className="feed-list">
             {recent.map((a) => (
               <div key={a.id} className="feed-item">
-                <div className={`activity-icon ${a.type}`}>
-                  {a.type.slice(0, 1)}
-                </div>
+                <ActivityIcon type={a.type} />
                 <div style={{ flex: 1 }}>
                   <div>{a.description}</div>
                   <div className="timeline-meta">

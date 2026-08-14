@@ -91,15 +91,14 @@ export function crmRouter(conn: db.DB): Router {
       db.updateDeal(conn, Number(req.params.id), req.body as db.DealInput),
     ),
   );
-  router.patch("/deals/:id/stage", (req, res) =>
-    res.json(
-      db.updateDealStage(
-        conn,
-        Number(req.params.id),
-        (req.body as { stage: db.DealStage }).stage,
-      ),
-    ),
-  );
+  // The board sends where the card was dropped; without an index the deal joins the end of its column.
+  router.patch("/deals/:id/stage", (req, res) => {
+    const { stage, index } = req.body as {
+      stage: db.DealStage;
+      index?: number;
+    };
+    res.json(db.moveDeal(conn, Number(req.params.id), stage, index));
+  });
   router.delete("/deals/:id", (req, res) => {
     db.deleteDeal(conn, Number(req.params.id));
     res.status(204).end();

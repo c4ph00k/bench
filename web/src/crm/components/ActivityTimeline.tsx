@@ -1,6 +1,7 @@
 import { api } from "../api";
 import { Activity } from "../types";
 import { formatDate, formatDateTime } from "../format";
+import ActivityIcon from "./ActivityIcon";
 
 interface Props {
   activities: Activity[];
@@ -26,7 +27,7 @@ export default function ActivityTimeline({ activities, onChanged }: Props) {
     <div className="timeline">
       {activities.map((a) => (
         <div key={a.id} className={`timeline-item${a.done ? " done" : ""}`}>
-          <div className={`activity-icon ${a.type}`}>{a.type.slice(0, 1)}</div>
+          <ActivityIcon type={a.type} />
           <div className="timeline-body">
             <div>{a.description}</div>
             <div className="timeline-meta">

@@ -81,6 +81,8 @@ interface Deal {
   value: number;
   probability: number;
   close_date: string | null;
+  /** Position within the deal's own pipeline column, ascending. */
+  board_order: number;
   created_at: string;
 }
 
@@ -127,6 +129,7 @@ CREATE TABLE IF NOT EXISTS deals (
   value REAL NOT NULL DEFAULT 0,
   probability INTEGER NOT NULL DEFAULT 0,
   close_date TEXT,
+  board_order INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE TABLE IF NOT EXISTS activities (
@@ -160,18 +163,30 @@ export function expectedValue(deal: {
   return (deal.value * deal.probability) / 100;
 }
 
-/** Databases created before deals carried a probability get the column and a backfill. */
+/** Databases created before a deal column existed get it added and backfilled in place. */
 function migrate(db: DB) {
-  const columns = db.prepare("PRAGMA table_info(deals)").all() as {
-    name: string;
-  }[];
-  if (columns.some((c) => c.name === "probability")) return;
-  db.exec(
-    "ALTER TABLE deals ADD COLUMN probability INTEGER NOT NULL DEFAULT 0",
-  );
-  const update = db.prepare("UPDATE deals SET probability = ? WHERE stage = ?");
-  for (const [stage, probability] of Object.entries(STAGE_PROBABILITY))
-    update.run(probability, stage);
+  const columns = (
+    db.prepare("PRAGMA table_info(deals)").all() as { name: string }[]
+  ).map((c) => c.name);
+  if (!columns.includes("probability")) {
+    db.exec(
+      "ALTER TABLE deals ADD COLUMN probability INTEGER NOT NULL DEFAULT 0",
+    );
+    const update = db.prepare(
+      "UPDATE deals SET probability = ? WHERE stage = ?",
+    );
+    for (const [stage, probability] of Object.entries(STAGE_PROBABILITY))
+      update.run(probability, stage);
+  }
+  if (!columns.includes("board_order")) {
+    db.exec(
+      "ALTER TABLE deals ADD COLUMN board_order INTEGER NOT NULL DEFAULT 0",
+    );
+    // Every existing row reads 0, which is no order at all. Number each column 0..n-1 by id.
+    db.exec(`UPDATE deals SET board_order = (
+      SELECT COUNT(*) FROM deals AS earlier
+      WHERE earlier.stage = deals.stage AND earlier.id < deals.id)`);
+  }
 }
 
 export function openDb(path: string): DB {
@@ -314,7 +329,8 @@ export function deleteContact(db: DB, id: number) {
 export function createDeal(db: DB, input: DealInput) {
   const info = db
     .prepare(
-      "INSERT INTO deals (name, organization_id, contact_id, stage, value, probability, close_date) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      `INSERT INTO deals (name, organization_id, contact_id, stage, value, probability, close_date, board_order)
+       VALUES (?, ?, ?, ?, ?, ?, ?, (SELECT COALESCE(MAX(board_order), -1) + 1 FROM deals WHERE stage = ?))`,
     )
     .run(
       input.name,
@@ -324,6 +340,7 @@ export function createDeal(db: DB, input: DealInput) {
       input.value,
       input.probability ?? STAGE_PROBABILITY[input.stage],
       input.close_date ?? null,
+      input.stage,
     );
   return db
     .prepare("SELECT * FROM deals WHERE id = ?")
@@ -390,13 +407,31 @@ export function updateDeal(db: DB, id: number, input: DealInput) {
   return getDeal(db, id);
 }
 
-/** Moving a deal along the pipeline re-bases its probability on the new stage. */
-export function updateDealStage(db: DB, id: number, stage: DealStage) {
-  db.prepare("UPDATE deals SET stage = ?, probability = ? WHERE id = ?").run(
-    stage,
-    STAGE_PROBABILITY[stage],
-    id,
-  );
+/**
+ * Drop a deal into a column at `index`, renumbering that column so the position survives a reload.
+ * Changing column re-bases the probability on the new stage; reordering inside one does not, or a
+ * card could not be moved without losing a probability set by hand.
+ */
+export function moveDeal(db: DB, id: number, stage: DealStage, index?: number) {
+  const current = getDeal(db, id);
+  if (!current) return undefined;
+  if (current.stage !== stage)
+    db.prepare("UPDATE deals SET stage = ?, probability = ? WHERE id = ?").run(
+      stage,
+      STAGE_PROBABILITY[stage],
+      id,
+    );
+
+  const others = (
+    db
+      .prepare(
+        "SELECT id FROM deals WHERE stage = ? AND id != ? ORDER BY board_order, id",
+      )
+      .all(stage, id) as { id: number }[]
+  ).map((row) => row.id);
+  others.splice(index ?? others.length, 0, id);
+  const place = db.prepare("UPDATE deals SET board_order = ? WHERE id = ?");
+  others.forEach((dealId, position) => place.run(position, dealId));
   return getDeal(db, id);
 }
 

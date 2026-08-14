@@ -25,6 +25,21 @@ Six tables in `server/src/space/db.ts`:
 
 Ids are UUID strings, not integers.
 
+## The seeded workspace
+
+`server/src/space/seed.ts` fills an empty database with a worked example rather than a stub: nine
+top-level sections (Home, Projects, Travel, Notes, Reading List, Health & Habits, Work, Learning,
+Archive), three levels deep in places, and **five databases** - Reading List, Trip Planner, Project
+Tracker, Tasks and Course Log. Between them they use every property type, every block type and all
+three view kinds, with filters and sorts saved per view. The e2e suite reads it: Trip Planner's five
+rows and their order are asserted directly, so add rows elsewhere rather than there.
+
+**Creating a page navigates first and refreshes the tree afterwards** (`Sidebar.createPage`). The
+other order leaves you on the old page for as long as the tree takes to load, which grows with the
+workspace - and a test that types into "the title" before the new page arrives is typing into the
+old one. `e2e/space/pages.spec.ts` waits for an empty title before filling it, for exactly that
+reason.
+
 ## Routes and API
 
 Two routes: `/` (redirects to the first page) and `/p/:pageId`, under `basename="/space"`.
