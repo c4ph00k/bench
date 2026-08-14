@@ -45,6 +45,7 @@ One npm workspace root with two workspaces, so a single `npm install` and a sing
 - `e2e/` - Playwright specs.
 - `docs/` - working documentation: [PROJECT.md](./docs/PROJECT.md) (purpose and architecture),
   [PROCESS.md](./docs/PROCESS.md) (implementing and testing a change),
-  [STANDARDS.md](./docs/STANDARDS.md) (coding standards), plus a directory per app -
+  [STANDARDS.md](./docs/STANDARDS.md) (coding standards),
+  [CONTROLS.md](./docs/CONTROLS.md) (lint, static analysis and coverage), plus a directory per app -
   `docs/crm/`, `docs/space/`, `docs/groove/` - each with its implementation notes and its
   original requirements.

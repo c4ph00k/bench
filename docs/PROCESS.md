@@ -1,8 +1,13 @@
 # Process - how to implement a change
 
 Work in small increments and validate each one before moving on. A change is finished when the
-typecheck, the unit tests and the e2e suite all pass, and you have seen the feature working in a
-real browser.
+checks and the e2e suite all pass, you have seen the feature working in a real browser, and it is
+committed.
+
+**`npm run format` and `npm run check` do not exist yet.** [CONTROLS.md](./CONTROLS.md) records the
+decisions behind them and they are the next piece of work; section 5 below is written for the world
+they land in. Until then the equivalent is `npm run typecheck` and `npm test`, and the hooks the
+finishing steps mention are not installed either.
 
 ## 1. Understand before changing
 
@@ -144,3 +149,4 @@ See [CONTROLS.md](./CONTROLS.md) for what the checks are and how each layer is e
 
 - [PROJECT.md](./PROJECT.md) - purpose, layout, architectural decisions
 - [STANDARDS.md](./STANDARDS.md) - coding standards
+- [CONTROLS.md](./CONTROLS.md) - lint, static analysis, coverage and how each is enforced

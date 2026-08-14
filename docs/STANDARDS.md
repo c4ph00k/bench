@@ -125,3 +125,4 @@ change working - see [PROCESS.md](./PROCESS.md). Do not leave completed work sit
 
 - [PROJECT.md](./PROJECT.md) - purpose, layout, architectural decisions
 - [PROCESS.md](./PROCESS.md) - implementing a change, testing, suite maintenance
+- [CONTROLS.md](./CONTROLS.md) - the checks that mechanise these standards, and how each is enforced

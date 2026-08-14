@@ -1,10 +1,16 @@
 # Controls - lint, static analysis and enforcement
 
 **None of this is built yet.** This records decisions taken on 2026-08-14 so the work can be picked
-up without relitigating them. There is no linter in the repo today, and none of the commands below
-exist until it is implemented. Do not cite them in other docs until they do.
+up without relitigating them. Every decision below is settled; nothing here is still under
+discussion. There is no linter in the repo today and none of the commands below exist yet.
 
-The exception is coverage, which already exists - see [F](#f-coverage-thresholds).
+Two things already partly exist: **coverage** thresholds, which are configured and passing at a
+narrower scope than intended - see [F](#f-coverage-thresholds) - and the **process rules** in
+[PROCESS.md](./PROCESS.md) and [STANDARDS.md](./STANDARDS.md), which are already written for the
+world this lands in. PROCESS.md says so at the top, so nobody runs `npm run check` and wonders why
+it is missing.
+
+Build it in the order given at the end of this document.
 
 ## The toolset
 
@@ -26,7 +32,7 @@ rather than one per workspace: type-aware linting reaches both tsconfigs through
 | `prettier` | Formatting. See [G](#g-prettier) |
 | `eslint-config-prettier` | Switches off the ESLint rules that would fight Prettier |
 
-Two standalone tools, not ESLint plugins:
+Three standalone tools, not ESLint plugins:
 
 | Tool | Job |
 | --- | --- |
@@ -81,6 +87,7 @@ npm run lint:fix      the same, applying fixes
 npm run format        prettier --write
 npm run format:check  prettier --check, for CI
 npm run knip          unused files, exports, dependencies
+npm run gitleaks      leaked credentials - see H
 npm run check:secrets PII and files that must never be tracked - see H
 npm run jscpd         cross-file duplication
 npm run check         typecheck + lint + format:check + gitleaks + check:secrets + knip
@@ -125,8 +132,10 @@ that slips. A hook firing means the process already failed.
 
 ## D. CI - the real gate
 
-A GitHub Actions workflow on push and pull request running typecheck, lint, format:check, knip, unit
-tests with coverage, and e2e. **Branch protection on `main` requires it to pass before merge.**
+A GitHub Actions workflow on push and pull request running **`npm run check` and `npm run e2e`** -
+naming the aggregate rather than restating its parts, so CI cannot drift out of step with what A
+defines. It needs `gitleaks` installed; use the official `gitleaks/gitleaks-action`.
+**Branch protection on `main` requires it to pass before merge.**
 
 This is the only layer that cannot be bypassed. "Nothing lands unless it passes" means nothing is
 *merged* - not that nothing is *committed*, which no client-side hook can guarantee.
@@ -171,18 +180,19 @@ work rather than configuration:
 **The `include` widens from `src/space/**` to all of `src/**`.** That brings in two apps with almost
 no unit tests:
 
-| App | Source | Unit test files | Coverage today |
+| App | Source in scope | Unit test files | Coverage today |
 | --- | --- | --- | --- |
 | `web/src/space` | 2,817 lines | 11 | 86% |
 | `web/src/crm` | 2,378 lines | 1 (`types.test.ts`) | 9.78% |
-| `web/src/groove` | 2,742 lines | 0 | 0% |
+| `web/src/groove` | 1,689 lines (audio excluded) | 0 | 0% |
 | `web/src/home` | 59 lines | 0 | 0% |
 
-So roughly **5,200 lines of untested UI** need tests before this threshold can be turned on. Do it
+So roughly **4,100 lines of untested UI** need tests before this threshold can be turned on. Do it
 app by app, not in one pass, and do not lower the bar to make a red run green.
 
-**`web/src/groove/audio/**` is excluded from the `include`.** jsdom has no `AudioContext`, so those
-four files cannot be unit tested without a mock that would assert nothing about how anything sounds.
+**`web/src/groove/audio/**` is excluded from the `include`** - 1,053 lines across four files. jsdom
+has no `AudioContext`, so they cannot be unit tested without a mock that would assert nothing about
+how anything sounds.
 [EXPLORATORY.md](../e2e/EXPLORATORY.md) already records that Groove's audio is not automatically
 testable, and a coverage threshold must not be allowed to imply otherwise - excluding it and saying
 so is the honest option. Groove's pure modules (`music.ts`, `params.ts`, `patches.ts`, `filter.ts`)
@@ -264,7 +274,7 @@ machine.
 
 ### gitleaks
 
-Run as `npm run check:secrets:gitleaks`, inside `npm run check`.
+Run as `npm run gitleaks`, inside `npm run check`.
 
 `gitleaks` is a Go binary, not an npm package, so it will not arrive with `npm install`. Install it
 locally with `brew install gitleaks`; in CI use the official `gitleaks/gitleaks-action`. **If the
@@ -328,6 +338,8 @@ makes running `npm run check` locally a requirement rather than a courtesy - see
 [PROCESS.md](./PROCESS.md).
 
 ## Order of work
+
+This work lives on the **`controls`** branch, cut from `main` on 2026-08-14.
 
 The pieces depend on each other, so build them in this order:
 
