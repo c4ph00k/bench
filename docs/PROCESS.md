@@ -123,14 +123,22 @@ elements around it, above and below included.
 
 ## 5. Finishing
 
-1. `npm run typecheck`
-2. `npm test`
+1. `npm run format` - formatting is not applied to agent edits automatically, and `check` fails on
+   unformatted files.
+2. `npm run check` - typecheck, lint, formatting, secrets, dead code, and unit tests with coverage.
 3. `npm run e2e`
 4. Look at it in a browser.
 5. Update the docs the change invalidates - the app doc for behaviour, `PROJECT.md` for structure,
    `EXPLORATORY.md` for coverage gaps.
-6. **Do not commit** - see [STANDARDS.md](./STANDARDS.md). Report what changed, offer a commit
-   message, and say honestly which parts are incomplete or unverified.
+6. **Commit**, with everything above green - see [STANDARDS.md](./STANDARDS.md). Then report what
+   changed and say honestly which parts are incomplete or unverified.
+
+**Run the checks yourself.** The lefthook pre-commit hook and the Claude Code stop hook both run
+lint, but they are backstops for the times something slips - not the mechanism. Do not hand work
+over and let a hook discover what `npm run check` would have told you a minute earlier. A hook
+firing means the process already failed.
+
+See [CONTROLS.md](./CONTROLS.md) for what the checks are and how each layer is enforced.
 
 ## Related documents
 
