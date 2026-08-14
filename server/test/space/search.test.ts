@@ -5,9 +5,13 @@ import { openDb as openCrmDb } from "../../src/crm/db.js";
 import { createApp } from "../../src/app.js";
 import type Database from "better-sqlite3";
 import type express from "express";
+import type { Page, SearchHit } from "./responses.js";
 
 let db: Database.Database;
 let app: express.Express;
+
+const search = async (q: string) =>
+  (await request(app).get(`/api/space/search?q=${q}`)).body as SearchHit[];
 
 beforeEach(async () => {
   db = openDb(":memory:");
@@ -16,7 +20,7 @@ beforeEach(async () => {
     await request(app)
       .post("/api/space/pages")
       .send({ title: "Travel", icon: "✈️" })
-  ).body;
+  ).body as Page;
   await request(app)
     .post("/api/space/pages")
     .send({ title: "Japan Trip", parentId: parent.id });
@@ -24,7 +28,7 @@ beforeEach(async () => {
     await request(app)
       .post("/api/space/pages")
       .send({ title: "Reading List", type: "database" })
-  ).body;
+  ).body as Page;
   await request(app)
     .post(`/api/space/databases/${dbPage.id}/rows`)
     .send({ title: "Japanese Cooking" });
@@ -32,35 +36,32 @@ beforeEach(async () => {
 
 describe("search API", () => {
   it("matches page, database, and row titles case-insensitively", async () => {
-    const res = await request(app).get("/api/space/search?q=japan");
-    const titles = res.body.map((r: any) => r.title);
+    const titles = (await search("japan")).map((r) => r.title);
     expect(titles).toContain("Japan Trip");
     expect(titles).toContain("Japanese Cooking");
   });
 
   it("includes the result type and parent title for context", async () => {
-    const res = await request(app).get("/api/space/search?q=japan");
-    const row = res.body.find((r: any) => r.title === "Japanese Cooking");
+    const hits = await search("japan");
+    const row = hits.find((r) => r.title === "Japanese Cooking")!;
     expect(row.type).toBe("row");
     expect(row.parent_title).toBe("Reading List");
-    const page = res.body.find((r: any) => r.title === "Japan Trip");
+    const page = hits.find((r) => r.title === "Japan Trip")!;
     expect(page.parent_title).toBe("Travel");
   });
 
   it("finds databases by title", async () => {
-    const res = await request(app).get("/api/space/search?q=reading");
-    expect(res.body[0].type).toBe("database");
+    expect((await search("reading"))[0].type).toBe("database");
   });
 
   it("ranks prefix matches first", async () => {
     await request(app).post("/api/space/pages").send({ title: "About Japan" });
-    const res = await request(app).get("/api/space/search?q=japan");
-    expect(res.body[0].title).toBe("Japan Trip");
+    expect((await search("japan"))[0].title).toBe("Japan Trip");
   });
 
   it("returns an empty list for a blank query and escapes LIKE wildcards", async () => {
-    expect((await request(app).get("/api/space/search?q=")).body).toEqual([]);
-    expect((await request(app).get("/api/space/search?q=%")).body).toEqual([]);
-    expect((await request(app).get("/api/space/search?q=_")).body).toEqual([]);
+    expect(await search("")).toEqual([]);
+    expect(await search("%")).toEqual([]);
+    expect(await search("_")).toEqual([]);
   });
 });

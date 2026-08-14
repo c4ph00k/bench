@@ -5,6 +5,7 @@ import { openDb as openCrmDb } from "../../src/crm/db.js";
 import { createApp } from "../../src/app.js";
 import type Database from "better-sqlite3";
 import type express from "express";
+import type { Block, Ok, Page } from "./responses.js";
 
 let db: Database.Database;
 let app: express.Express;
@@ -13,8 +14,10 @@ let pageId: string;
 beforeEach(async () => {
   db = openDb(":memory:");
   app = createApp({ crm: openCrmDb(":memory:"), space: db });
-  pageId = (await request(app).post("/api/space/pages").send({ title: "Doc" }))
-    .body.id;
+  pageId = (
+    (await request(app).post("/api/space/pages").send({ title: "Doc" }))
+      .body as Page
+  ).id;
 });
 
 const addBlock = async (type: string, text: string, index?: number) =>
@@ -22,11 +25,14 @@ const addBlock = async (type: string, text: string, index?: number) =>
     await request(app)
       .post(`/api/space/pages/${pageId}/blocks`)
       .send({ type, content: { text }, index })
-  ).body;
+  ).body as Block;
+
+const readPage = async () =>
+  (await request(app).get(`/api/space/pages/${pageId}`)).body as Page;
 
 const blockTitles = async () => {
-  const page = (await request(app).get(`/api/space/pages/${pageId}`)).body;
-  return page.blocks.map((b: any) => b.content.text);
+  const page = await readPage();
+  return page.blocks.map((b) => b.content.text);
 };
 
 describe("blocks API", () => {
@@ -46,7 +52,7 @@ describe("blocks API", () => {
         type: "todo",
         content: { text: "task", checked: false },
       });
-    expect(res.body.id).toBe("client-id-1");
+    expect((res.body as Block).id).toBe("client-id-1");
   });
 
   it("rejects unknown block types and missing pages", async () => {
@@ -65,8 +71,8 @@ describe("blocks API", () => {
     const patched = await request(app)
       .patch(`/api/space/blocks/${b.id}`)
       .send({ type: "quote", content: { text: "hello!" } });
-    expect(patched.body.type).toBe("quote");
-    expect(patched.body.content.text).toBe("hello!");
+    expect((patched.body as Block).type).toBe("quote");
+    expect((patched.body as Block).content.text).toBe("hello!");
     expect(
       (
         await request(app)
@@ -85,8 +91,8 @@ describe("blocks API", () => {
     await addBlock("paragraph", "c");
     await request(app).delete(`/api/space/blocks/${a.id}`);
     expect(await blockTitles()).toEqual(["b", "c"]);
-    const page = (await request(app).get(`/api/space/pages/${pageId}`)).body;
-    expect(page.blocks.map((b: any) => b.position)).toEqual([0, 1]);
+    const page = await readPage();
+    expect(page.blocks.map((b) => b.position)).toEqual([0, 1]);
     expect((await request(app).delete("/api/space/blocks/none")).status).toBe(
       404,
     );
@@ -99,7 +105,7 @@ describe("blocks API", () => {
     const res = await request(app)
       .put(`/api/space/pages/${pageId}/blocks/order`)
       .send({ ids: [c.id, a.id, b.id] });
-    expect(res.body.ok).toBe(true);
+    expect((res.body as Ok).ok).toBe(true);
     expect(await blockTitles()).toEqual(["c", "a", "b"]);
   });
 

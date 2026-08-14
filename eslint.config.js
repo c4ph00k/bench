@@ -52,6 +52,13 @@ export default tseslint.config(
         { ignoreArrowShorthand: true },
       ],
 
+      // A number in a template literal is unambiguous. What this rule is worth keeping for is
+      // `string | undefined`, which silently prints "undefined", and that stays an error.
+      "@typescript-eslint/restrict-template-expressions": [
+        "error",
+        { allowNumber: true },
+      ],
+
       // These are what enforce "short functions, short modules" from STANDARDS.md.
       complexity: ["error", 15],
       "max-depth": ["error", 4],
