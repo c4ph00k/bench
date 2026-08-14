@@ -151,8 +151,10 @@ earlier. A hook firing means the process already failed. Until they are installe
 backstop at all.
 
 **If vitest will not start**, saying "Cannot find native binding", npm has pruned an optional
-platform package - it does that when a dependency is added. `rm -rf node_modules package-lock.json
-&& npm install`. See [CONTROLS.md](./CONTROLS.md).
+platform package - it does that when a dependency is added. Clear all three `node_modules`, not
+just the root one, or a stale nested copy shadows the hoisted package inside that workspace:
+`rm -rf node_modules web/node_modules server/node_modules package-lock.json && npm install`. See
+[CONTROLS.md](./CONTROLS.md).
 
 See [CONTROLS.md](./CONTROLS.md) for what the checks are and how each layer is enforced.
 

@@ -89,14 +89,14 @@ These are settled. Changing one is a project-level decision, not an implementati
   refresh on `/crm/contacts` serves the launcher. Both carry the same `APPS` list, and they have
   disagreed before - check both when you touch routing.
 - **One dependency set per workspace.** All three UIs live in `web/`, so they share one set of
-  versions: TypeScript 7, Vite 8, vitest 4, react-router 8, React 19.
-- **Two TypeScripts, for now.** The workspaces compile with 7; the repo root pins 5.9 purely as
-  ESLint's analysis engine, because TypeScript 7's native build no longer exposes the compiler API
-  that type-aware linting needs. The root `optionalDependencies` block carrying every
-  `@typescript/typescript-*` platform package keeps the nested 7 working and is load-bearing, not
-  stray. **This arrangement is worth revisiting**: TypeScript 6.0.3 still has the compiler API and
-  would let one version serve both, or an alias would keep 7 for builds without the
-  `optionalDependencies` workaround. See [CONTROLS.md](./CONTROLS.md).
+  versions: TypeScript 6, Vite 8, vitest 4, react-router 8, React 19.
+- **TypeScript 6.0.3, pinned exactly, everywhere.** Root and both workspaces, one hoisted copy.
+  6.0.3 is the last release carrying the JS compiler API that type-aware linting needs, so one
+  compiler serves both `tsc --noEmit` and ESLint; TypeScript 7 is the native Go build and exposes no
+  such API until 7.1. The pin is exact rather than `^6.0.3` because 6.1.0 would fall outside
+  typescript-eslint's supported range. The cost is roughly three seconds a typecheck against 7.
+  **Revisit when typescript-eslint supports the native compiler.** See
+  [CONTROLS.md](./CONTROLS.md).
 
 ## Adding a fourth app
 

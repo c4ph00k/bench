@@ -94,43 +94,56 @@ the work and for the rules that turned out not to fit.
 Decisions that could only be taken with the code in front of us. The plan above stands; these are
 the places reality argued back.
 
-### TypeScript 7 cannot drive type-aware linting
+### TypeScript 7 cannot drive type-aware linting, so the repo is on 6.0.3
 
 **This is the one to know about.** TypeScript 7 is the native Go compiler: `node_modules/typescript`
 ships `tsc.js` and nothing else, and the JS compiler API that type-aware linting is built on is
 gone. typescript-eslint peer-requires `<6.1.0` and refuses to install alongside 7 at all; its own
 issue tracker says the programmatic API for tsgo lands in 7.1. So `strictTypeChecked` - the whole
-point of the toolset - cannot run against the compiler this project builds with.
+point of the toolset - cannot run against TypeScript 7 at all.
 
 This is not a quirk of this repo. It is where the whole ecosystem is: typescript-eslint
 [#12518][ts-eslint-7] tracks it, and the API it needs lands in TypeScript 7.1. Anyone running
-type-aware linting who upgrades to 7 hits exactly this.
+type-aware linting who upgrades to 7 hits exactly this. It also shows up in the download numbers:
+7.0.2 is the `latest` tag but only ~7% of weekly installs, against ~44% for 5.9.3 and ~14% for
+6.0.3.
 
-**The current arrangement is a poor version of the standard answer, and should be revisited.** The
-root pins `typescript` to 5.9.3 as ESLint's analysis engine while both workspaces keep `^7.0.2` for
-`tsc --noEmit`. Two things are wrong with it:
+**Decided: the whole repo is pinned to TypeScript 6.0.3 - one version, root and both workspaces.**
+6.0.3 is the last release that ships the JS compiler API (`lib/typescript.js`, `createProgram`,
+`createLanguageService`), and it sits inside typescript-eslint's supported range, so one compiler
+serves both `tsc --noEmit` and the linter. This reverses the "TypeScript 7" line in
+[PROJECT.md](./PROJECT.md), which is why it was Ed's call rather than an implementation detail.
 
-- **5.9 was two majors further back than necessary.** TypeScript **6.0.3 still ships the JS compiler
-  API** (`lib/typescript.js`, `createProgram`, `createLanguageService`) and sits inside
-  typescript-eslint's `<6.1.0` range. 6 is the version to pin, not 5.9.
-- **Hoisting is the wrong mechanism.** Putting 5.9 at the root pushes 7 down into the workspaces,
+The version is pinned **exactly**, not `^6.0.3`, in all three `package.json` files. A caret would
+allow 6.1.0, which is outside typescript-eslint's `<6.1.0` peer range - the upper bound is a hard
+constraint, not a preference.
+
+What this bought, beyond one version:
+
+- **The root `optionalDependencies` block is gone** - all twenty `@typescript/typescript-*` platform
+  packages. It only ever existed because hoisting 5.9 to the root pushed 7 down into the workspaces,
   and npm does not install the optional platform binaries of a nested package, so `tsc` died with
-  "Unable to resolve @typescript/typescript-darwin-arm64". The **root `optionalDependencies`
-  block** listing all twenty `@typescript/typescript-*` packages exists solely to work around that.
-  It is load-bearing today - delete it and `tsc` stops - but it should not need to exist. An npm
-  **alias** keeps both compilers top-level and avoids the problem outright.
+  "Unable to resolve @typescript/typescript-darwin-arm64". No nested compiler, no missing binary,
+  no workaround.
+- **The two compilers can no longer disagree.** They did, rarely: 5.9 and 7 infer some generics
+  differently, and `eslint --fix` once removed an assertion that `tsc` then demanded back. That
+  class of problem is now structurally impossible.
 
-So the two real options, both cheaper than what is here:
+`npm run check` still runs typecheck **and** lint, which is now belt-and-braces rather than
+load-bearing.
 
-1. **Move the whole repo to TypeScript 6.0.3.** One version, no alias, no `optionalDependencies`
-   block, type-aware linting works. Costs TypeScript 7's speed, and reverses the decision in
-   [PROJECT.md](./PROJECT.md), so it is Ed's call.
-2. **Alias**, if 7's build speed is worth keeping: `"typescript": "npm:@typescript/typescript6@^6"`
-   for the linter with 7 under a second alias for builds.
+**The cost is build speed, and it is real but small at this size.** Measured on the same tsconfigs:
 
-They also disagree, rarely. 5.9 and 7 infer some generics differently, so `eslint --fix` once
-removed an assertion that `tsc` then demanded back. `npm run check` runs typecheck **and** lint for
-that reason - neither substitutes for the other, and after any `--fix` run, typecheck.
+| Compiler | server | web   | total     |
+| -------- | ------ | ----- | --------- |
+| 7.0.2    | 0.12s  | 0.36s | **0.48s** |
+| 6.0.3    | 0.79s  | 2.55s | **3.34s** |
+
+Seven times slower, and three seconds. Revisit when typescript-eslint supports tsgo in 7.1: at that
+point the whole arrangement collapses into "use 7", and this section becomes history.
+
+**Upgrading past 6.0.3 is therefore a deliberate, coordinated change**, not a routine bump - check
+typescript-eslint's peer range first.
 
 [ts-eslint-7]: https://github.com/typescript-eslint/typescript-eslint/issues/12518
 
@@ -145,6 +158,16 @@ It is not silent - npm prints "removed N packages" - but it does not say what it
 mattered, and the failure surfaces later as a vitest startup error. Rolldown's own message names
 the npm issue and the remedy: `rm -rf node_modules package-lock.json && npm install`. Removing
 `node_modules` alone is not enough; the lockfile has to go too.
+
+**In this repo that means all three `node_modules`.** `rm -rf node_modules` at the root leaves
+`web/node_modules` and `server/node_modules` in place, and a package nested there shadows the
+hoisted copy for anything running inside that workspace. The TypeScript 6 migration hit exactly
+this: the root had 6.0.3 while both workspaces still held a stale nested 7.0.2, so `tsc` inside a
+workspace was still the old compiler. The full incantation is:
+
+```bash
+rm -rf node_modules web/node_modules server/node_modules package-lock.json && npm install
+```
 
 [npm/cli#4828]: https://github.com/npm/cli/issues/4828
 

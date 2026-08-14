@@ -13,9 +13,8 @@ import prettier from "eslint-config-prettier";
  * One flat config for web, server and e2e. Type-aware rules reach both workspace tsconfigs plus
  * the root one covering e2e through typescript-eslint's projectService.
  *
- * The workspaces compile with TypeScript 7, whose native build no longer exposes the JS compiler
- * API that type-aware linting is built on. Root devDependency `typescript` is pinned to 5.9 purely
- * as ESLint's analysis engine; `tsc --noEmit` in each workspace still runs 7.
+ * TypeScript is pinned to exactly 6.0.3 repo-wide: it is the last release exposing the JS compiler
+ * API these rules are built on, and 6.1.0 would fall outside typescript-eslint's peer range.
  */
 export default tseslint.config(
   {
