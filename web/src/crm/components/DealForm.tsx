@@ -1,0 +1,154 @@
+import { FormEvent, useState } from 'react'
+import Modal from './Modal'
+import { api } from '../api'
+import { Contact, DEAL_STAGES, Deal, DealStage, Organization, STAGE_PROBABILITY, expectedValue } from '../types'
+import { formatMoney } from './Chips'
+
+interface Props {
+  existing?: Deal
+  organizations: Organization[]
+  contacts: Contact[]
+  defaultOrganizationId?: number
+  onSaved: () => void
+  onClose: () => void
+}
+
+export default function DealForm({ existing, organizations, contacts, defaultOrganizationId, onSaved, onClose }: Props) {
+  const [form, setForm] = useState({
+    name: existing?.name ?? '',
+    organization_id: existing?.organization_id ?? defaultOrganizationId ?? ('' as number | ''),
+    contact_id: existing?.contact_id ?? ('' as number | ''),
+    stage: existing?.stage ?? ('New' as DealStage),
+    value: existing?.value ?? 0,
+    probability: existing?.probability ?? STAGE_PROBABILITY.New,
+    close_date: existing?.close_date ?? '',
+  })
+
+  async function submit(e: FormEvent) {
+    e.preventDefault()
+    const body = {
+      ...form,
+      organization_id: form.organization_id === '' ? null : Number(form.organization_id),
+      contact_id: form.contact_id === '' ? null : Number(form.contact_id),
+      value: Number(form.value),
+      probability: Number(form.probability),
+      close_date: form.close_date || null,
+    }
+    if (existing) await api.put(`/api/crm/deals/${existing.id}`, body)
+    else await api.post('/api/crm/deals', body)
+    onSaved()
+    onClose()
+  }
+
+  return (
+    <Modal title={existing ? 'Edit deal' : 'Add deal'} onClose={onClose}>
+      <form className="form-grid" onSubmit={submit}>
+        <div className="field">
+          <label htmlFor="dl-name">Name</label>
+          <input id="dl-name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+        </div>
+        <div className="form-row">
+          <div className="field">
+            <label htmlFor="dl-org">Organization</label>
+            <select
+              id="dl-org"
+              value={form.organization_id}
+              onChange={(e) => setForm({ ...form, organization_id: e.target.value === '' ? '' : Number(e.target.value) })}
+            >
+              <option value="">— None —</option>
+              {organizations.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="field">
+            <label htmlFor="dl-contact">Primary contact</label>
+            <select
+              id="dl-contact"
+              value={form.contact_id}
+              onChange={(e) => setForm({ ...form, contact_id: e.target.value === '' ? '' : Number(e.target.value) })}
+            >
+              <option value="">— None —</option>
+              {contacts.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div className="form-row">
+          <div className="field">
+            <label htmlFor="dl-stage">Stage</label>
+            <select
+              id="dl-stage"
+              value={form.stage}
+              onChange={(e) => {
+                const stage = e.target.value as DealStage
+                setForm({ ...form, stage, probability: STAGE_PROBABILITY[stage] })
+              }}
+            >
+              {DEAL_STAGES.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="field">
+            <label htmlFor="dl-value">Value (USD)</label>
+            <input
+              id="dl-value"
+              type="number"
+              min="0"
+              step="1"
+              required
+              value={form.value}
+              onChange={(e) => setForm({ ...form, value: e.target.valueAsNumber || 0 })}
+            />
+          </div>
+        </div>
+        <div className="form-row">
+          <div className="field">
+            <label htmlFor="dl-probability">Probability (%)</label>
+            <input
+              id="dl-probability"
+              type="number"
+              min="0"
+              max="100"
+              step="5"
+              required
+              value={form.probability}
+              onChange={(e) => setForm({ ...form, probability: e.target.valueAsNumber || 0 })}
+            />
+          </div>
+          <div className="field">
+            <label>Expected value</label>
+            <output className="field-output">
+              {formatMoney(expectedValue({ value: Number(form.value), probability: Number(form.probability) }))}
+            </output>
+          </div>
+        </div>
+        <div className="field">
+          <label htmlFor="dl-close">Close date</label>
+          <input
+            id="dl-close"
+            type="date"
+            value={form.close_date}
+            onChange={(e) => setForm({ ...form, close_date: e.target.value })}
+          />
+        </div>
+        <div className="modal-actions">
+          <button type="button" className="btn btn-ghost" onClick={onClose}>
+            Cancel
+          </button>
+          <button type="submit" className="btn btn-primary">
+            Save
+          </button>
+        </div>
+      </form>
+    </Modal>
+  )
+}
