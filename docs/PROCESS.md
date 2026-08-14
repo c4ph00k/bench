@@ -75,7 +75,13 @@ Rules that keep this suite reliable:
   `@hello-pangea/dnd`: Space to lift, arrows to move, Space to drop - deterministic, no coordinates.
   Space's board uses dnd-kit, which has no keyboard sensor here, so its drags stay mouse-driven.
 - `getByRole` name matching is substring-based: `{ name: "BASS step 1" }` also matches steps 10-16.
-  Pass `exact: true` for numbered labels.
+  Pass `exact: true` for numbered labels. **This is a Playwright rule only** - Testing Library's
+  `name` already matches the whole string, and `exact` is not one of its options there.
+- **One spec depends on the wall clock**: "running the sequencer logs no console errors" waits for
+  Groove's playhead to pass step 12, and the playhead is driven by the audio clock. Under heavy CPU
+  load the headless audio thread falls behind and the poll times out - seen at load average 7, while
+  the same spec passes in ~2s at load 4. If it fails, check what else is running before treating it
+  as a regression.
 
 Run one file while iterating: `npx playwright test e2e/crm/revenue.spec.ts --retries=0`.
 

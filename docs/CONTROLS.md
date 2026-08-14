@@ -5,13 +5,13 @@ decision below is settled; nothing here is still under discussion.
 
 ## Status
 
-| Step                                                                  | State                                                  |
-| --------------------------------------------------------------------- | ------------------------------------------------------ |
-| 1. ESLint, Prettier, the reformat commit, `lint` / `format` / `check` | **Done**                                               |
-| 2. Fix what strict finds                                              | **Done** - 1,586 errors to 0                           |
-| 3. knip, jscpd, no-restricted-imports, gitleaks, check-secrets        | **Done**                                               |
-| 4. Coverage widened to every app, then 80%                            | **Part done** - widened; at 52%, threshold not yet met |
-| 5. Enforcement: prebuild, lefthook, Stop hook, GitHub Action          | **Not started**                                        |
+| Step                                                                  | State                                                 |
+| --------------------------------------------------------------------- | ----------------------------------------------------- |
+| 1. ESLint, Prettier, the reformat commit, `lint` / `format` / `check` | **Done**                                              |
+| 2. Fix what strict finds                                              | **Done** - 1,586 errors to 0                          |
+| 3. knip, jscpd, no-restricted-imports, gitleaks, check-secrets        | **Done**                                              |
+| 4. Coverage widened to every app, then 80%                            | **Part done** - widened; at 69%, CRM's UI still to do |
+| 5. Enforcement: prebuild, lefthook, Stop hook, GitHub Action          | **Not started**                                       |
 
 `npm run check` runs today and passes every step except coverage, which fails the 80% threshold on
 purpose: the bar is set where it is meant to end up, and the tests to reach it are the outstanding
@@ -314,20 +314,32 @@ Where it stands, measured with `npm run coverage`:
 | --------------------------- | ---------- | ---------------------------------------------- |
 | `server/src`                | 82%        | nothing - already over                         |
 | `web/src/space`             | 92%        | nothing - already over                         |
+| `web/src/groove`            | 88%        | done - components, App and the pure modules    |
+| `web/src/groove/components` | 97%        | done                                           |
+| `web/src/home`              | 100%       | done - the launcher                            |
 | `web/src/crm`               | 81%        | that is the non-component code only; see below |
 | `web/src/crm/components`    | **0%**     | every form, table, chart and chip              |
 | `web/src/crm/pages`         | **0%**     | all eight pages                                |
-| `web/src/groove`            | 54%        | `App.tsx`; the pure modules are done           |
-| `web/src/groove/components` | **0%**     | all eleven components                          |
-| `web/src/home`              | **0%**     | the launcher, 59 lines                         |
-| **web overall**             | **52%**    | against a threshold of 80                      |
+| **web overall**             | **69%**    | against a threshold of 80                      |
 
 Written so far: Groove's note and chord maths, the filter curve and its readout, the shipped
-patches, the param specs, and the CRM's fetch wrapper and formatters. What remains is component and
-page rendering - the largest single piece of work left in this document. Do it app by app, not in
-one pass, and **do not lower the bar to make a red run green.**
+patches, the param specs, the CRM's fetch wrapper and formatters, and now all of Groove's
+components, its `App` and the launcher. **What remains is the CRM's components and pages** - the
+last piece of this document's outstanding work. Do it app by app, not in one pass, and **do not
+lower the bar to make a red run green.**
 
 Until it is met, `npm run check` fails on coverage and only on coverage.
+
+Three things learned writing the Groove suites, all of them jsdom gaps rather than code faults:
+
+- **jsdom implements no pointer capture.** Every knob, fader and grid calls `setPointerCapture` on
+  pointerdown, so all of them threw until `Element.prototype.setPointerCapture` was stubbed in
+  `web/src/space/test/setup.ts` - which despite its path is the setup file for the whole workspace.
+- **jsdom lays nothing out**, so `getBoundingClientRect` returns zeros and any component that maps a
+  coordinate to an index divides by zero. `VelocityLane.test.tsx` stubs the rect.
+- **`exact: true` is a Playwright option, not a Testing Library one.** Testing Library's `name`
+  already matches the full string; passing `exact` there is a type error. The warning in
+  [PROCESS.md](./PROCESS.md) about substring matching applies to the e2e suite only.
 
 **`web/src/groove/audio/**` is excluded from the `include`** - 1,053 lines across four files. jsdom
 has no `AudioContext`, so they cannot be unit tested without a mock that would assert nothing about
@@ -490,8 +502,9 @@ The pieces depend on each other, so build them in this order:
 2. ~~Fix what strict finds - the `any` removal is the bulk of it.~~ Done.
 3. ~~`knip`, `jscpd`, `no-restricted-imports`, `gitleaks` (with a one-off history scan) and
    `check:secrets`.~~ Done; history was clean across all 27 commits.
-4. Coverage: `include` is widened. **Still to do:** tests for CRM's components and pages, Groove's
-   components and `App.tsx`, and the launcher, until 80% holds. See [F](#f-coverage-thresholds).
+4. Coverage: `include` is widened, and Groove's components, its `App` and the launcher are done -
+   52% to 69%. **Still to do:** tests for CRM's components and pages, until 80% holds. See
+   [F](#f-coverage-thresholds).
 5. Enforcement last - `prebuild`, lefthook, the stop hook, the GitHub Action. **Not started.**
    Wiring these up before the tree is green just means everything is blocked, and coverage is not
    green yet.

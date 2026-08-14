@@ -40,6 +40,15 @@ advances, steps toggle and patches load. Every judgement below is yours:
 that driving Groove with a visible browser plays sound out loud - stop the transport before walking
 away.
 
+Two related gaps, now that the components carry unit tests:
+
+- **The spectrum scope is tested for its render loop, not its picture.** `Scope.test.tsx` fakes the
+  2D context and drives frames by hand, so it proves the loop starts, reads the analyser and the
+  filter each frame, and is cancelled on unmount. Whether the curve is drawn in the right place is
+  still an eye judgement - watch it track a filter sweep.
+- **The engine is stubbed in `App.test.tsx`.** Those tests prove the panels are wired to the patch
+  state, not that anything is scheduled or heard.
+
 ## CRM
 
 Covered by specs: CRUD for organizations, contacts and deals, search, status filter, keyboard drag
