@@ -4,7 +4,7 @@ import {
   Droppable,
   DropResult,
 } from "@hello-pangea/dnd";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { api } from "../api";
 import { useFetch } from "../hooks";
@@ -23,8 +23,11 @@ import {
 import { formatMoney } from "../format";
 
 export default function Pipeline() {
-  const [deals, setDeals] = useState<Deal[]>([]);
   const { data: fetched } = useFetch<Deal[]>("/api/crm/deals");
+  // Once a card has been dragged the local order wins; until then the fetched list is what shows.
+  // Derived rather than copied into state by an effect, which would render twice on every load.
+  const [moved, setMoved] = useState<Deal[] | null>(null);
+  const deals = moved ?? fetched ?? [];
   const { data: orgs } = useFetch<Organization[]>("/api/crm/organizations");
   const navigate = useNavigate();
   const orgName = useMemo(
@@ -32,18 +35,14 @@ export default function Pipeline() {
     [orgs],
   );
 
-  useEffect(() => {
-    if (fetched) setDeals(fetched);
-  }, [fetched]);
-
   function onDragEnd(result: DropResult) {
     const { draggableId, destination, source } = result;
     if (!destination || destination.droppableId === source.droppableId) return;
     const stage = destination.droppableId as DealStage;
     const id = Number(draggableId);
     // Mirror what the server does, so the totals move with the card rather than after it.
-    setDeals((ds) =>
-      ds.map((d) =>
+    setMoved((ds) =>
+      (ds ?? deals).map((d) =>
         d.id === id
           ? { ...d, stage, probability: STAGE_PROBABILITY[stage] }
           : d,

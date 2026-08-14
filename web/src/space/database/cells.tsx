@@ -44,10 +44,14 @@ function TextLikeCell({
   onChange,
   kind,
 }: CellProps & { kind: "text" | "url" | "number" }) {
-  const [draft, setDraft] = useState(valueText(value));
-  useEffect(() => {
+  const [draft, setDraft] = useState(() => valueText(value));
+  // Adjusting during render rather than in an effect: React re-runs this component immediately
+  // instead of painting the stale draft first.
+  const [lastValue, setLastValue] = useState(value);
+  if (value !== lastValue) {
+    setLastValue(value);
     setDraft(valueText(value));
-  }, [value]);
+  }
   const commit = () => {
     if (kind === "number") {
       const n = draft.trim() === "" ? null : Number(draft);

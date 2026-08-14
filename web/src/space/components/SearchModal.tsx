@@ -24,8 +24,11 @@ function TypeBadge({ result }: { result: SearchResult }) {
 export default function SearchModal({ onClose }: Props) {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<SearchResult[]>([]);
+  const [found, setFound] = useState<SearchResult[]>([]);
   const [selected, setSelected] = useState(0);
+  // Derived, so clearing the box empties the list without an effect resetting state. The last
+  // results stay up while a new query is still debouncing, which is what they did before.
+  const results = query.trim() ? found : [];
   const inputRef = useRef<HTMLInputElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -33,14 +36,11 @@ export default function SearchModal({ onClose }: Props) {
 
   useEffect(() => {
     clearTimeout(timer.current);
-    if (!query.trim()) {
-      setResults([]);
-      setSelected(0);
-      return;
-    }
+    const q = query.trim();
+    if (!q) return;
     timer.current = setTimeout(() => {
-      void api.search(query.trim()).then((found) => {
-        setResults(found);
+      void api.search(q).then((hits) => {
+        setFound(hits);
         setSelected(0);
       });
     }, 120);

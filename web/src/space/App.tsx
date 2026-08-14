@@ -8,9 +8,7 @@ import SearchModal from "./components/SearchModal";
 export default function App() {
   const [tree, setTree] = useState<TreeNode[] | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
-  const reloadTree = useCallback(async () => {
-    setTree(await api.tree());
-  }, []);
+  const reloadTree = useCallback(() => api.tree().then(setTree), []);
   useEffect(() => {
     void reloadTree();
   }, [reloadTree]);

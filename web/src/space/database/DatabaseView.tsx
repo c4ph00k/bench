@@ -30,7 +30,19 @@ export interface DbActions {
 }
 
 export default function DatabaseView({ databaseId }: Props) {
-  const [data, setData] = useState<DatabaseData | null>(null);
+  // The loaded id travels with the data, so "still loading the next database" is derived during
+  // render rather than reset by an effect, which would render twice on every navigation.
+  const [loaded, setLoaded] = useState<{
+    id: string;
+    data: DatabaseData | null;
+  }>({ id: "", data: null });
+  const data = loaded.id === databaseId ? loaded.data : null;
+  const setData = useCallback(
+    (update: (d: DatabaseData | null) => DatabaseData | null) => {
+      setLoaded((prev) => ({ ...prev, data: update(prev.data) }));
+    },
+    [],
+  );
   const [kind, setKind] = useState<ViewKind>(() => {
     const saved = localStorage.getItem(`ps.view.${databaseId}`);
     return saved === "board" || saved === "list" ? saved : "table";
@@ -42,8 +54,9 @@ export default function DatabaseView({ databaseId }: Props) {
   };
 
   useEffect(() => {
-    setData(null);
-    void api.getDatabase(databaseId).then(setData);
+    void api
+      .getDatabase(databaseId)
+      .then((d) => setLoaded({ id: databaseId, data: d }));
   }, [databaseId]);
 
   const setValue = useCallback(

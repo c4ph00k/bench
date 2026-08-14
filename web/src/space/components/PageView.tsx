@@ -14,24 +14,36 @@ interface Props {
 export default function PageView({ onTreeChange }: Props) {
   const { pageId } = useParams<{ pageId: string }>();
   const location = useLocation();
-  const [page, setPage] = useState<PageData | null>(null);
-  const [missing, setMissing] = useState(false);
+  // The loaded id travels with the page, so "loading the next one" and "that page is gone" are
+  // both derived during render rather than reset by an effect.
+  const [loaded, setLoaded] = useState<{
+    id: string;
+    page: PageData | null;
+    missing: boolean;
+  }>({ id: "", page: null, missing: false });
+  const isCurrent = loaded.id === pageId;
+  const page = isCurrent ? loaded.page : null;
+  const missing = isCurrent && loaded.missing;
+  const setPage = useCallback(
+    (update: (p: PageData | null) => PageData | null) => {
+      setLoaded((prev) => ({ ...prev, page: update(prev.page) }));
+    },
+    [],
+  );
   const [pickerOpen, setPickerOpen] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => {
-    setMissing(false);
-    setPage(null);
     if (!pageId) return;
     api
       .getPage(pageId)
       .then((p) => {
-        setPage(p);
+        setLoaded({ id: pageId, page: p, missing: false });
         if ((location.state as { isNew?: boolean } | null)?.isNew)
           titleRef.current?.focus();
       })
-      .catch(() => setMissing(true));
+      .catch(() => setLoaded({ id: pageId, page: null, missing: true }));
   }, [pageId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const saveTitle = useCallback(
