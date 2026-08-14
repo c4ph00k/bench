@@ -14,13 +14,18 @@ import {
   DealStage,
   Organization,
   STAGE_COLOR,
-  STAGE_PROBABILITY,
+  boardOrder,
   expectedValue,
   isOpen,
+  moveDeal,
   sumExpected,
   sumValue,
 } from "../types";
-import { formatMoney } from "../format";
+import { formatDateShort, formatMoney, formatMoneyCompact } from "../format";
+import PageHeader from "../components/PageHeader";
+import { IconPipeline } from "../components/Icons";
+
+const today = () => new Date().toISOString().slice(0, 10);
 
 function DealCard({
   deal,
@@ -33,6 +38,7 @@ function DealCard({
 }) {
   const navigate = useNavigate();
   const open = () => void navigate(`/deals/${deal.id}`);
+  const late = isOpen(deal) && (deal.close_date ?? "") < today();
   return (
     <Draggable draggableId={String(deal.id)} index={index}>
       {(dragProvided, dragSnapshot) => (
@@ -55,13 +61,18 @@ function DealCard({
           }}
         >
           <div className="deal-name">{deal.name}</div>
-          <div className="deal-org">{orgName}</div>
+          <div className="deal-org">{orgName || "No organization"}</div>
           <div className="deal-figures">
             <span className="deal-value">{formatMoney(deal.value)}</span>
             <span className="deal-prob">{deal.probability}%</span>
           </div>
-          <div className="deal-expected">
-            {formatMoney(expectedValue(deal))} expected
+          <div className="deal-meta">
+            <span className={`deal-date${late ? " late" : ""}`}>
+              {formatDateShort(deal.close_date)}
+            </span>
+            <span className="deal-expected">
+              {formatMoneyCompact(expectedValue(deal))} expected
+            </span>
           </div>
         </div>
       )}
@@ -71,43 +82,42 @@ function DealCard({
 
 export default function Pipeline() {
   const { data: fetched } = useFetch<Deal[]>("/api/crm/deals");
-  // Once a card has been dragged the local order wins; until then the fetched list is what shows.
+  // Once a card has been dropped the local order wins; until then the fetched list is what shows.
   // Derived rather than copied into state by an effect, which would render twice on every load.
   const [moved, setMoved] = useState<Deal[] | null>(null);
-  const deals = moved ?? fetched ?? [];
+  const ordered = useMemo(() => boardOrder(fetched ?? []), [fetched]);
+  const deals = moved ?? ordered;
   const { data: orgs } = useFetch<Organization[]>("/api/crm/organizations");
   const orgName = useMemo(
     () => new Map((orgs ?? []).map((o) => [o.id, o.name])),
     [orgs],
   );
 
-  function onDragEnd(result: DropResult) {
-    const { draggableId, destination, source } = result;
-    if (!destination || destination.droppableId === source.droppableId) return;
+  function onDragEnd({ draggableId, destination, source }: DropResult) {
+    if (!destination) return;
+    const samePlace =
+      destination.droppableId === source.droppableId &&
+      destination.index === source.index;
+    if (samePlace) return;
     const stage = destination.droppableId as DealStage;
     const id = Number(draggableId);
-    // Mirror what the server does, so the totals move with the card rather than after it.
-    setMoved((ds) =>
-      (ds ?? deals).map((d) =>
-        d.id === id
-          ? { ...d, stage, probability: STAGE_PROBABILITY[stage] }
-          : d,
-      ),
-    );
-    void api.patch(`/api/crm/deals/${id}/stage`, { stage });
+    // Mirror what the server does, so the card and the totals settle before the reply arrives.
+    setMoved(moveDeal(deals, id, stage, destination.index));
+    void api.patch(`/api/crm/deals/${id}/stage`, {
+      stage,
+      index: destination.index,
+    });
   }
 
   const open = deals.filter(isOpen);
 
   return (
     <>
-      <div className="page-header">
-        <div>
-          <h1>Pipeline</h1>
-          <p className="page-sub">
-            Drag a deal between columns to change its stage
-          </p>
-        </div>
+      <PageHeader
+        icon={<IconPipeline size={20} />}
+        title="Pipeline"
+        sub="Drag a card to another column to change its stage, or up and down to order a column your way"
+      >
         <div className="pipeline-totals">
           <div className="total-block">
             <span className="total-label">Total pipeline</span>
@@ -125,7 +135,7 @@ export default function Pipeline() {
             </span>
           </div>
         </div>
-      </div>
+      </PageHeader>
       <DragDropContext onDragEnd={onDragEnd}>
         <div className="board">
           {DEAL_STAGES.map((stage) => {
@@ -136,8 +146,6 @@ export default function Pipeline() {
               <Droppable droppableId={stage} key={stage}>
                 {(provided, snapshot) => (
                   <div
-                    ref={provided.innerRef}
-                    {...provided.droppableProps}
                     className={`board-column${snapshot.isDraggingOver ? " drag-over" : ""}`}
                     data-stage={stage}
                     style={
@@ -162,7 +170,13 @@ export default function Pipeline() {
                         {formatMoney(expected)}
                       </span>
                     </div>
-                    <div className="board-cards">
+                    {/* The scrolling list is the drop target, so a long column auto-scrolls as
+                        you drag near its edge. */}
+                    <div
+                      className="board-cards"
+                      ref={provided.innerRef}
+                      {...provided.droppableProps}
+                    >
                       {inStage.map((deal, index) => (
                         <DealCard
                           key={deal.id}
@@ -174,6 +188,9 @@ export default function Pipeline() {
                         />
                       ))}
                       {provided.placeholder}
+                      {inStage.length === 0 && !snapshot.isDraggingOver && (
+                        <p className="board-empty">Drop a deal here</p>
+                      )}
                     </div>
                   </div>
                 )}

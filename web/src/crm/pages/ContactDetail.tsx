@@ -9,6 +9,8 @@ import ActivityForm from "../components/ActivityForm";
 import ActivityTimeline from "../components/ActivityTimeline";
 import { StatusChip } from "../components/Chips";
 import { DealList } from "../components/RelatedLists";
+import PageHeader from "../components/PageHeader";
+import { IconContacts } from "../components/Icons";
 
 function ContactFacts({
   contact,
@@ -58,6 +60,7 @@ export default function ContactDetail() {
     `/api/crm/activities?contact_id=${id}`,
   );
   const org = orgs?.find((o) => o.id === contact?.organization_id);
+  const atOrg = org ? ` at ${org.name}` : "";
 
   if (!contact) return null;
 
@@ -71,15 +74,12 @@ export default function ContactDetail() {
       <div className="breadcrumb">
         <Link to="/contacts">Contacts</Link> / {contact.name}
       </div>
-      <div className="page-header">
-        <div>
-          <h1>{contact.name}</h1>
-          <p className="page-sub">
-            {contact.job_title || "Contact"}
-            {org ? ` at ${org.name}` : ""}
-          </p>
-        </div>
-        <div style={{ display: "flex", gap: 10 }}>
+      <PageHeader
+        icon={<IconContacts size={20} />}
+        title={contact.name}
+        sub={(contact.job_title || "Contact") + atOrg}
+      >
+        <div className="header-actions">
           <button className="btn btn-primary" onClick={() => setLogging(true)}>
             Log activity
           </button>
@@ -90,7 +90,7 @@ export default function ContactDetail() {
             Delete
           </button>
         </div>
-      </div>
+      </PageHeader>
       <div className="detail-grid">
         <div className="card">
           <h2>Details</h2>

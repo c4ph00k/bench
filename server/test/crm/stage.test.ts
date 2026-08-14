@@ -6,7 +6,7 @@ import {
   openDb,
   createDeal,
   getDeal,
-  updateDealStage,
+  moveDeal,
   listDeals,
 } from "../../src/crm/db.js";
 
@@ -24,7 +24,7 @@ describe("deal stage changes", () => {
       value: 10000,
     });
     for (const stage of DEAL_STAGES) {
-      const updated = updateDealStage(db, deal.id, stage);
+      const updated = moveDeal(db, deal.id, stage);
       expect(updated!.stage).toBe(stage);
       expect(getDeal(db, deal.id)!.stage).toBe(stage);
     }
@@ -36,7 +36,7 @@ describe("deal stage changes", () => {
       stage: "Negotiation",
       value: 50000,
     });
-    updateDealStage(db, deal.id, "Won");
+    moveDeal(db, deal.id, "Won");
     expect(getDeal(db, deal.id)!.stage).toBe("Won");
     expect(listDeals(db, { stage: "Won" }).map((d) => d.name)).toContain(
       "Winner",
@@ -49,7 +49,7 @@ describe("deal stage changes", () => {
       stage: "Proposal",
       value: 20000,
     });
-    updateDealStage(db, deal.id, "Lost");
+    moveDeal(db, deal.id, "Lost");
     expect(getDeal(db, deal.id)!.stage).toBe("Lost");
     expect(listDeals(db, { stage: "Proposal" })).toHaveLength(0);
     expect(listDeals(db, { stage: "Lost" })).toHaveLength(1);
@@ -58,7 +58,7 @@ describe("deal stage changes", () => {
   it("rejects an invalid stage", () => {
     const deal = createDeal(db, { name: "Deal", stage: "New", value: 1000 });
     expect(() =>
-      updateDealStage(db, deal.id, "Imaginary" as unknown as DealStage),
+      moveDeal(db, deal.id, "Imaginary" as unknown as DealStage),
     ).toThrow();
     expect(getDeal(db, deal.id)!.stage).toBe("New");
   });

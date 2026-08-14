@@ -43,6 +43,8 @@ export interface Deal {
   value: number;
   probability: number;
   close_date: string | null;
+  /** Position within the deal's own pipeline column, ascending. */
+  board_order: number;
   created_at: string;
 }
 
@@ -91,6 +93,38 @@ export function sumValue(deals: Deal[]): number {
 
 export function sumExpected(deals: Deal[]): number {
   return deals.reduce((total, d) => total + expectedValue(d), 0);
+}
+
+/** The board's own order: grouped by stage, each column in the order it is drawn. */
+export function boardOrder(deals: Deal[]): Deal[] {
+  return [...deals].sort(
+    (a, b) =>
+      DEAL_STAGES.indexOf(a.stage) - DEAL_STAGES.indexOf(b.stage) ||
+      a.board_order - b.board_order ||
+      a.id - b.id,
+  );
+}
+
+/**
+ * A deal dropped into `stage` at `index`, against a list already in board order. Crossing into
+ * another column re-bases the probability the way the server does, so the totals move with the
+ * card; reordering inside one leaves it alone.
+ */
+export function moveDeal(
+  deals: Deal[],
+  id: number,
+  stage: DealStage,
+  index: number,
+): Deal[] {
+  const deal = deals.find((d) => d.id === id)!;
+  const moved =
+    deal.stage === stage
+      ? deal
+      : { ...deal, stage, probability: STAGE_PROBABILITY[stage] };
+  const columns = new Map(DEAL_STAGES.map((s) => [s, [] as Deal[]]));
+  for (const d of deals) if (d.id !== id) columns.get(d.stage)!.push(d);
+  columns.get(stage)!.splice(index, 0, moved);
+  return DEAL_STAGES.flatMap((s) => columns.get(s)!);
 }
 
 export interface FunnelRow {

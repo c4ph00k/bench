@@ -26,10 +26,17 @@ body {
   line-height: 1.5;
 }
 
-.home {
+/* The nav strip and the page below it. The amber line now belongs to the strip. */
+#root {
+  display: flex;
+  flex-direction: column;
   min-height: 100vh;
-  border-top: 3px solid var(--amber);
-  padding: 72px 32px;
+}
+
+.home {
+  flex: 1;
+  width: 100%;
+  padding: 64px 32px;
   max-width: 1080px;
   margin: 0 auto;
 }
@@ -68,6 +75,9 @@ body {
 }
 
 .home-card h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   margin: 0;
   font-size: 22px;
   text-transform: uppercase;

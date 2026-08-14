@@ -137,6 +137,28 @@ export function seedIfEmpty(db: Database.Database): void {
     },
     { type: "todo", text: "Finish the slow tools draft", checked: false },
     { type: "quote", text: "Slow is smooth, smooth is fast." },
+    { type: "divider" },
+    { type: "heading3", text: "Where things live" },
+    {
+      type: "bulleted",
+      text: "Projects — anything with an outcome and more than one step",
+    },
+    {
+      type: "bulleted",
+      text: "Work — deadlines someone else set, and the task board",
+    },
+    {
+      type: "bulleted",
+      text: "Travel — trips planned, trips taken, and what to pack",
+    },
+    {
+      type: "bulleted",
+      text: "Notes — everything that has not earned a home yet",
+    },
+    {
+      type: "bulleted",
+      text: "Archive — finished or abandoned, kept for the reasoning",
+    },
   ]);
 
   const projects = s.page({ title: "Projects", icon: "🗂️" });
@@ -171,6 +193,33 @@ export function seedIfEmpty(db: Database.Database): void {
     {
       type: "paragraph",
       text: "Mornings only. If leaves droop by evening, the drip rate is too low — nudge it up a notch.",
+    },
+  ]);
+
+  const calendar = s.page({
+    parent: garden,
+    title: "Planting Calendar",
+    icon: "📅",
+  });
+  s.blocks(calendar, [
+    { type: "heading3", text: "Sow" },
+    {
+      type: "bulleted",
+      text: "March — basil and chillies indoors, on the sill",
+    },
+    { type: "bulleted", text: "April — tomatoes potted on, still inside" },
+    {
+      type: "bulleted",
+      text: "Mid-May — everything out, after the last frost",
+    },
+    { type: "heading3", text: "Feed" },
+    {
+      type: "paragraph",
+      text: "Tomato feed once a week from the first truss, half strength for the herbs.",
+    },
+    {
+      type: "callout",
+      text: "Last frost here is usually the second week of May. Going out early has cost two years running.",
     },
   ]);
 
@@ -215,6 +264,30 @@ export function seedIfEmpty(db: Database.Database): void {
     { type: "todo", text: "Short patch cables x6", checked: false },
   ]);
 
+  const network = s.page({
+    parent: homelab,
+    title: "Network Map",
+    icon: "🕸️",
+  });
+  s.blocks(network, [
+    {
+      type: "paragraph",
+      text: "One flat network was fine until the cameras arrived. Three VLANs now, and the rule is that anything cheap lives on 30.",
+    },
+    { type: "numbered", text: "10 — trusted: laptops, phones, the NAS" },
+    { type: "numbered", text: "20 — services: the two nodes and the proxy" },
+    { type: "numbered", text: "30 — untrusted: cameras, plugs, the doorbell" },
+    {
+      type: "code",
+      text: "# router: only 10 may reach 20's admin ports\nallow from 10.0.10.0/24 to 10.0.20.0/24 port 22,443\nblock from 10.0.30.0/24 to 10.0.0.0/8\nallow from 10.0.30.0/24 to any port 123",
+    },
+    { type: "divider" },
+    {
+      type: "quote",
+      text: "A network you cannot draw on one page is a network you do not understand.",
+    },
+  ]);
+
   const writing = s.page({ parent: projects, title: "Writing", icon: "✍️" });
   s.blocks(writing, [
     {
@@ -247,6 +320,44 @@ export function seedIfEmpty(db: Database.Database): void {
     },
     { type: "divider" },
     { type: "paragraph", text: "Target: 1,400 words. Draft due Friday." },
+  ]);
+
+  const essays = s.page({ parent: writing, title: "Essay Ideas", icon: "🗒️" });
+  s.blocks(essays, [
+    {
+      type: "paragraph",
+      text: "Nothing here is committed to. An idea earns its own page once it survives a month.",
+    },
+    { type: "bulleted", text: "The case against the second monitor" },
+    { type: "bulleted", text: "What a home lab teaches you about production" },
+    { type: "bulleted", text: "Why every list app becomes a calendar" },
+    { type: "bulleted", text: "Cooking as the last unoptimised hobby" },
+    { type: "todo", text: "Pick one for September", checked: false },
+  ]);
+
+  const bike = s.page({
+    parent: projects,
+    title: "Bike Restoration",
+    icon: "🚲",
+  });
+  s.blocks(bike, [
+    { type: "heading2", text: "1987 tourer, bought for parts money" },
+    {
+      type: "paragraph",
+      text: "Frame is straight and the lugs are clean, which is the only part that cannot be bought later.",
+    },
+    { type: "todo", text: "Strip and degrease the frame", checked: true },
+    { type: "todo", text: "Repack both hubs", checked: true },
+    { type: "todo", text: "New cables, outers included", checked: false },
+    {
+      type: "todo",
+      text: "Decide: keep the friction shifters",
+      checked: false,
+    },
+    {
+      type: "callout",
+      text: "Do not repaint it. The patina is the reason it was affordable.",
+    },
   ]);
 
   const travel = s.page({ title: "Travel", icon: "✈️" });
@@ -300,6 +411,54 @@ export function seedIfEmpty(db: Database.Database): void {
     },
   ]);
 
+  const kyoto = s.page({ parent: japan, title: "Kyoto Notes", icon: "⛩️" });
+  s.blocks(kyoto, [
+    { type: "heading3", text: "Mornings" },
+    {
+      type: "paragraph",
+      text: "Everything worth seeing is worth seeing at seven. By ten the same place is a queue with a temple in it.",
+    },
+    { type: "bulleted", text: "Fushimi Inari before six, all the way up" },
+    {
+      type: "bulleted",
+      text: "Nanzen-ji aqueduct, then coffee at the kissaten",
+    },
+    { type: "bulleted", text: "Nishiki market on a weekday only" },
+    { type: "heading3", text: "Evenings" },
+    {
+      type: "paragraph",
+      text: "Pontocho is fun once. The river bank on a warm night is fun every time and costs nothing.",
+    },
+    {
+      type: "callout",
+      text: "Buses take exact change and fill up after four. Walk, or take the subway two stops and walk.",
+    },
+  ]);
+
+  const points = s.page({
+    parent: travel,
+    title: "Points and Miles",
+    icon: "🎫",
+  });
+  s.blocks(points, [
+    {
+      type: "paragraph",
+      text: "The only rule that has ever worked: earn on one alliance, burn on long haul, ignore everything else.",
+    },
+    { type: "numbered", text: "Balance sits at roughly 180,000" },
+    { type: "numbered", text: "Two long-haul seats booked, one still open" },
+    { type: "numbered", text: "Expiry rolls forward on any activity" },
+    {
+      type: "todo",
+      text: "Move the hotel points before December",
+      checked: false,
+    },
+    {
+      type: "quote",
+      text: "Points are a currency that only ever loses value.",
+    },
+  ]);
+
   const packing = s.page({
     parent: travel,
     title: "Packing Checklist",
@@ -341,6 +500,71 @@ export function seedIfEmpty(db: Database.Database): void {
     { type: "paragraph", text: "Freezes well. Double it or regret it." },
   ]);
 
+  const sourdough = s.page({
+    parent: recipes,
+    title: "Sourdough, Slowly",
+    icon: "🍞",
+  });
+  s.blocks(sourdough, [
+    { type: "heading2", text: "The schedule that fits a working week" },
+    {
+      type: "paragraph",
+      text: "Feed on Friday night, mix Saturday morning, bake Sunday. Everything else is waiting, which the fridge does for you.",
+    },
+    { type: "numbered", text: "Friday 21:00 — feed 1:5:5, leave out" },
+    { type: "numbered", text: "Saturday 09:00 — mix, autolyse an hour" },
+    { type: "numbered", text: "Saturday 10:00 — salt in, four sets of folds" },
+    { type: "numbered", text: "Saturday 14:00 — shape, into the fridge" },
+    {
+      type: "numbered",
+      text: "Sunday 08:00 — bake from cold, lid on 20, off 20",
+    },
+    { type: "divider" },
+    { type: "heading3", text: "Ratios" },
+    {
+      type: "code",
+      text: "flour 500g\nwater 350g   (70%)\nstarter 100g (20%)\nsalt 10g     (2%)",
+    },
+    {
+      type: "callout",
+      text: "If the crumb is tight, the dough was under-fermented, not under-proved. Give it another hour on the counter next time.",
+    },
+  ]);
+
+  const quotes = s.page({ parent: notes, title: "Quotes", icon: "💬" });
+  s.blocks(quotes, [
+    {
+      type: "paragraph",
+      text: "Kept because they changed something, not because they sounded clever.",
+    },
+    {
+      type: "quote",
+      text: "Perfection is achieved when there is nothing left to take away.",
+    },
+    {
+      type: "quote",
+      text: "The work is the reward. Everything else is weather.",
+    },
+    { type: "quote", text: "You can have results or excuses, not both." },
+    { type: "quote", text: "Any fool can write code a computer understands." },
+  ]);
+
+  const films = s.page({ parent: notes, title: "Films to Watch", icon: "🎬" });
+  s.blocks(films, [
+    { type: "heading3", text: "Queued" },
+    {
+      type: "todo",
+      text: "Stalker — long, but the right kind",
+      checked: false,
+    },
+    { type: "todo", text: "The Conversation", checked: false },
+    { type: "todo", text: "Perfect Days", checked: true },
+    { type: "heading3", text: "Rewatch when it rains" },
+    { type: "bulleted", text: "Heat" },
+    { type: "bulleted", text: "Paris, Texas" },
+    { type: "bulleted", text: "Chungking Express" },
+  ]);
+
   const ideas = s.page({ parent: notes, title: "Ideas Inbox", icon: "💡" });
   s.blocks(ideas, [
     {
@@ -371,6 +595,480 @@ export function seedIfEmpty(db: Database.Database): void {
       text: "You do not rise to the level of your goals. You fall to the level of your systems.",
     },
   ]);
+
+  const training = s.page({
+    parent: health,
+    title: "Training Plan",
+    icon: "🏋️",
+  });
+  s.blocks(training, [
+    { type: "heading3", text: "Week shape" },
+    { type: "bulleted", text: "Monday — push, 45 minutes, no more" },
+    { type: "bulleted", text: "Wednesday — pull, same" },
+    { type: "bulleted", text: "Saturday — long walk or the hill loop" },
+    { type: "heading3", text: "The lifts" },
+    { type: "numbered", text: "Bench — 5x5, add 2.5kg when all sets clear" },
+    { type: "numbered", text: "Row — 5x5, same rule" },
+    { type: "numbered", text: "Squat — 3x8, never to failure" },
+    {
+      type: "callout",
+      text: "Two sessions a week done for a year beats four sessions a week done for a month. It is not close.",
+    },
+  ]);
+
+  const sleep = s.page({ parent: health, title: "Sleep Log", icon: "😴" });
+  s.blocks(sleep, [
+    {
+      type: "paragraph",
+      text: "Kept for a fortnight to find the pattern, not forever. The pattern was obvious by day four.",
+    },
+    { type: "bulleted", text: "Screens after 22:30 cost about forty minutes" },
+    { type: "bulleted", text: "Coffee after 14:00 costs the same again" },
+    {
+      type: "bulleted",
+      text: "A walk before dinner is worth more than either",
+    },
+    {
+      type: "quote",
+      text: "Sleep is the intervention. Everything else is a supplement.",
+    },
+  ]);
+
+  seedWork(s);
+  seedLearning(s);
+
+  const archive = s.page({ title: "Archive", icon: "🗄️" });
+  s.blocks(archive, [
+    {
+      type: "paragraph",
+      text: "Finished, abandoned, or simply over. Kept because deleting it would lose the reasoning.",
+    },
+  ]);
+
+  const retro = s.page({
+    parent: archive,
+    title: "2025 in Review",
+    icon: "🧾",
+  });
+  s.blocks(retro, [
+    { type: "heading2", text: "What worked" },
+    { type: "bulleted", text: "Writing monthly instead of weekly" },
+    {
+      type: "bulleted",
+      text: "One trip planned properly, not three planned badly",
+    },
+    { type: "heading2", text: "What did not" },
+    { type: "bulleted", text: "Three note apps, none of them trusted" },
+    {
+      type: "bulleted",
+      text: "Buying tools before finishing the last project",
+    },
+    { type: "divider" },
+    {
+      type: "callout",
+      text: "The whole year in one line: fewer things, finished.",
+    },
+  ]);
+}
+
+function seedWork(s: Seeder): void {
+  const work = s.page({ title: "Work", icon: "💼" });
+  s.blocks(work, [
+    { type: "heading1", text: "Work" },
+    {
+      type: "paragraph",
+      text: "Everything that has a deadline someone else set. Tasks live in the database below; thinking lives on its own page.",
+    },
+    {
+      type: "callout",
+      text: "Rule: if it takes two minutes, it never becomes a task.",
+    },
+  ]);
+
+  const review = s.page({ parent: work, title: "Weekly Review", icon: "🔁" });
+  s.blocks(review, [
+    { type: "heading2", text: "Friday, thirty minutes" },
+    { type: "numbered", text: "Empty the inbox to zero, or to a task" },
+    { type: "numbered", text: "Close anything that shipped" },
+    { type: "numbered", text: "Move what slipped, and say why in one line" },
+    { type: "numbered", text: "Pick the one thing that matters next week" },
+    { type: "divider" },
+    { type: "heading3", text: "This week" },
+    { type: "todo", text: "Rollout plan sent to the client", checked: true },
+    { type: "todo", text: "Interview notes written up", checked: true },
+    { type: "todo", text: "Q4 budget draft", checked: false },
+    {
+      type: "quote",
+      text: "A week reviewed is a week you can remember. The rest is a blur with meetings in it.",
+    },
+  ]);
+
+  const directory = s.page({
+    parent: work,
+    title: "Who Does What",
+    icon: "👥",
+  });
+  s.blocks(directory, [
+    {
+      type: "paragraph",
+      text: "Written down because asking twice is worse than writing it once.",
+    },
+    { type: "bulleted", text: "Anna — platform, owns anything that pages" },
+    { type: "bulleted", text: "Marcus — data, and the only one who likes SQL" },
+    {
+      type: "bulleted",
+      text: "Priya — design, reviews every flow before build",
+    },
+    {
+      type: "bulleted",
+      text: "Tom — contracts and procurement, slow but exact",
+    },
+  ]);
+
+  const meetings = s.page({
+    parent: work,
+    title: "Meeting Notes",
+    icon: "📓",
+  });
+  s.blocks(meetings, [
+    {
+      type: "paragraph",
+      text: "One page per meeting that mattered. Anything without a decision in it does not get a page.",
+    },
+    { type: "heading3", text: "Format" },
+    { type: "bulleted", text: "Decision — one line, at the top" },
+    { type: "bulleted", text: "Owner and date" },
+    { type: "bulleted", text: "Everything else, if there is time" },
+  ]);
+
+  const kickoff = s.page({
+    parent: meetings,
+    title: "Platform Kickoff",
+    icon: "🚀",
+  });
+  s.blocks(kickoff, [
+    {
+      type: "callout",
+      text: "Decision: phased rollout, warehouse first. Anna owns it, review in four weeks.",
+    },
+    { type: "heading3", text: "Notes" },
+    {
+      type: "paragraph",
+      text: "The warehouse team is the only group who will report a problem the day it happens, which is why they go first.",
+    },
+    { type: "todo", text: "Send the rollout plan", checked: true },
+    { type: "todo", text: "Book the four-week review", checked: false },
+  ]);
+
+  seedTasks(s, work);
+}
+
+function seedTasks(s: Seeder, workId: string): void {
+  const dbId = s.page({
+    parent: workId,
+    title: "Tasks",
+    icon: "📋",
+    type: "database",
+  });
+  const status = s.property(dbId, "Status", "select");
+  const st = s.options(status, [
+    ["Todo", "gray"],
+    ["Doing", "blue"],
+    ["Waiting", "amber"],
+    ["Done", "green"],
+  ]);
+  const priority = s.property(dbId, "Priority", "select");
+  const pr = s.options(priority, [
+    ["High", "red"],
+    ["Medium", "amber"],
+    ["Low", "gray"],
+  ]);
+  const area = s.property(dbId, "Area", "multi_select");
+  const ar = s.options(area, [
+    ["Client", "orange"],
+    ["Deep work", "purple"],
+    ["Admin", "teal"],
+    ["Hiring", "pink"],
+  ]);
+  const due = s.property(dbId, "Due", "date");
+  const hours = s.property(dbId, "Estimate (h)", "number");
+  const recurring = s.property(dbId, "Recurring", "checkbox");
+  const brief = s.property(dbId, "Brief", "url");
+
+  const rollout = s.row(dbId, "Warehouse rollout plan", {
+    [status]: st.Doing,
+    [priority]: pr.High,
+    [area]: [ar.Client, ar["Deep work"]],
+    [due]: "2026-08-21",
+    [hours]: 6,
+    [recurring]: false,
+    [brief]: "https://wiki.internal/rollout",
+  });
+  s.blocks(rollout, [
+    { type: "heading3", text: "Shape" },
+    { type: "numbered", text: "Warehouse, two weeks, watch the error rate" },
+    { type: "numbered", text: "Stores, once warehouse is quiet" },
+    { type: "numbered", text: "Everyone else, same day" },
+    { type: "callout", text: "No rollout on a Friday. Ever." },
+  ]);
+  s.row(dbId, "Q4 budget draft", {
+    [status]: st.Doing,
+    [priority]: pr.High,
+    [area]: [ar.Admin],
+    [due]: "2026-08-28",
+    [hours]: 4,
+    [recurring]: false,
+  });
+  s.row(dbId, "Interview loop for the data role", {
+    [status]: st.Waiting,
+    [priority]: pr.Medium,
+    [area]: [ar.Hiring],
+    [due]: "2026-09-04",
+    [hours]: 3,
+    [recurring]: false,
+    [brief]: "https://wiki.internal/hiring-loop",
+  });
+  s.row(dbId, "Rewrite the onboarding doc", {
+    [status]: st.Todo,
+    [priority]: pr.Medium,
+    [area]: [ar["Deep work"]],
+    [hours]: 5,
+    [recurring]: false,
+  });
+  s.row(dbId, "Renew the SSL certificate", {
+    [status]: st.Todo,
+    [priority]: pr.High,
+    [area]: [ar.Admin],
+    [due]: "2026-09-12",
+    [hours]: 1,
+    [recurring]: true,
+  });
+  const invoices = s.row(dbId, "Chase the open invoices", {
+    [status]: st.Waiting,
+    [priority]: pr.Medium,
+    [area]: [ar.Admin, ar.Client],
+    [due]: "2026-08-18",
+    [hours]: 1,
+    [recurring]: true,
+  });
+  s.blocks(invoices, [
+    { type: "todo", text: "Northwind — 30 days over", checked: false },
+    { type: "todo", text: "Cobalt — paid, close it", checked: true },
+    {
+      type: "paragraph",
+      text: "Both were sent to the wrong address. Fix the template, not the invoices.",
+    },
+  ]);
+  s.row(dbId, "Client review deck", {
+    [status]: st.Todo,
+    [priority]: pr.Low,
+    [area]: [ar.Client],
+    [due]: "2026-09-25",
+    [hours]: 3,
+    [recurring]: false,
+  });
+  s.row(dbId, "Archive the 2025 project folders", {
+    [status]: st.Todo,
+    [priority]: pr.Low,
+    [area]: [ar.Admin],
+    [hours]: 2,
+    [recurring]: false,
+  });
+  s.row(dbId, "Weekly review", {
+    [status]: st.Done,
+    [priority]: pr.Medium,
+    [area]: [ar.Admin],
+    [due]: "2026-08-14",
+    [hours]: 0.5,
+    [recurring]: true,
+  });
+  s.row(dbId, "Migrate the reporting job", {
+    [status]: st.Done,
+    [priority]: pr.High,
+    [area]: [ar["Deep work"]],
+    [due]: "2026-08-07",
+    [hours]: 8,
+    [recurring]: false,
+  });
+  s.row(dbId, "Pick the analytics vendor", {
+    [status]: st.Done,
+    [priority]: pr.Medium,
+    [area]: [ar.Client, ar.Admin],
+    [due]: "2026-07-31",
+    [hours]: 4,
+    [recurring]: false,
+    [brief]: "https://wiki.internal/analytics-shortlist",
+  });
+
+  s.view(dbId, "board", { groupBy: status });
+  s.view(dbId, "table", { sort: { propertyId: due, direction: "asc" } });
+  s.view(dbId, "list", {
+    filters: [{ propertyId: status, operator: "is_not", value: st.Done }],
+  });
+}
+
+function seedLearning(s: Seeder): void {
+  const learning = s.page({ title: "Learning", icon: "🎓" });
+  s.blocks(learning, [
+    {
+      type: "paragraph",
+      text: "One thing at a time, finished before the next one starts. Notes here, progress in the course log.",
+    },
+    {
+      type: "quote",
+      text: "You do not know a subject until you can teach the awkward parts.",
+    },
+  ]);
+
+  const rust = s.page({ parent: learning, title: "Rust Notes", icon: "🦀" });
+  s.blocks(rust, [
+    { type: "heading2", text: "Ownership, finally" },
+    {
+      type: "paragraph",
+      text: "The borrow checker is not stopping you writing the program. It is stopping you writing the bug you were about to write.",
+    },
+    {
+      type: "code",
+      text: "fn longest<'a>(a: &'a str, b: &'a str) -> &'a str {\n    if a.len() > b.len() { a } else { b }\n}",
+    },
+    { type: "heading3", text: "Things that keep catching me" },
+    { type: "bulleted", text: "A move is not a copy, and Clone is not free" },
+    { type: "bulleted", text: "&mut is exclusive, not just mutable" },
+    {
+      type: "bulleted",
+      text: "Lifetimes describe the code, they do not change it",
+    },
+    {
+      type: "callout",
+      text: "When the compiler and I disagree, the compiler is right and the design is wrong.",
+    },
+  ]);
+
+  const shortcuts = s.page({
+    parent: learning,
+    title: "Shortcuts Worth Learning",
+    icon: "⌨️",
+  });
+  s.blocks(shortcuts, [
+    { type: "heading3", text: "Terminal" },
+    { type: "bulleted", text: "Ctrl-R — search the history, always" },
+    { type: "bulleted", text: "Ctrl-A / Ctrl-E — line start and end" },
+    { type: "heading3", text: "Editor" },
+    {
+      type: "bulleted",
+      text: "Multi-cursor beats find and replace for structure",
+    },
+    { type: "bulleted", text: "Go to symbol, never scroll to find a function" },
+    {
+      type: "todo",
+      text: "Stop reaching for the mouse to switch tabs",
+      checked: false,
+    },
+  ]);
+
+  seedCourseLog(s, learning);
+}
+
+function seedCourseLog(s: Seeder, learningId: string): void {
+  const dbId = s.page({
+    parent: learningId,
+    title: "Course Log",
+    icon: "🎧",
+    type: "database",
+  });
+  const status = s.property(dbId, "Status", "select");
+  const st = s.options(status, [
+    ["Wishlist", "gray"],
+    ["Watching", "blue"],
+    ["Finished", "green"],
+    ["Abandoned", "red"],
+  ]);
+  const source = s.property(dbId, "Source", "text");
+  const topics = s.property(dbId, "Topics", "multi_select");
+  const tp = s.options(topics, [
+    ["Systems", "teal"],
+    ["Language", "purple"],
+    ["Design", "pink"],
+    ["Music", "orange"],
+  ]);
+  const hours = s.property(dbId, "Hours", "number");
+  const started = s.property(dbId, "Started", "date");
+  const finished = s.property(dbId, "Certificate", "checkbox");
+  const link = s.property(dbId, "Link", "url");
+
+  const rustCourse = s.row(dbId, "Rust in Practice", {
+    [source]: "Recorded lectures",
+    [status]: st.Watching,
+    [topics]: [tp.Language, tp.Systems],
+    [hours]: 18,
+    [started]: "2026-07-06",
+    [finished]: false,
+    [link]: "https://doc.rust-lang.org/book/",
+  });
+  s.blocks(rustCourse, [
+    {
+      type: "paragraph",
+      text: "Two chapters a week, exercises done properly. Notes go to the Rust page rather than in here.",
+    },
+    { type: "todo", text: "Chapter 10 — generics and traits", checked: true },
+    {
+      type: "todo",
+      text: "Chapter 13 — closures and iterators",
+      checked: false,
+    },
+  ]);
+  s.row(dbId, "Designing Data-Intensive Systems", {
+    [source]: "University series",
+    [status]: st.Watching,
+    [topics]: [tp.Systems],
+    [hours]: 24,
+    [started]: "2026-06-01",
+    [finished]: false,
+  });
+  s.row(dbId, "Typography for Screens", {
+    [source]: "Workshop, two days",
+    [status]: st.Finished,
+    [topics]: [tp.Design],
+    [hours]: 12,
+    [started]: "2026-03-10",
+    [finished]: true,
+    [link]: "https://practicaltypography.com",
+  });
+  s.row(dbId, "Jazz Piano Fundamentals", {
+    [source]: "Weekly lesson",
+    [status]: st.Watching,
+    [topics]: [tp.Music],
+    [hours]: 40,
+    [started]: "2026-01-08",
+    [finished]: false,
+  });
+  s.row(dbId, "Kubernetes the Hard Way", {
+    [source]: "Self-paced",
+    [status]: st.Abandoned,
+    [topics]: [tp.Systems],
+    [hours]: 6,
+    [started]: "2026-02-14",
+    [finished]: false,
+  });
+  s.row(dbId, "Colour and Contrast", {
+    [source]: "Reading group",
+    [status]: st.Wishlist,
+    [topics]: [tp.Design],
+    [finished]: false,
+  });
+  s.row(dbId, "Compilers, from Scratch", {
+    [source]: "Book plus exercises",
+    [status]: st.Wishlist,
+    [topics]: [tp.Language, tp.Systems],
+    [hours]: 30,
+    [finished]: false,
+  });
+
+  s.view(dbId, "table", { sort: { propertyId: hours, direction: "desc" } });
+  s.view(dbId, "board", { groupBy: status });
+  s.view(dbId, "list", {
+    filters: [{ propertyId: status, operator: "is", value: st.Watching }],
+  });
 }
 
 function seedReadingList(s: Seeder): void {
@@ -467,6 +1165,63 @@ function seedReadingList(s: Seeder): void {
     [rating]: 3.5,
     [owned]: false,
     [link]: "https://calnewport.com/books/slow-productivity/",
+  });
+
+  const wolf = s.row(dbId, "Wolf Hall", {
+    [author]: "Hilary Mantel",
+    [status]: st.Finished,
+    [genre]: [g.Classic],
+    [rating]: 4.5,
+    [finished]: "2026-02-14",
+    [owned]: true,
+  });
+  s.blocks(wolf, [
+    {
+      type: "paragraph",
+      text: "Took eighty pages to work out who 'he' is, and then it was the best thing read all year.",
+    },
+  ]);
+  s.row(dbId, "The Dispossessed", {
+    [author]: "Ursula K. Le Guin",
+    [status]: st.Reading,
+    [genre]: [g["Sci-fi"], g.Classic],
+    [owned]: true,
+  });
+  s.row(dbId, "Thinking in Systems", {
+    [author]: "Donella Meadows",
+    [status]: st.Finished,
+    [genre]: [g["Non-fiction"]],
+    [rating]: 4,
+    [finished]: "2026-04-08",
+    [owned]: false,
+    [link]: "https://en.wikipedia.org/wiki/Donella_Meadows",
+  });
+  s.row(dbId, "A Wizard of Earthsea", {
+    [author]: "Ursula K. Le Guin",
+    [status]: st["To read"],
+    [genre]: [g.Fantasy, g.Classic],
+    [owned]: true,
+  });
+  s.row(dbId, "The Idea Factory", {
+    [author]: "Jon Gertner",
+    [status]: st["To read"],
+    [genre]: [g["Non-fiction"]],
+    [owned]: false,
+  });
+  s.row(dbId, "Consider the Lobster", {
+    [author]: "David Foster Wallace",
+    [status]: st.Reading,
+    [genre]: [g.Essays],
+    [rating]: 4,
+    [owned]: true,
+  });
+  s.row(dbId, "Station Eleven", {
+    [author]: "Emily St. John Mandel",
+    [status]: st.Finished,
+    [genre]: [g["Sci-fi"]],
+    [rating]: 4.5,
+    [finished]: "2025-12-29",
+    [owned]: false,
   });
 
   s.view(dbId, "table", { sort: { propertyId: rating, direction: "desc" } });
@@ -632,6 +1387,43 @@ function seedProjectTracker(s: Seeder, projectsId: string): void {
     [tags]: [tg.home],
     [effort]: 1,
     [funded]: false,
+  });
+  const restore = s.row(dbId, "Bike restoration", {
+    [status]: st["In progress"],
+    [owner]: "Ed",
+    [tags]: [tg.hardware, tg.home],
+    [effort]: 8,
+    [due]: "2026-10-04",
+    [funded]: true,
+  });
+  s.blocks(restore, [
+    {
+      type: "paragraph",
+      text: "Frame and hubs done. Cables next, then a decision about the shifters.",
+    },
+  ]);
+  s.row(dbId, "Sourdough schedule that survives a work week", {
+    [status]: st.Shipped,
+    [owner]: "Ed",
+    [tags]: [tg.home, tg.writing],
+    [effort]: 2,
+    [due]: "2026-06-20",
+    [funded]: false,
+  });
+  s.row(dbId, "Photo backup, offsite copy", {
+    [status]: st.Backlog,
+    [owner]: "Ed",
+    [tags]: [tg.software],
+    [effort]: 3,
+    [funded]: false,
+  });
+  s.row(dbId, "Replace the hallway light switch", {
+    [status]: st.Blocked,
+    [owner]: "Ed",
+    [tags]: [tg.home],
+    [effort]: 1,
+    [due]: "2026-09-06",
+    [funded]: true,
   });
 
   s.view(dbId, "board", { groupBy: status });

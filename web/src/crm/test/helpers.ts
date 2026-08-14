@@ -51,6 +51,7 @@ export function deal(partial: Partial<Deal> = {}): Deal {
     value: 40000,
     probability: 50,
     close_date: "2026-09-30",
+    board_order: 0,
     created_at: "2026-01-04 09:00:00",
     ...partial,
   };

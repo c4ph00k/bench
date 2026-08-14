@@ -19,6 +19,10 @@ import {
 import { FunnelRow, MonthlyRow, OrgPipeline, WinLoss } from "../types";
 import { formatMoney } from "../format";
 
+/**
+ * The dashboard's colour language, shared with the tiles above these charts: green is money
+ * already won, amber is forecast, blue is the open pipeline, purple counts deals, red is lost.
+ */
 const BLUE = "#1b86b8";
 const PURPLE = "#753991";
 const AMBER = "#ecad0a";
@@ -112,7 +116,7 @@ export function RevenueChart({ data }: { data: MonthlyRow[] }) {
           yAxisId="money"
           dataKey="actual"
           stackId="money"
-          fill={PURPLE}
+          fill={GREEN}
           maxBarSize={26}
           isAnimationActive={false}
         />
@@ -120,7 +124,7 @@ export function RevenueChart({ data }: { data: MonthlyRow[] }) {
           yAxisId="money"
           dataKey="expected"
           stackId="money"
-          fill={BLUE}
+          fill={AMBER}
           radius={[4, 4, 0, 0]}
           maxBarSize={26}
           isAnimationActive={false}
@@ -129,7 +133,7 @@ export function RevenueChart({ data }: { data: MonthlyRow[] }) {
           yAxisId="count"
           type="monotone"
           dataKey="count"
-          stroke={AMBER}
+          stroke={PURPLE}
           strokeWidth={2}
           dot={{ r: 3 }}
           isAnimationActive={false}

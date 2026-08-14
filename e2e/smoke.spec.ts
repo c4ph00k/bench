@@ -13,29 +13,38 @@ import type { Locator, Page } from "@playwright/test";
 const APPS: {
   path: string;
   title: string;
+  tab: string;
   ready: (page: Page) => Locator;
 }[] = [
   {
     path: "/",
     title: "Bench",
-    ready: (p) => p.getByRole("link", { name: /^CRM/i }),
+    tab: "Home",
+    ready: (p) => p.getByRole("heading", { name: "CRM" }),
   },
   {
     path: "/crm/",
     title: "Personal CRM",
+    tab: "CRM",
     ready: (p) => p.getByTestId("dash-total"),
   },
   {
     path: "/space/",
     title: "Personal Space",
+    tab: "Space",
     ready: (p) => p.getByRole("treeitem").first(),
   },
   {
     path: "/groove/",
     title: "GROOVEBOX GX-4",
+    tab: "Groove",
     ready: (p) => p.getByRole("region", { name: "RHYTHM" }),
   },
 ];
+
+/** The one nav strip. Named, because every app has a second unnamed nav of its own. */
+const primary = (page: Page) =>
+  page.getByRole("navigation", { name: "Primary" });
 
 /** Collect console and page errors for the lifetime of a page. */
 function watchErrors(page: Page): string[] {
@@ -104,10 +113,12 @@ test("the launcher links into each app and the back button returns", async ({
   page,
 }) => {
   await page.goto("/");
-  // Names are matched case-insensitively: the cards are uppercased by CSS, which the accessible
-  // name computation does not apply.
   for (const name of ["CRM", "Space", "Groove"]) {
-    await page.getByRole("link", { name: new RegExp(`^${name}`, "i") }).click();
+    // The card, not the nav tab of the same name: only the card carries a heading.
+    await page
+      .getByRole("link")
+      .filter({ has: page.getByRole("heading", { name }) })
+      .click();
     await expect(page).not.toHaveTitle("Bench");
     await page.goBack();
     await expect(page).toHaveTitle("Bench");
@@ -123,13 +134,33 @@ test("each app boots without console errors", async ({ page }) => {
   }
 });
 
-test("every app has a Home link back to the launcher", async ({ page }) => {
-  for (const path of ["/crm/", "/space/", "/groove/"]) {
-    await page.goto(path);
-    const home = page.getByRole("link", { name: "Home" });
-    await expect(home, `${path} should offer a Home link`).toBeVisible();
-    await home.click();
-    await expect(page).toHaveTitle("Bench");
+test("the nav lists every app and marks the one you are in", async ({
+  page,
+}) => {
+  for (const app of APPS) {
+    await page.goto(app.path);
+    const links = primary(page).getByRole("link");
+    await expect(links, `${app.path} nav`).toHaveText([
+      "Home",
+      "CRM",
+      "Space",
+      "Groove",
+    ]);
+    await expect(primary(page).locator("[aria-current=page]")).toHaveText(
+      app.tab,
+    );
+  }
+});
+
+test("the nav reaches every app from every app", async ({ page }) => {
+  await page.goto("/crm/");
+  for (const [tab, title] of [
+    ["Groove", "GROOVEBOX GX-4"],
+    ["Space", "Personal Space"],
+    ["Home", "Bench"],
+  ]) {
+    await primary(page).getByRole("link", { name: tab }).click();
+    await expect(page).toHaveTitle(title);
   }
 });
 

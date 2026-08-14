@@ -18,7 +18,8 @@ no samples, no audio libraries. Nothing here talks to the server.
   cycling rest / hit / accent.
 - `components/NoteGrid.tsx` - melodic steps; drag or scroll a step to change pitch, shift-click for
   chords on pads.
-- `components/Transport.tsx` - Home link, brand, play/stop, tempo, swing, patch selector.
+- `components/Transport.tsx` - brand, play/stop, tempo, swing, patch selector. The Bench nav strip
+  sits above it as the first row of `.app`, and owns the amber line and the route home.
 - `patches.ts` - four built-in patches, each with its own tempo and character.
 
 ## Accessibility, and why it matters here

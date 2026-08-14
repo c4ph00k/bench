@@ -128,6 +128,36 @@ test("escape cancels a lift and leaves the deal where it was", async ({
   expect(await stageOf(page, baseURL!, deal.name)).toBe("New");
 });
 
+test("a card dropped higher up its column stays there", async ({
+  page,
+  baseURL,
+}) => {
+  // Its own two deals, at the bottom of a column: the other tests in this file move cards between
+  // stages, and this one is about the order within one.
+  const stamp = Date.now();
+  const names = [`Order A ${stamp}`, `Order B ${stamp}`];
+  for (const name of names) {
+    await page.request.post(`${baseURL}/api/crm/deals`, {
+      data: { name, stage: "Proposal", value: 1000 },
+    });
+  }
+  await page.goto("/crm/pipeline");
+  const lastTwo = async () =>
+    (
+      await page.locator('[data-stage="Proposal"] .deal-name').allTextContents()
+    ).slice(-2);
+  await expect.poll(lastTwo).toEqual(names);
+
+  await card(page, names[1]).focus();
+  await page.keyboard.press("Space");
+  await page.keyboard.press("ArrowUp");
+  await page.keyboard.press("Space");
+  await expect.poll(lastTwo).toEqual([names[1], names[0]]);
+
+  await page.reload();
+  await expect.poll(lastTwo).toEqual([names[1], names[0]]);
+});
+
 test("opening a deal from its card keeps the /crm basename", async ({
   page,
 }) => {

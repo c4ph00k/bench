@@ -95,7 +95,11 @@ test("deleting a filtered property leaves the other rows visible", async ({
   const name = `Filter Orphan ${Date.now()}`;
   await page.goto("/space/");
   await page.getByRole("button", { name: "New database" }).click();
-  await page.getByPlaceholder("Untitled").fill(name);
+  // Wait out the navigation race, as every other creation site here does: until the new page
+  // arrives this locator is the outgoing page's title, and filling that one lands nowhere.
+  const title = page.getByPlaceholder("Untitled");
+  await expect(title).toHaveValue("");
+  await title.fill(name);
   await page.getByRole("button", { name: "Add property" }).click();
   await page.getByPlaceholder("Property name").fill("Doomed");
   await page.getByRole("button", { name: "Create property" }).click();

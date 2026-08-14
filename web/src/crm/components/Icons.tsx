@@ -73,11 +73,48 @@ export const IconPipeline = (p: IconProps) => (
   </Svg>
 );
 
-export const IconHome = (p: IconProps) => (
+export const IconForecast = (p: IconProps) => (
   <Svg {...p}>
-    <path d="M4 10.5 12 4l8 6.5" />
-    <path d="M6 9.5V20h12V9.5" />
-    <path d="M10 20v-5h4v5" />
+    <path d="M3 17.5 9 11l4 4 8-8" />
+    <path d="M15 7h6v6" />
+  </Svg>
+);
+
+export const IconWon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M7 4h10v5a5 5 0 0 1-10 0V4Z" />
+    <path d="M7 5.5H4.5V7a3.5 3.5 0 0 0 3 3.4" />
+    <path d="M17 5.5h2.5V7a3.5 3.5 0 0 1-3 3.4" />
+    <path d="M12 14v3.5M8.5 20.5h7" />
+  </Svg>
+);
+
+export const IconRevenue = (p: IconProps) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="8.5" />
+    <path d="M12 7v10" />
+    <path d="M14.5 9.5a2.5 2.5 0 0 0-2.5-1.5c-1.4 0-2.5.8-2.5 2s1.1 2 2.5 2 2.5.8 2.5 2-1.1 2-2.5 2a2.5 2.5 0 0 1-2.5-1.5" />
+  </Svg>
+);
+
+export const IconNote = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M6 3.5h8L19 8v12.5H6Z" />
+    <path d="M13.5 3.5V8H19" />
+    <path d="M9 12h6M9 16h4" />
+  </Svg>
+);
+
+export const IconCall = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M7.5 3.5 10 8l-2 2a11 11 0 0 0 6 6l2-2 4.5 2.5-1 3a2 2 0 0 1-2 1.2C10.5 20.2 3.8 13.5 3.3 6.5a2 2 0 0 1 1.2-2Z" />
+  </Svg>
+);
+
+export const IconEmail = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="2.5" y="5" width="19" height="14" rx="2" />
+    <path d="m3.5 7 8.5 6 8.5-6" />
   </Svg>
 );
 

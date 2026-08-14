@@ -9,6 +9,8 @@ import ActivityForm from "../components/ActivityForm";
 import ActivityTimeline from "../components/ActivityTimeline";
 import { StageChip } from "../components/Chips";
 import { formatDate, formatMoney } from "../format";
+import PageHeader from "../components/PageHeader";
+import { IconDeals } from "../components/Icons";
 
 export default function DealDetail() {
   const { id } = useParams();
@@ -24,6 +26,7 @@ export default function DealDetail() {
   const { data: contacts } = useFetch<Contact[]>("/api/crm/contacts");
   const org = orgs?.find((o) => o.id === deal?.organization_id);
   const contact = contacts?.find((c) => c.id === deal?.contact_id);
+  const withOrg = org ? ` · ${org.name}` : "";
 
   if (!deal) return null;
 
@@ -37,15 +40,12 @@ export default function DealDetail() {
       <div className="breadcrumb">
         <Link to="/deals">Deals</Link> / {deal.name}
       </div>
-      <div className="page-header">
-        <div>
-          <h1>{deal.name}</h1>
-          <p className="page-sub">
-            {formatMoney(deal.value)}
-            {org ? ` · ${org.name}` : ""}
-          </p>
-        </div>
-        <div style={{ display: "flex", gap: 10 }}>
+      <PageHeader
+        icon={<IconDeals size={20} />}
+        title={deal.name}
+        sub={formatMoney(deal.value) + withOrg}
+      >
+        <div className="header-actions">
           <button className="btn btn-primary" onClick={() => setLogging(true)}>
             Log activity
           </button>
@@ -56,7 +56,7 @@ export default function DealDetail() {
             Delete
           </button>
         </div>
-      </div>
+      </PageHeader>
       <div className="detail-grid">
         <div className="card">
           <h2>Details</h2>

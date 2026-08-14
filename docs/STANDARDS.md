@@ -30,8 +30,9 @@ Sparing. A docstring on a function or module that earns one; very little else.
 Write a comment when the code cannot say it itself: **why**, not what.
 
 ```ts
-// Moving a deal along the pipeline re-bases its probability on the new stage.
-export function updateDealStage(db: DB, id: number, stage: DealStage) { ... }
+// Changing column re-bases the probability on the new stage; reordering inside one does not, or a
+// card could not be moved without losing a probability set by hand.
+export function moveDeal(db: DB, id: number, stage: DealStage, index?: number) { ... }
 
 // The board's columns plus the sidebar need a desktop width; at 1280 a card sits partly outside
 // the viewport and drags never activate.

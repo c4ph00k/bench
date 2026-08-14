@@ -6,6 +6,8 @@ import { Contact, Deal, Organization } from "../types";
 import OrganizationForm from "../components/OrganizationForm";
 import ConfirmDialog from "../components/ConfirmDialog";
 import { ContactList, DealList } from "../components/RelatedLists";
+import PageHeader from "../components/PageHeader";
+import { IconOrganizations } from "../components/Icons";
 
 function OrganizationFacts({ org }: { org: Organization }) {
   return (
@@ -47,12 +49,12 @@ export default function OrganizationDetail() {
       <div className="breadcrumb">
         <Link to="/organizations">Organizations</Link> / {org.name}
       </div>
-      <div className="page-header">
-        <div>
-          <h1>{org.name}</h1>
-          <p className="page-sub">{org.industry || "Organization"}</p>
-        </div>
-        <div style={{ display: "flex", gap: 10 }}>
+      <PageHeader
+        icon={<IconOrganizations size={20} />}
+        title={org.name}
+        sub={org.industry || "Organization"}
+      >
+        <div className="header-actions">
           <button className="btn btn-ghost" onClick={() => setEditing(true)}>
             Edit
           </button>
@@ -60,7 +62,7 @@ export default function OrganizationDetail() {
             Delete
           </button>
         </div>
-      </div>
+      </PageHeader>
       <div className="detail-grid">
         <div className="card full">
           <h2>Details</h2>

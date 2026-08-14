@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Navigate, Route, Routes } from "react-router";
+import BenchNav from "../shared/BenchNav";
 import { api, type TreeNode } from "./api";
 import Sidebar from "./components/Sidebar";
 import PageView from "./components/PageView";
@@ -25,29 +26,32 @@ export default function App() {
   }, []);
 
   return (
-    <div className="app">
-      <Sidebar
-        tree={tree ?? []}
-        onChange={reloadTree}
-        onSearch={() => setSearchOpen(true)}
-      />
-      <main className="main">
-        <Routes>
-          <Route
-            path="/"
-            element={
-              tree && tree.length > 0 ? (
-                <Navigate to={`/p/${tree[0].id}`} replace />
-              ) : null
-            }
-          />
-          <Route
-            path="/p/:pageId"
-            element={<PageView onTreeChange={reloadTree} />}
-          />
-        </Routes>
-      </main>
-      {searchOpen && <SearchModal onClose={() => setSearchOpen(false)} />}
-    </div>
+    <>
+      <BenchNav active="space" />
+      <div className="app">
+        <Sidebar
+          tree={tree ?? []}
+          onChange={reloadTree}
+          onSearch={() => setSearchOpen(true)}
+        />
+        <main className="main">
+          <Routes>
+            <Route
+              path="/"
+              element={
+                tree && tree.length > 0 ? (
+                  <Navigate to={`/p/${tree[0].id}`} replace />
+                ) : null
+              }
+            />
+            <Route
+              path="/p/:pageId"
+              element={<PageView onTreeChange={reloadTree} />}
+            />
+          </Routes>
+        </main>
+        {searchOpen && <SearchModal onClose={() => setSearchOpen(false)} />}
+      </div>
+    </>
   );
 }

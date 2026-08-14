@@ -39,8 +39,9 @@ sample data.
 One npm workspace root with two workspaces, so a single `npm install` and a single set of versions.
 
 - `web/` - one Vite project with an HTML entry point per app: `index.html` (launcher), `crm/`,
-  `space/`, `groove/`. Sources live in `web/src/<app>/`. Separate documents mean each app keeps its
-  own global stylesheet without collisions.
+  `space/`, `groove/`. Sources live in `web/src/<app>/`, with the shared navigation strip in
+  `web/src/shared/`. Separate documents mean each app keeps its own global stylesheet without
+  collisions.
 - `server/` - one Express app. `/api/crm/*` and `/api/space/*`, plus the built frontend with
   deep-link fallback. Groove has no backend.
 - `data/` - `crm.sqlite` and `personal-space.db`, created and seeded on first run.

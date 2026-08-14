@@ -1,16 +1,29 @@
 import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import App from "./App";
 
 describe("launcher", () => {
-  it("links each app at its own document root", () => {
+  it("links each app card at its own document root", () => {
     render(<App />);
-    const links = screen.getAllByRole("link");
-    expect(links.map((link) => link.getAttribute("href"))).toEqual([
-      "/crm/",
-      "/space/",
-      "/groove/",
-    ]);
+    for (const [name, href] of [
+      ["CRM", "/crm/"],
+      ["Space", "/space/"],
+      ["Groove", "/groove/"],
+    ]) {
+      expect(
+        screen.getByRole("heading", { name }).closest("a")!,
+      ).toHaveAttribute("href", href);
+    }
+  });
+
+  it("marks itself as the current page in the nav", () => {
+    render(<App />);
+    expect(
+      within(screen.getByRole("navigation", { name: "Primary" })).getByRole(
+        "link",
+        { name: "Home" },
+      ),
+    ).toHaveAttribute("aria-current", "page");
   });
 
   it("names every app and describes what it is", () => {

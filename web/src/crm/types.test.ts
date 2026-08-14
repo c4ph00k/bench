@@ -3,12 +3,15 @@ import {
   Deal,
   DealStage,
   STAGE_PROBABILITY,
+  boardOrder,
   monthRange,
   monthlyRevenue,
+  moveDeal,
   pipelineFunnel,
   topOrganizations,
   winLoss,
 } from "./types";
+import { deal as makeDeal } from "./test/helpers";
 
 let nextId = 1;
 
@@ -27,6 +30,7 @@ function deal(
     value,
     probability: STAGE_PROBABILITY[stage],
     close_date,
+    board_order: 0,
     created_at: "2026-01-01 00:00:00",
   };
 }
@@ -258,5 +262,40 @@ describe("top organizations", () => {
       1,
     );
     expect(rows.map((r) => r.name)).toEqual(["Bluepeak"]);
+  });
+});
+
+describe("board order", () => {
+  const cards = [
+    makeDeal({ id: 1, name: "A", stage: "New", board_order: 1 }),
+    makeDeal({ id: 2, name: "B", stage: "New", board_order: 0 }),
+    makeDeal({ id: 3, name: "C", stage: "Qualified", board_order: 0 }),
+  ];
+  const names = (ds: Deal[]) => ds.map((d) => d.name);
+
+  it("groups by stage and sorts each column by its stored position", () => {
+    expect(names(boardOrder(cards))).toEqual(["B", "A", "C"]);
+  });
+
+  it("drops a deal into another column at the index it was released", () => {
+    const next = moveDeal(boardOrder(cards), 1, "Qualified", 0);
+    expect(names(next)).toEqual(["B", "A", "C"]);
+    expect(next[1].stage).toBe("Qualified");
+  });
+
+  it("re-bases the probability when the column changes, but not when it does not", () => {
+    const hand = makeDeal({ id: 4, stage: "New", probability: 42 });
+    const across = moveDeal([hand], 4, "Proposal", 0);
+    expect(across[0].probability).toBe(50);
+    const within = moveDeal([hand], 4, "New", 0);
+    expect(within[0].probability).toBe(42);
+  });
+
+  it("reorders within one column", () => {
+    expect(names(moveDeal(boardOrder(cards), 1, "New", 0))).toEqual([
+      "A",
+      "B",
+      "C",
+    ]);
   });
 });

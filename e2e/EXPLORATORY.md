@@ -63,7 +63,11 @@ on the pipeline, delete confirmation, deep links. Left to judgement:
 - Mouse dragging on the pipeline. The specs drag with the keyboard, which is what
   `@hello-pangea/dnd` supports natively and what makes them stable, and the unit suite stubs the
   library out entirely - so the mouse path is **untested at every level**. Drag a card with the
-  mouse after touching the pipeline.
+  mouse after touching the pipeline, between columns and up and down within one, and reload to
+  confirm the order stuck.
+- Whether a column that overflows scrolls sensibly, and whether dragging a card to the bottom edge
+  of a full column auto-scrolls it. The board is sized to the window, so this only shows up with
+  enough deals in one stage, or a short window.
 - Chart readability: do the funnel proportions, the stacked won-versus-expected bars and the
   probability meters actually communicate at a glance? Only their presence and figures are asserted.
 - The forward half of "Revenue and deal volume" only fills if open deals carry future close dates.
@@ -88,7 +92,12 @@ adversarial suite. Left to judgement:
 ## Cross-app
 
 - The launcher, then into each app and back. Because the apps are separate documents, back is a
-  full page load, not a router transition.
-- Each app should keep its own look: CRM light with an amber top rule, Space light/dark, Groove
-  dark. Any styling bleeding between them means the multi-page split has been broken.
+  full page load, not a router transition, and moving between apps through the nav strip is a
+  navigation rather than a transition.
+- **The nav strip should look identical in all four documents** - same height, same dark, same
+  amber line - including Space in dark mode and over Groove's dark rack. The suite asserts the
+  links and the current tab; it cannot see that the strip has picked up a host app's font,
+  letter-spacing or palette. That is exactly what would go wrong.
+- Each app should keep its own look below the strip: CRM light, Space light/dark, Groove dark. Any
+  styling bleeding between them means the multi-page split has been broken.
 - Refresh on a deep link in **both** dev and prod.

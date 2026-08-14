@@ -1,4 +1,5 @@
 import { useCallback, useRef } from "react";
+import { IconGroove } from "../../shared/AppIcons";
 import type { Patch } from "../types";
 import { Knob } from "./Knob";
 import { LedStrip } from "./LedStrip";
@@ -81,11 +82,8 @@ function TempoDial({
 export function Transport(p: Props) {
   return (
     <header className="transport">
-      <a className="home-link" href="/" aria-label="Home">
-        HOME
-      </a>
       <div className="brand">
-        <span className="brand-mark" />
+        <IconGroove />
         <span className="brand-name">GROOVEBOX</span>
         <span className="brand-model">GX-4</span>
       </div>

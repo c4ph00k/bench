@@ -30,10 +30,16 @@ body {
   line-height: 1.5;
 }
 
+/* The nav strip and the app below it. The amber line now belongs to the strip. */
+#root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
 .app {
   display: flex;
-  min-height: 100vh;
-  border-top: 3px solid var(--amber);
+  flex: 1;
 }
 
 /* --- Sidebar --- */
@@ -56,11 +62,9 @@ body {
   padding: 4px 10px 20px;
 }
 
-.brand-mark {
-  width: 14px;
-  height: 14px;
-  background: var(--amber);
-  border-radius: 3px;
+.brand svg {
+  flex-shrink: 0;
+  color: var(--blue);
 }
 
 .sidebar nav {
@@ -105,15 +109,32 @@ body {
 .content {
   flex: 1;
   padding: 28px 32px;
-  max-width: 1280px;
+  max-width: 1440px;
+  min-width: 0;
 }
 
 .page-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+  gap: 14px;
   margin-bottom: 20px;
+}
+
+/* Blue is the CRM's own colour - brand, links, primary actions - so the section icon wears it. */
+.page-icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: var(--radius);
+  background: #e2f2fa;
+  color: var(--blue);
+}
+
+.page-heading {
+  flex: 1;
+  min-width: 0;
 }
 
 .page-header h1 {
@@ -138,6 +159,11 @@ body {
 
 .toolbar .spacer {
   flex: 1;
+}
+
+.header-actions {
+  display: flex;
+  gap: 10px;
 }
 
 /* --- Cards / panels --- */
@@ -528,13 +554,14 @@ a.entity-link:hover {
   align-items: center;
 }
 
+/* Amber is what is still ahead of you, red is what you have missed. */
 .due-chip {
   font-size: 12px;
   font-weight: 600;
   padding: 1px 8px;
   border-radius: 99px;
-  background: var(--gray-200);
-  color: var(--gray-700);
+  background: #fdf3d7;
+  color: #8a6503;
 }
 
 .due-chip.overdue {
@@ -544,14 +571,23 @@ a.entity-link:hover {
 
 /* --- Pipeline board --- */
 
+/*
+ * The columns take the height the window leaves them and scroll their own cards, so the board is
+ * one screen rather than six stacks of different lengths. The subtraction is the chrome above it:
+ * 47px nav strip, 28px of content padding top and bottom, and a 50px page header with its margin.
+ */
 .board {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 10px;
-  align-items: start;
+  height: calc(100vh - 175px);
+  min-height: 420px;
 }
 
 .board-column {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   background: var(--gray-100);
   border: 1px solid var(--gray-200);
   border-top: 3px solid var(--stage, var(--gray-300));
@@ -613,35 +649,54 @@ a.entity-link:hover {
 }
 
 .board-cards {
+  flex: 1;
+  min-height: 40px;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  min-height: 40px;
+  padding-right: 2px;
+  scrollbar-width: thin;
 }
 
+.board-empty {
+  margin: 0;
+  border: 1px dashed var(--gray-300);
+  border-radius: var(--radius);
+  padding: 16px 8px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--gray-500);
+}
+
+/* A resting card is a sheet you can pick up, so it carries the shadow that says so, and more of
+   one while it is actually in the air. */
 .deal-card {
   background: var(--white);
-  border: 1px solid var(--gray-300);
+  border: 1px solid var(--gray-200);
   border-radius: var(--radius);
-  padding: 9px 10px;
-  cursor: pointer;
+  padding: 10px 11px;
+  box-shadow: 0 1px 2px rgba(28, 33, 40, 0.07);
+  cursor: grab;
 }
 
 .deal-card:hover {
   border-color: var(--stage, var(--gray-500));
+  box-shadow: 0 2px 7px rgba(28, 33, 40, 0.12);
 }
 
 .deal-card.dragging {
+  cursor: grabbing;
   border-color: var(--stage);
-  box-shadow: 0 6px 16px rgba(28, 33, 40, 0.16);
+  box-shadow: 0 10px 24px rgba(28, 33, 40, 0.2);
 }
 
 .deal-figures {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: center;
   gap: 6px;
-  margin-top: 7px;
+  margin-top: 9px;
 }
 
 .deal-prob {
@@ -650,18 +705,41 @@ a.entity-link:hover {
   color: var(--white);
   background: var(--stage);
   border-radius: 99px;
-  padding: 1px 6px;
+  padding: 1px 7px;
   flex-shrink: 0;
 }
 
-.deal-expected {
-  margin-top: 3px;
+.deal-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 7px;
+  border-top: 1px solid var(--gray-100);
   font-size: 11px;
   color: var(--gray-500);
 }
 
-.deal-card .deal-name {
+.deal-date {
   font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Red means lost or late everywhere in the CRM; an open deal past its close date is late. */
+.deal-date.late {
+  color: var(--red);
+}
+
+.deal-expected {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.deal-card .deal-name {
+  font-weight: 650;
+  line-height: 1.3;
   margin-bottom: 2px;
   overflow-wrap: anywhere;
 }
@@ -669,12 +747,17 @@ a.entity-link:hover {
 .deal-card .deal-org {
   font-size: 12px;
   color: var(--gray-500);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .deal-card .deal-value {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 700;
+  letter-spacing: -0.01em;
   color: var(--gray-900);
+  font-variant-numeric: tabular-nums;
 }
 
 .board-column.drag-over {
@@ -687,24 +770,80 @@ a.entity-link:hover {
 
 .stat-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px;
   margin-bottom: 16px;
 }
 
+/*
+ * One colour, one meaning, across the whole dashboard: purple counts deals, blue is the open
+ * pipeline, amber is forecast, green is money already won. The charts below use the same four,
+ * and the tints and inks are the ones the stage and status chips already use.
+ */
+.stat-tile {
+  --tint: var(--gray-200);
+  --tone: var(--gray-700);
+  padding: 15px 17px;
+}
+
+.stat-tile.tone-count {
+  --tint: #f0e4f5;
+  --tone: #753991;
+}
+
+.stat-tile.tone-open {
+  --tint: #e2f2fa;
+  --tone: #14668c;
+}
+
+.stat-tile.tone-forecast {
+  --tint: #fdf3d7;
+  --tone: #8a6503;
+}
+
+.stat-tile.tone-won {
+  --tint: #e2f3e9;
+  --tone: #1e7043;
+}
+
+.stat-top {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.stat-icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: var(--radius);
+  background: var(--tint);
+  color: var(--tone);
+}
+
 .stat-tile .stat-label {
-  font-size: 12px;
+  font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   color: var(--gray-500);
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .stat-tile .stat-value {
-  font-size: 24px;
+  font-size: 30px;
   font-weight: 700;
-  letter-spacing: -0.02em;
-  margin-top: 4px;
+  letter-spacing: -0.025em;
+  font-variant-numeric: tabular-nums;
+  color: var(--tone);
+  margin-top: 10px;
+}
+
+.stat-tile .stat-sub {
+  font-size: 12px;
+  color: var(--gray-500);
+  margin-top: 1px;
 }
 
 .dash-grid {
@@ -773,26 +912,6 @@ a.entity-link:hover {
   border-radius: var(--radius);
   padding: 10px 14px;
   margin-bottom: 14px;
-}
-
-/* Home link back to the launcher. Shares the icon column and text baseline with the brand
-   below it, and keeps clear space so it reads as separate from the app's own identity. */
-.home-link {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 5px 10px;
-  margin-bottom: 14px;
-  color: var(--gray-500);
-  text-decoration: none;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.4px;
-  text-transform: uppercase;
-}
-
-.home-link:hover {
-  color: var(--white);
 }
 
 /* --- Refined tables --- */

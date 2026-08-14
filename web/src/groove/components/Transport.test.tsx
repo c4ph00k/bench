@@ -94,12 +94,4 @@ describe("Transport", () => {
     await userEvent.click(screen.getByRole("button", { name: "REVERT" }));
     expect(onRevert).toHaveBeenCalledOnce();
   });
-
-  it("links back to the launcher", () => {
-    renderTransport();
-    expect(screen.getByRole("link", { name: "Home" })).toHaveAttribute(
-      "href",
-      "/",
-    );
-  });
 });
