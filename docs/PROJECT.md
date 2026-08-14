@@ -24,9 +24,9 @@ app you are working in before changing its behaviour.
 | Groove | [groove/IMPLEMENTATION.md](./groove/IMPLEMENTATION.md) | [groove/REQUIREMENTS.md](./groove/REQUIREMENTS.md) | [groove/INSTRUMENT.md](./groove/INSTRUMENT.md) - player's guide |
 
 **IMPLEMENTATION.md** is how the app is built now: structure, domain rules, and the traps.
-**REQUIREMENTS.md** is the original product brief, kept for intent and scope. Each carries a
-provenance note; their phased plans are complete, not outstanding work. Where the two disagree, the
-code is the truth - but the gap is worth understanding before you close it.
+**REQUIREMENTS.md** is the original product brief, kept for intent and scope; their phased plans
+are complete, not outstanding work. Where the two disagree, the code is the truth - but the gap is
+worth understanding before you close it.
 
 ## Layout
 

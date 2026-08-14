@@ -15,11 +15,17 @@ let db: DB
 beforeEach(() => {
   db = openDb(':memory:')
   createOrganization(db, { name: 'Northwind Logistics', industry: 'Transportation' })
-  createOrganization(db, { name: 'Bluepeak Software', website: 'bluepeak.io', industry: 'Software' })
+  const bluepeak = createOrganization(db, { name: 'Bluepeak Software', website: 'bluepeak.io', industry: 'Software' })
   createContact(db, { name: 'Maria Delgado', email: 'maria@northwind.com', status: 'customer' })
-  createContact(db, { name: 'Jonas Lindqvist', email: 'jonas@bluepeak.io', status: 'qualified' })
+  const jonas = createContact(db, { name: 'Jonas Lindqvist', email: 'jonas@bluepeak.io', status: 'qualified' })
   createContact(db, { name: 'Sam Okafor', email: 'sam@quarry.com', status: 'lead' })
-  createDeal(db, { name: 'Enterprise upgrade', stage: 'Negotiation', value: 120000 })
+  createDeal(db, {
+    name: 'Enterprise upgrade',
+    organization_id: bluepeak.id,
+    contact_id: jonas.id,
+    stage: 'Negotiation',
+    value: 120000,
+  })
   createDeal(db, { name: 'Loyalty program', stage: 'Qualified', value: 38000 })
 })
 
@@ -60,5 +66,26 @@ describe('contact search and filter', () => {
 describe('deal search', () => {
   it('searches by name', () => {
     expect(listDeals(db, { q: 'upgrade' }).map((d) => d.name)).toEqual(['Enterprise upgrade'])
+  })
+
+  it('searches by the organization the deal is with', () => {
+    expect(listDeals(db, { q: 'Bluepeak' }).map((d) => d.name)).toEqual(['Enterprise upgrade'])
+  })
+
+  it('searches by the primary contact', () => {
+    expect(listDeals(db, { q: 'Jonas' }).map((d) => d.name)).toEqual(['Enterprise upgrade'])
+  })
+
+  it('still matches a deal that has no organization or contact', () => {
+    expect(listDeals(db, { q: 'Loyalty' }).map((d) => d.name)).toEqual(['Loyalty program'])
+  })
+
+  it('combines search with the stage filter', () => {
+    expect(listDeals(db, { q: 'Bluepeak', stage: 'Negotiation' })).toHaveLength(1)
+    expect(listDeals(db, { q: 'Bluepeak', stage: 'Qualified' })).toHaveLength(0)
+  })
+
+  it('returns nothing for a non-match', () => {
+    expect(listDeals(db, { q: 'zzz' })).toHaveLength(0)
   })
 })

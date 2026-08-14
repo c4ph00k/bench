@@ -12,8 +12,11 @@ test("the dashboard summarises seeded data", async ({ page }) => {
   await page.goto("/crm/");
   await expect(page.getByRole("heading", { name: "Dashboard", level: 1 })).toBeVisible();
   await expect(page.getByText("Open deals")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Deals won per month" })).toBeVisible();
+  for (const chart of ["Revenue and deal volume", "Revenue funnel", "Win rate", "Top organizations"]) {
+    await expect(page.getByRole("heading", { name: chart })).toBeVisible();
+  }
   await expect(page.getByRole("heading", { name: "Recent activity" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Follow-ups" })).toBeVisible();
   // Follow-ups are seeded, and each is a checkbox you can tick off.
   await expect(page.getByRole("checkbox").first()).toBeVisible();
 });

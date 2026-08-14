@@ -43,8 +43,8 @@ new derived value or a new column default should get one.
 ### End-to-end tests - `npm run e2e`
 
 Playwright, in `e2e/`. Layout: `smoke.spec.ts` (the seams between the apps), then `crm/`, `space/`,
-`groove/`. 74 tests in 13 files. `e2e/tools/screenshots.mjs` is not part of the suite - it drives a
-running app and captures every screen in both themes, for reviewing a visual change in one pass.
+`groove/`. `e2e/tools/screenshots.mjs` is not part of the suite - it drives a running app and
+captures every screen in both themes, for reviewing a visual change in one pass.
 
 Rules that keep this suite reliable:
 
@@ -116,7 +116,8 @@ elements around it, above and below included.
   as the pipeline and dashboard totals do.
 - **Delete tests that no longer describe intended behaviour.** A test kept alive by workarounds is
   worse than no test.
-- **Keep counts honest.** If a doc states how many tests exist, update it when that changes.
+- **Do not state test counts in the docs.** They are stale by the next commit. `npx playwright
+  test --list` answers it on demand.
 - When you deliberately leave something uncovered, say so in `e2e/EXPLORATORY.md` rather than
   letting a green suite imply coverage it does not have. Groove's audio is the standing example.
 

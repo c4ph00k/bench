@@ -1,14 +1,7 @@
-> **Provenance.** The product brief for Groove, from `groove-flash/REQUIREMENTS.md`
-> (2026-07-31). This expanded brief describes the instrument as it actually exists - four
-> patches, a deadmau5-style filter sweep, a spectrum analyzer.
->
-> Note the history: the code in this repo came from `groove-opus`, which was built against an
-> earlier three-patch brief on 2026-07-29 and **exceeded it**, adding the fourth patch, the
-> filter sweep and the analyzer. This brief, written two days later, records those extras. So
-> it describes the app more accurately than the brief the app was literally built from.
->
-> For how Groove is built, read [IMPLEMENTATION.md](./IMPLEMENTATION.md); for how to play it,
-> read [INSTRUMENT.md](./INSTRUMENT.md).
+> The original product brief for Groove, kept for intent and scope. The phased plan below
+> describes a build that is **complete** - history, not outstanding work. For how Groove is
+> built, read [IMPLEMENTATION.md](./IMPLEMENTATION.md); for how to play it, read
+> [INSTRUMENT.md](./INSTRUMENT.md).
 
 # Groovebox
 

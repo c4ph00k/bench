@@ -1,13 +1,7 @@
-> **Provenance.** The product brief for the CRM, from `crm-harness/REQUIREMENTS.md`
-> (2026-08-07) - the most complete version, and newer than the code in this repo, which was
-> built from an earlier copy. It specifies deal probability, expected-revenue visualisation,
-> nav and row icons, and the no-scrollbar pipeline: features this repo has since implemented.
-> It has **not** been formally reconciled against the implementation, so treat a mismatch as
-> worth investigating rather than as a defect.
->
-> The phased plan below describes the original build, which is **complete**. The phases are
-> history, not outstanding work. For how the CRM is actually built, read
-> [IMPLEMENTATION.md](./IMPLEMENTATION.md).
+> The original product brief for the CRM, kept for intent and scope. The phased plan below
+> describes a build that is **complete** - history, not outstanding work. Reconciled against the
+> implementation on 2026-08-14: every feature and success criterion below is built. For how the
+> CRM is actually built, read [IMPLEMENTATION.md](./IMPLEMENTATION.md).
 
 # Personal CRM — Requirements
 
@@ -73,8 +67,6 @@ Just enough direction to keep things on track — specific choices are left to t
   and the drag-and-drop pipeline. Don't hand-roll what a mature library does well.
 - Keep the implementation simple and conventional. Library, data and structure choices are the
   Coding Agent's call, as long as the requirements and the success criteria below are met.
-- The app will be running in a VS Code dev container with ports mapped on the host computer; ensure
-  the server is configured so that it can be viewed in a browser on the host computer.
 
 ## Not in scope (v1)
 

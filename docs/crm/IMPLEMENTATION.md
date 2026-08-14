@@ -5,7 +5,7 @@ activities with follow-ups, and a dashboard. Backed by `data/crm.sqlite`.
 
 - Frontend: `web/src/crm/` - `pages/`, `components/`, `types.ts`, `api.ts`, `styles.css`
 - Backend: `server/src/crm/` - `db.ts`, `routes.ts`, `seed.ts`
-- Tests: `server/test/crm/`, `e2e/crm/`
+- Tests: `server/test/crm/`, `web/src/crm/types.test.ts` (the derived values), `e2e/crm/`
 
 ## Data model
 
@@ -36,15 +36,37 @@ This is the part of the domain worth reading before changing anything on the pip
 
 ## Dashboard
 
-`web/src/crm/pages/Dashboard.tsx`, charts via recharts.
+`web/src/crm/pages/Dashboard.tsx` composes and fetches; the charts themselves are
+`components/DashboardCharts.tsx`, via recharts. Every figure they draw comes from a function in
+`types.ts` - none of the aggregation lives in the component, which is what makes it unit-testable
+(`types.test.ts`).
 
-- Tiles: open deals, pipeline value, expected revenue, deals won (6mo), revenue won (6mo).
-- **Deals won per month** - count of Won deals by close date.
-- **Expected vs actual revenue** - won revenue against the weighted value of open deals closing in
-  that month.
-- **Revenue funnel** - **cumulative**: value that has reached *at least* each stage, Lost excluded.
-  Charting value *sitting in* each stage produces an inverted funnel, because historical Won dwarfs
-  the open stages. If the funnel ever widens downwards, this is why.
+Tiles, then **four charts**, then recent activity and follow-ups.
+
+- Tiles: open deals, pipeline value, expected revenue, deals won (6mo), revenue won (6mo). The two
+  "6 mo" tiles read the **trailing slice** of the month range, not all of it - the range now runs
+  into the future, and a win dated next month is not revenue you have booked.
+- **Revenue and deal volume** (`monthRange`, `monthlyRevenue`) - twelve months, six back and six
+  forward, with a dashed marker on the first forecast month. Won value fills the months behind it,
+  weighted pipeline the months ahead. The two stack rather than sit side by side: a month is nearly always one or the
+  other, and stacking keeps the bars readable across twelve of them. Deal volume rides over the top
+  as a line on its own right-hand axis.
+- **Revenue funnel** (`pipelineFunnel`) - **cumulative**: value at or past each stage, which is why
+  the labels carry a trailing `+`. Charting value *sitting in* each stage produces an inverted
+  funnel, because historical Won dwarfs the open stages. If the funnel ever widens downwards, this
+  is why. Wins are capped at the trailing six months; without a horizon every win ever recorded
+  keeps widening the top. Lost deals never appear - a lost deal overwrites the stage it reached, so
+  there is nothing to place it at, and a **conversion** funnel is not buildable on this schema.
+- **Win rate** (`winLoss`) - closed deals in the trailing six months, won against lost, with the
+  rate in the middle of the donut.
+- **Top organizations** (`topOrganizations`) - open pipeline by organization, largest five.
+
+**The charts set `isAnimationActive={false}`, deliberately.** recharts animates bars in from zero,
+and anything that re-measures the container restarts that animation - a full-page screenshot, a
+viewport resize, an HMR reload. Screenshots taken during it show axes, labels and correct totals
+with **no bars at all**, which reads as a broken chart and is not one. Turning animation off makes
+the page deterministic to capture. If you see an empty-looking chart here, check this before
+debugging the data.
 
 ## Pipeline
 

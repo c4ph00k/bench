@@ -79,6 +79,140 @@ export function sumExpected(deals: Deal[]): number {
   return deals.reduce((total, d) => total + expectedValue(d), 0)
 }
 
+export interface FunnelRow {
+  name: DealStage
+  /** Says the row covers this stage and everything past it, which the stage name alone does not. */
+  label: string
+  value: number
+  count: number
+  inStage: number
+  fill: string
+}
+
+/**
+ * Rows for the pipeline funnel: value at or past each stage, so the shape narrows the way a funnel
+ * should. A won deal counts towards every row, so wins are capped at `sinceMonth` ('YYYY-MM') -
+ * without a horizon every win ever recorded would keep widening the top and the funnel would drift
+ * away from describing the pipeline. Open deals are all included, whenever they are due to close,
+ * since most of them close beyond that window. Lost deals never appear: a deal that dies overwrites
+ * the stage it reached, so there is nothing to place it at.
+ */
+export function pipelineFunnel(deals: Deal[], sinceMonth: string): FunnelRow[] {
+  const stages: DealStage[] = [...OPEN_STAGES, 'Won']
+  const live = deals.filter(
+    (d) => isOpen(d) || (d.stage === 'Won' && (d.close_date ?? '') >= sinceMonth)
+  )
+  return stages.map((stage, i) => {
+    const reached = live.filter((d) => stages.indexOf(d.stage) >= i)
+    return {
+      name: stage,
+      // No space before the plus: recharts breaks a funnel label onto a second line at whitespace.
+      label: i === stages.length - 1 ? stage : `${stage}+`,
+      value: sumValue(reached),
+      count: reached.length,
+      inStage: live.filter((d) => d.stage === stage).length,
+      fill: STAGE_COLOR[stage],
+    }
+  })
+}
+
+export interface Month {
+  key: string
+  label: string
+  future: boolean
+}
+
+/** Months from `back` before `from` to `forward` after it, oldest first, keyed 'YYYY-MM'. */
+export function monthRange(from: Date, back: number, forward: number): Month[] {
+  const months: Month[] = []
+  for (let i = -back; i <= forward; i++) {
+    const d = new Date(from.getFullYear(), from.getMonth() + i, 1)
+    months.push({
+      key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
+      label: d.toLocaleDateString('en-US', { month: 'short' }),
+      future: i > 0,
+    })
+  }
+  return months
+}
+
+export interface MonthlyRow extends Month {
+  actual: number
+  expected: number
+  won: number
+  /** Deals closing that month, won or still open. Lost deals are not volume. */
+  count: number
+}
+
+/**
+ * Revenue by month. Won value is what actually landed, so it only fills months that have already
+ * happened; expected value is the weighted open pipeline, so it mostly falls ahead. Running the
+ * range across both is what makes the chart read as one timeline rather than two.
+ */
+export function monthlyRevenue(deals: Deal[], months: Month[]): MonthlyRow[] {
+  return months.map((month) => {
+    const closing = deals.filter((d) => d.close_date?.startsWith(month.key))
+    const won = closing.filter((d) => d.stage === 'Won')
+    const open = closing.filter(isOpen)
+    return {
+      ...month,
+      actual: sumValue(won),
+      expected: sumExpected(open),
+      won: won.length,
+      count: won.length + open.length,
+    }
+  })
+}
+
+export interface WinLoss {
+  won: number
+  lost: number
+  wonValue: number
+  lostValue: number
+  /** Percent of closed deals won, 0 when nothing has closed yet. */
+  rate: number
+}
+
+/** Win rate over deals that closed on or after `sinceMonth` ('YYYY-MM'). */
+export function winLoss(deals: Deal[], sinceMonth: string): WinLoss {
+  const closed = deals.filter(
+    (d) => (d.stage === 'Won' || d.stage === 'Lost') && (d.close_date ?? '') >= sinceMonth
+  )
+  const won = closed.filter((d) => d.stage === 'Won')
+  const lost = closed.filter((d) => d.stage === 'Lost')
+  return {
+    won: won.length,
+    lost: lost.length,
+    wonValue: sumValue(won),
+    lostValue: sumValue(lost),
+    rate: closed.length ? Math.round((won.length / closed.length) * 100) : 0,
+  }
+}
+
+export interface OrgPipeline {
+  name: string
+  value: number
+  count: number
+}
+
+/** Organizations holding the most open pipeline, largest first. Deals with no organization drop out. */
+export function topOrganizations(
+  deals: Deal[],
+  orgName: Map<number, string>,
+  limit: number
+): OrgPipeline[] {
+  const totals = new Map<string, OrgPipeline>()
+  for (const deal of deals.filter(isOpen)) {
+    const name = orgName.get(deal.organization_id ?? -1)
+    if (!name) continue
+    const row = totals.get(name) ?? { name, value: 0, count: 0 }
+    row.value += deal.value
+    row.count += 1
+    totals.set(name, row)
+  }
+  return [...totals.values()].sort((a, b) => b.value - a.value).slice(0, limit)
+}
+
 export interface Activity {
   id: number
   type: ActivityType

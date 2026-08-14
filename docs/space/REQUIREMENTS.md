@@ -1,10 +1,6 @@
-> **Provenance.** The product brief for Space, from `space-fable/REQUIREMENTS.md` (2026-07-26).
-> This is the canonical copy - it is byte-identical across every folder it appears in, so there
-> is no richer variant.
->
-> The phased plan below describes the original build, which is **complete**. The phases are
-> history, not outstanding work. For how Space is actually built, read
-> [IMPLEMENTATION.md](./IMPLEMENTATION.md).
+> The original product brief for Space, kept for intent and scope. The phased plan below
+> describes a build that is **complete** - history, not outstanding work. For how Space is
+> actually built, read [IMPLEMENTATION.md](./IMPLEMENTATION.md).
 
 # Personal Space — Requirements
 

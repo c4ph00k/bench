@@ -245,22 +245,28 @@ export function listDeals(db: DB, opts: { q?: string; stage?: string; organizati
   const where: string[] = []
   const params: any[] = []
   if (opts.q) {
-    where.push('name LIKE ?')
-    params.push(`%${opts.q}%`)
+    where.push('(deals.name LIKE ? OR organizations.name LIKE ? OR contacts.name LIKE ?)')
+    const like = `%${opts.q}%`
+    params.push(like, like, like)
   }
   if (opts.stage) {
-    where.push('stage = ?')
+    where.push('deals.stage = ?')
     params.push(opts.stage)
   }
   if (opts.organization_id != null) {
-    where.push('organization_id = ?')
+    where.push('deals.organization_id = ?')
     params.push(opts.organization_id)
   }
   if (opts.contact_id != null) {
-    where.push('contact_id = ?')
+    where.push('deals.contact_id = ?')
     params.push(opts.contact_id)
   }
-  const sql = `SELECT * FROM deals ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY close_date`
+  // A deal's own text is just its name, so search reaches through to the organization and contact
+  // it is with. Left joins, so a deal with neither still matches on its own name.
+  const sql = `SELECT deals.* FROM deals
+    LEFT JOIN organizations ON organizations.id = deals.organization_id
+    LEFT JOIN contacts ON contacts.id = deals.contact_id
+    ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY deals.close_date`
   return db.prepare(sql).all(...params) as any[]
 }
 

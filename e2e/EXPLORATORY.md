@@ -50,8 +50,12 @@ on the pipeline, delete confirmation, deep links. Left to judgement:
 - Mouse dragging on the pipeline. The specs drag with the keyboard, which is what
   `@hello-pangea/dnd` supports natively and what makes them stable - so the mouse path is
   **untested**. Drag a card with the mouse after touching the pipeline.
-- Chart readability: do the funnel proportions, the expected-vs-actual bars and the probability
-  meters actually communicate at a glance? Only their presence and figures are asserted.
+- Chart readability: do the funnel proportions, the stacked won-versus-expected bars and the
+  probability meters actually communicate at a glance? Only their presence and figures are asserted.
+- The forward half of "Revenue and deal volume" only fills if open deals carry future close dates.
+  A database seeded weeks ago has a pipeline that has all gone past due, so the months ahead read
+  empty - correctly, but it does not look like much. Delete `data/crm.sqlite*` to reseed against
+  today before judging that chart.
 - Long values: very long organization names, huge deal values, empty descriptions.
 - Does the pipeline stay usable with many deals in one stage?
 
