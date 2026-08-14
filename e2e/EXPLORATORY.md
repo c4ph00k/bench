@@ -88,7 +88,12 @@ adversarial suite. Left to judgement:
 ## Cross-app
 
 - The launcher, then into each app and back. Because the apps are separate documents, back is a
-  full page load, not a router transition.
-- Each app should keep its own look: CRM light with an amber top rule, Space light/dark, Groove
-  dark. Any styling bleeding between them means the multi-page split has been broken.
+  full page load, not a router transition, and moving between apps through the nav strip is a
+  navigation rather than a transition.
+- **The nav strip should look identical in all four documents** - same height, same dark, same
+  amber line - including Space in dark mode and over Groove's dark rack. The suite asserts the
+  links and the current tab; it cannot see that the strip has picked up a host app's font,
+  letter-spacing or palette. That is exactly what would go wrong.
+- Each app should keep its own look below the strip: CRM light, Space light/dark, Groove dark. Any
+  styling bleeding between them means the multi-page split has been broken.
 - Refresh on a deep link in **both** dev and prod.

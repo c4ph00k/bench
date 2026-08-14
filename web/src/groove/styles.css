@@ -54,11 +54,11 @@ button {
   cursor: pointer;
 }
 
+/* The nav strip is the first row of this stack, and the amber line belongs to it. */
 .app {
   height: 100%;
   display: flex;
   flex-direction: column;
-  border-top: 2px solid var(--amber);
 }
 
 /* ---------- transport ---------- */
@@ -82,11 +82,12 @@ button {
   gap: 8px;
 }
 
-.brand-mark {
-  width: clamp(12px, 1.7vh, 20px);
-  height: clamp(12px, 1.7vh, 20px);
-  background: var(--amber);
-  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+/* Sized here, not by the icon's own attributes, so it scales with the rest of the panel. */
+.brand svg {
+  width: clamp(14px, 2vh, 24px);
+  height: clamp(14px, 2vh, 24px);
+  flex-shrink: 0;
+  color: var(--purple);
 }
 
 .brand-name {
@@ -887,20 +888,4 @@ button {
 
 .master-out .fader-slot {
   height: clamp(28px, 5.5vh, 70px);
-}
-
-/* Home link back to the launcher, left of the brand mark. */
-.home-link {
-  color: var(--dim);
-  text-decoration: none;
-  font-size: var(--f-xs);
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  padding-right: var(--gap);
-  border-right: 1px solid var(--line);
-  margin-right: var(--gap);
-}
-
-.home-link:hover {
-  color: var(--accent);
 }

@@ -10,7 +10,9 @@ external services, no secrets. Data lives in local SQLite files.
 | **Space**  | `/space`  | Personal knowledge manager, a single-user Notion: pages and blocks, databases with table/board/list views, search, light and dark themes | `data/personal-space.db`       |
 | **Groove** | `/groove` | Browser groovebox instrument: four synth units, one transport, a master DJ filter                                                        | none - pure Web Audio, no data |
 
-A launcher at `/` links to all three.
+A launcher at `/` links to all three, and every page carries the same navigation strip: the Bench
+mark, then Home, CRM, Space and Groove, each with the icon that identifies it inside its own app
+too.
 
 ## Detailed app documentation
 
@@ -37,6 +39,7 @@ web/                ONE Vite project, multi-page (MPA)
   crm/index.html      -> src/crm/main.tsx
   space/index.html    -> src/space/main.tsx
   groove/index.html   -> src/groove/main.tsx
+  src/shared/         the navigation strip - the only code all four documents share
 server/             ONE Express app
   src/index.ts        opens both DBs, listens on :8100
   src/app.ts          mounts routers, serves web/dist with per-prefix SPA fallback
@@ -93,6 +96,14 @@ These are settled. Changing one is a project-level decision, not an implementati
   `appFallback` plugin in `web/vite.config.ts` does the same for the dev server. Without it a
   refresh on `/crm/contacts` serves the launcher. Both carry the same `APPS` list, and they have
   disagreed before - check both when you touch routing.
+- **One shared module: `web/src/shared/`.** The navigation strip is the only code the four
+  documents have in common, and the `no-restricted-imports` rule allows it because that rule is a
+  denylist of the sibling apps, not an allowlist. **Its CSS has to be self-contained.** It loads
+  into four stylesheets that collide on `.brand` and `:root`, Space redefines its palette under
+  `[data-theme="dark"]`, and Groove restyles every element and sets a monospace body font - so
+  every class in `nav.css` is `bench-nav`-prefixed and every value is a literal, never a variable.
+  The strip looks the same over all four, which is the point: it is chrome above the app, not part
+  of it.
 - **One dependency set per workspace.** All three UIs live in `web/`, so they share one set of
   versions: TypeScript 6, Vite 8, vitest 4, react-router 8, React 19.
 - **TypeScript 6.0.3, pinned exactly, everywhere.** Root and both workspaces, one hoisted copy.
@@ -108,6 +119,11 @@ These are settled. Changing one is a project-level decision, not an implementati
 A new `web/<name>/index.html`, a new `web/src/<name>/`, an entry in `vite.config.ts`
 `rollupOptions.input`, the prefix in the `APPS` list in **both** `server/src/app.ts` and
 `web/vite.config.ts`, and a card on the launcher in `web/src/home/App.tsx`.
+
+Then the navigation: an icon in `web/src/shared/AppIcons.tsx`, an entry in the `APPS` list in
+`web/src/shared/BenchNav.tsx` with the app's colour, the new key in that file's `AppKey` union, and
+`<BenchNav active="<name>" />` above the app's own shell. The height chain matters - the app's root
+element has to leave room for a 47px strip; see how each of the three does it.
 
 ## Design
 

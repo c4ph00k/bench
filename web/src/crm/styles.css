@@ -30,10 +30,16 @@ body {
   line-height: 1.5;
 }
 
+/* The nav strip and the app below it. The amber line now belongs to the strip. */
+#root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
 .app {
   display: flex;
-  min-height: 100vh;
-  border-top: 3px solid var(--amber);
+  flex: 1;
 }
 
 /* --- Sidebar --- */
@@ -56,11 +62,9 @@ body {
   padding: 4px 10px 20px;
 }
 
-.brand-mark {
-  width: 14px;
-  height: 14px;
-  background: var(--amber);
-  border-radius: 3px;
+.brand svg {
+  flex-shrink: 0;
+  color: var(--blue);
 }
 
 .sidebar nav {
@@ -773,26 +777,6 @@ a.entity-link:hover {
   border-radius: var(--radius);
   padding: 10px 14px;
   margin-bottom: 14px;
-}
-
-/* Home link back to the launcher. Shares the icon column and text baseline with the brand
-   below it, and keeps clear space so it reads as separate from the app's own identity. */
-.home-link {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 5px 10px;
-  margin-bottom: 14px;
-  color: var(--gray-500);
-  text-decoration: none;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.4px;
-  text-transform: uppercase;
-}
-
-.home-link:hover {
-  color: var(--white);
 }
 
 /* --- Refined tables --- */

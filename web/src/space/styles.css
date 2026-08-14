@@ -68,10 +68,16 @@ textarea {
   color: inherit;
 }
 
+/* The nav strip and the app below it. The amber line now belongs to the strip. */
+#root {
+  display: flex;
+  flex-direction: column;
+}
+
 .app {
   display: flex;
-  height: 100%;
-  border-top: 3px solid var(--amber);
+  flex: 1;
+  min-height: 0;
 }
 
 /* ---------- Sidebar ---------- */
@@ -96,20 +102,9 @@ textarea {
   letter-spacing: -0.01em;
 }
 
-.brand-mark {
-  width: 22px;
-  height: 22px;
-  border-radius: 6px;
-  background: var(--amber);
-  position: relative;
-}
-
-.brand-mark::after {
-  content: "";
-  position: absolute;
-  inset: 6px;
-  border-radius: 50%;
-  background: var(--bg);
+.brand svg {
+  flex-shrink: 0;
+  color: var(--amber);
 }
 
 .tree {
@@ -1597,30 +1592,4 @@ tr:hover .title-actions {
   padding: 0 8px 10px;
   border-bottom: 1px solid var(--border);
   margin-bottom: 4px;
-}
-
-/* Home link back to the launcher. The icon sits in the same column as the brand mark below it
-   and the label on the same text baseline, with clear space between the two. */
-.home-link {
-  display: grid;
-  grid-template-columns: 22px 1fr;
-  align-items: center;
-  gap: 10px;
-  /* The sidebar itself has no padding: the brand used to supply the top inset, and this link
-     now sits in that slot, so it carries the 18px the brand had. */
-  padding: 18px 16px 0;
-  color: var(--text-faint);
-  text-decoration: none;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-}
-
-.home-link svg {
-  justify-self: center;
-}
-
-.home-link:hover {
-  color: var(--text);
 }

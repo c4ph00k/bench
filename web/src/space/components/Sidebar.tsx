@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMatch, useNavigate } from "react-router";
-import { Database, Home, Moon, Plus, Search, Sun } from "lucide-react";
+import { Database, Moon, Plus, Search, Sun } from "lucide-react";
+import { IconSpace } from "../../shared/AppIcons";
 import { api, type TreeNode } from "../api";
 import { currentTheme, toggleTheme, type Theme } from "../theme";
 import TreeItem from "./TreeItem";
@@ -54,12 +55,8 @@ export default function Sidebar({ tree, onChange, onSearch }: Props) {
 
   return (
     <nav className="sidebar">
-      <a className="home-link" href="/" aria-label="Home">
-        <Home size={14} />
-        Home
-      </a>
       <div className="brand">
-        <span className="brand-mark" aria-hidden="true" />
+        <IconSpace size={20} />
         <span className="brand-name">Personal Space</span>
       </div>
       <div className="sidebar-top">

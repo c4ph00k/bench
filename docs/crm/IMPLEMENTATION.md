@@ -102,9 +102,11 @@ rendering `0` while the footer total was correct. Build an enriched row type ins
 - Forms are modals (`Modal.tsx`, `role="dialog"` with the title as its accessible name); deletes go
   through `ConfirmDialog`.
 - Money and dates format through `formatMoney` / `formatDate` in `components/Chips.tsx`.
-- Icons are inline SVG in `components/Icons.tsx`, one 24-grid, sized by prop.
-- Sidebar: Home link, brand, then nav. All three share one icon column - check alignment against
-  the brand mark when touching it.
+- Icons are inline SVG in `components/Icons.tsx`, one 24-grid, sized by prop. The app's own mark is
+  the odd one out: `IconCrm` comes from `web/src/shared/AppIcons.tsx`, so the brand block and the
+  Bench nav tab show the same glyph.
+- Sidebar: brand, then nav, sharing one icon column - check alignment against the brand when
+  touching it. Getting home is the Bench nav's job, above the app.
 
 ## Related
 

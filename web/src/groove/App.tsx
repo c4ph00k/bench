@@ -4,6 +4,7 @@ import { UNIT_IDS } from "./types";
 import { PATCHES, clonePatch } from "./patches";
 import { Engine } from "./audio/engine";
 import type { EngineState } from "./audio/engine";
+import BenchNav from "../shared/BenchNav";
 import { Transport } from "./components/Transport";
 import { Unit } from "./components/Unit";
 import { Master } from "./components/Master";
@@ -204,6 +205,7 @@ export default function App() {
 
   return (
     <div className="app">
+      <BenchNav active="groove" />
       <Transport
         patches={patches}
         index={index}

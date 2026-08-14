@@ -73,14 +73,6 @@ export const IconPipeline = (p: IconProps) => (
   </Svg>
 );
 
-export const IconHome = (p: IconProps) => (
-  <Svg {...p}>
-    <path d="M4 10.5 12 4l8 6.5" />
-    <path d="M6 9.5V20h12V9.5" />
-    <path d="M10 20v-5h4v5" />
-  </Svg>
-);
-
 export const IconEdit = (p: IconProps) => (
   <Svg {...p}>
     <path d="M4 20h4l10-10a2.5 2.5 0 0 0-3.5-3.5L4.5 16.5 4 20Z" />
