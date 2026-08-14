@@ -8,10 +8,14 @@ committed.
 coverage threshold in both workspaces. There are no known failures to read past, so anything it
 reports is yours.
 
-**Three things now run on their own**, all of them backstops rather than the mechanism: `prebuild`
-lints before any build, lefthook formats and lints on pre-commit, and a Claude Code Stop hook holds
-a turn open while lint fails. CI runs `check` and `e2e` on every push. None of that lets you skip
-`npm run check` - a hook firing means the process already failed. See
+**Three things run on their own**, all of them backstops rather than the mechanism: `prebuild` lints
+before any build, lefthook formats and lints on pre-commit, and a Claude Code Stop hook holds a turn
+open while lint fails. None of that lets you skip `npm run check` - a hook firing means the process
+already failed.
+
+**The gate is CI.** It runs `check` and `e2e` on every push and pull request, and `main` is
+protected: no merge without it passing. That gate only sees the work once Ed pushes the branch,
+which is what makes running the checks locally a requirement rather than a courtesy. See
 [CONTROLS.md](./CONTROLS.md).
 
 ## 1. Understand before changing

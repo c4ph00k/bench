@@ -48,6 +48,7 @@ One npm workspace root with two workspaces, so a single `npm install` and a sing
 - `docs/` - working documentation: [PROJECT.md](./docs/PROJECT.md) (purpose and architecture),
   [PROCESS.md](./docs/PROCESS.md) (implementing and testing a change),
   [STANDARDS.md](./docs/STANDARDS.md) (coding standards),
-  [CONTROLS.md](./docs/CONTROLS.md) (lint, static analysis and coverage), plus a directory per app -
+  [CONTROLS.md](./docs/CONTROLS.md) (lint, static analysis, coverage and how each is enforced),
+  plus a directory per app -
   `docs/crm/`, `docs/space/`, `docs/groove/` - each with its implementation notes and its
   original requirements.

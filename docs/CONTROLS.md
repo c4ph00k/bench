@@ -1,32 +1,52 @@
 # Controls - lint, static analysis and enforcement
 
-This records the decisions taken on 2026-08-14 and what has since been built against them. Every
-decision below is settled; nothing here is still under discussion.
+The checks that mechanise [STANDARDS.md](./STANDARDS.md), and how each one is enforced. Everything
+here is in place and running. The decisions are settled: changing one is a project-level call.
 
-## Status
+## The layers
 
-| Step                                                                  | State                                           |
-| --------------------------------------------------------------------- | ----------------------------------------------- |
-| 1. ESLint, Prettier, the reformat commit, `lint` / `format` / `check` | **Done**                                        |
-| 2. Fix what strict finds                                              | **Done** - 1,586 errors to 0                    |
-| 3. knip, jscpd, no-restricted-imports, gitleaks, check-secrets        | **Done**                                        |
-| 4. Coverage widened to every app, then 80%                            | **Done** - server 82%, web 90%                  |
-| 5. Enforcement: prebuild, lefthook, Stop hook, GitHub Action          | **Done** - branch protection is Ed's to turn on |
+| Layer               | Runs                               | Bypassable                      |
+| ------------------- | ---------------------------------- | ------------------------------- |
+| `npm run check`     | By hand, when finishing a change   | Yes - by not running it         |
+| `prebuild`          | Before every `npm run build`       | Yes - by calling `vite` direct  |
+| lefthook pre-commit | On `git commit`                    | Yes - `git commit --no-verify`  |
+| Claude Code Stop    | When the agent tries to end a turn | Yes - one turn, then it relents |
+| GitHub Actions      | On push and pull request           | **No**                          |
 
-**`npm run check` passes end to end.** Typecheck, lint, formatting, gitleaks, secrets, dead code and
-both coverage thresholds are green, so any failure it reports now is yours. See
-[F](#f-coverage-thresholds) for where the coverage sits and what is deliberately left out.
+Only the last one is a gate. The rest are backstops for the times the process slips, and
+[PROCESS.md](./PROCESS.md) requires whoever did the work - agent or human - to run `npm run check`
+before committing. A hook firing means that already failed.
 
-**All four enforcement layers are wired up**, and none of them replaces running `npm run check`
-yourself - they are backstops for the times that slips. One thing is left, and it is not in this
-tree: **branch protection on `main`**, which lives in the repository settings. Until Ed turns it on,
-CI reports rather than gates. [What implementation changed](#what-implementation-changed) records
-the decisions that could only be made with the code in front of us.
+## npm scripts
 
-## The toolset
+The base layer every other layer calls.
 
-One ESLint 9 flat config at the repo root covering `web`, `server` and `e2e`. A single config
-rather than one per workspace: type-aware linting reaches both tsconfigs through typescript-eslint's
+```
+npm run lint          eslint across the repo
+npm run lint:fix      the same, applying fixes
+npm run format        prettier --write
+npm run format:check  prettier --check, for CI
+npm run knip          unused files, exports, dependencies
+npm run gitleaks      leaked credentials
+npm run check:secrets PII and files that must never be tracked
+npm run jscpd         cross-file duplication
+npm run check         typecheck + lint + format:check + gitleaks + check:secrets + knip
+                      + test with coverage
+```
+
+Unit tests run **with coverage** inside `check`, so the 80% threshold is a gate rather than a
+report.
+
+`jscpd` stays outside it: duplication findings are advisory rather than pass/fail, so they should
+not gate a green run. It reports 2.2% across the tree.
+
+`knip` needs `knip.json` to be told the multi-page entry points, or it reports every web source file
+as unused.
+
+## ESLint
+
+One flat config at the repo root covering `web`, `server` and `e2e`. A single config rather than one
+per workspace: type-aware linting reaches both tsconfigs through typescript-eslint's
 `projectService`, and one config means one process and one cache. Rules are **strict** -
 `strictTypeChecked` plus `stylisticTypeChecked`.
 
@@ -40,143 +60,27 @@ rather than one per workspace: type-aware linting reaches both tsconfigs through
 | `eslint-plugin-jsx-a11y`      | Accessibility - the e2e suite selects by role and label, so a11y regressions break tests |
 | `@vitest/eslint-plugin`       | No focused or skipped tests left behind                                                  |
 | `eslint-plugin-playwright`    | No conditional expects, no `waitForTimeout`                                              |
-| `prettier`                    | Formatting. See [G](#g-prettier)                                                         |
-| `eslint-config-prettier`      | Switches off the ESLint rules that would fight Prettier                                  |
+| `eslint-config-prettier`      | Last in the config, switching off the rules that would fight Prettier                    |
 
-Three standalone tools, not ESLint plugins:
+Two things need no package, only configuration:
 
-| Tool       | Job                                                                               |
-| ---------- | --------------------------------------------------------------------------------- |
-| `knip`     | Unused files, exports and dependencies - dead code ESLint structurally cannot see |
-| `jscpd`    | Copy-paste detection _across_ files; SonarJS only sees duplication within one     |
-| `gitleaks` | Leaked credentials, working tree and git history. See [H](#h-secrets-and-pii)     |
+- The built-in size rules, which enforce "short functions, short modules": `max-lines` 500,
+  `max-lines-per-function` 200, `complexity` 15, `max-depth` 4, `max-params` 5. Seed and patch
+  modules are literal data and exempt from the line counts, and `max-lines-per-function` is off for
+  `.tsx`, whose bodies are mostly a JSX tree the rule counts as logic. `complexity` and
+  `cognitive-complexity` measure whether a function is actually hard to follow, and stay strict
+  everywhere outside Groove's audio. The numbers were calibrated against this codebase rather than
+  picked round, and they bite.
+- **`no-restricted-imports`**, stopping the three apps importing from each other. It is a denylist of
+  the sibling apps rather than an allowlist of permitted paths, so a future `web/src/shared/` is
+  allowed by default. Note what it does **not** cover: the collision
+  [PROJECT.md](./PROJECT.md) warns about is the three global stylesheets, and a lint rule cannot see
+  CSS. Separate HTML entry points are what keeps those apart. This rule guards the module graph only.
 
-Plus two things that need no package, only configuration:
+### Rules deliberately off
 
-- ESLint's built-in size rules - `complexity`, `max-depth`, `max-lines`, `max-lines-per-function`,
-  `max-params`. These are what enforce "short functions, short modules" from
-  [STANDARDS.md](./STANDARDS.md).
-- **`no-restricted-imports`**, stopping the three apps importing from each other. Shape it as a
-  denylist of the sibling apps - "`web/src/crm` may not import from `web/src/space` or
-  `web/src/groove`" - rather than an allowlist of permitted paths, so a future shared module such as
-  `web/src/shared/` is allowed by default and needs no rule change.
-
-  Note what this does **not** cover: the collision [PROJECT.md](./PROJECT.md) warns about is the
-  three global stylesheets, and a lint rule cannot see CSS. Separate HTML entry points remain the
-  thing that keeps the styles apart. This rule guards the module graph only.
-
-### Deliberately excluded
-
-- **`eslint-plugin-unicorn`.** Three of its rules fight this codebase directly.
-  `prevent-abbreviations` would rename `db` (185 uses), `(req, res)` (39 Express handlers), `(e) =>`
-  (73 handlers) and `Props` (32 files) - and it reads as abbreviations the names this project
-  considers plain. `no-null` hits 301 `null`s, which is not a style habit: SQLite stores NULL, the
-  columns are nullable, and `better-sqlite3` binds `null` and rejects `undefined`. `filename-case`
-  defaults to kebab-case against PascalCase components. Once those are off, what remains overlaps
-  heavily with `strictTypeChecked` and SonarJS.
-
-## Landing strict on the existing code
-
-**Decided: fix it properly. No warn-only tier, no suppressions.**
-
-There are 44 `any` sites, nearly all `as any` query returns in `server/src/crm/db.ts` and the three
-Space route files. They cascade into `no-unsafe-return`, `no-unsafe-assignment` and
-`no-unsafe-member-access` at every call site, so the message count will be far higher than 44. The
-fix is to give the queries real row types rather than to silence the rule.
-
-`no-floating-promises` will also flag deliberate fire-and-forget calls - the optimistic
-`api.patch` in `Pipeline.tsx` is the known one. Those want `void` or an awaited call, decided case
-by case; the optimistic update is intentional and must keep working.
-
-That is what happened. It came to 1,586 errors, and they are all fixed - see below for the shape of
-the work and for the rules that turned out not to fit.
-
-## What implementation changed
-
-Decisions that could only be taken with the code in front of us. The plan above stands; these are
-the places reality argued back.
-
-### TypeScript 7 cannot drive type-aware linting, so the repo is on 6.0.3
-
-**This is the one to know about.** TypeScript 7 is the native Go compiler: `node_modules/typescript`
-ships `tsc.js` and nothing else, and the JS compiler API that type-aware linting is built on is
-gone. typescript-eslint peer-requires `<6.1.0` and refuses to install alongside 7 at all; its own
-issue tracker says the programmatic API for tsgo lands in 7.1. So `strictTypeChecked` - the whole
-point of the toolset - cannot run against TypeScript 7 at all.
-
-This is not a quirk of this repo. It is where the whole ecosystem is: typescript-eslint
-[#12518][ts-eslint-7] tracks it, and the API it needs lands in TypeScript 7.1. Anyone running
-type-aware linting who upgrades to 7 hits exactly this. It also shows up in the download numbers:
-7.0.2 is the `latest` tag but only ~7% of weekly installs, against ~44% for 5.9.3 and ~14% for
-6.0.3.
-
-**Decided: the whole repo is pinned to TypeScript 6.0.3 - one version, root and both workspaces.**
-6.0.3 is the last release that ships the JS compiler API (`lib/typescript.js`, `createProgram`,
-`createLanguageService`), and it sits inside typescript-eslint's supported range, so one compiler
-serves both `tsc --noEmit` and the linter. This reverses the "TypeScript 7" line in
-[PROJECT.md](./PROJECT.md), which is why it was Ed's call rather than an implementation detail.
-
-The version is pinned **exactly**, not `^6.0.3`, in all three `package.json` files. A caret would
-allow 6.1.0, which is outside typescript-eslint's `<6.1.0` peer range - the upper bound is a hard
-constraint, not a preference.
-
-What this bought, beyond one version:
-
-- **The root `optionalDependencies` block is gone** - all twenty `@typescript/typescript-*` platform
-  packages. It only ever existed because hoisting 5.9 to the root pushed 7 down into the workspaces,
-  and npm does not install the optional platform binaries of a nested package, so `tsc` died with
-  "Unable to resolve @typescript/typescript-darwin-arm64". No nested compiler, no missing binary,
-  no workaround.
-- **The two compilers can no longer disagree.** They did, rarely: 5.9 and 7 infer some generics
-  differently, and `eslint --fix` once removed an assertion that `tsc` then demanded back. That
-  class of problem is now structurally impossible.
-
-`npm run check` still runs typecheck **and** lint, which is now belt-and-braces rather than
-load-bearing.
-
-**The cost is build speed, and it is real but small at this size.** Measured on the same tsconfigs:
-
-| Compiler | server | web   | total     |
-| -------- | ------ | ----- | --------- |
-| 7.0.2    | 0.12s  | 0.36s | **0.48s** |
-| 6.0.3    | 0.79s  | 2.55s | **3.34s** |
-
-Seven times slower, and three seconds. Revisit when typescript-eslint supports tsgo in 7.1: at that
-point the whole arrangement collapses into "use 7", and this section becomes history.
-
-**Upgrading past 6.0.3 is therefore a deliberate, coordinated change**, not a routine bump - check
-typescript-eslint's peer range first.
-
-[ts-eslint-7]: https://github.com/typescript-eslint/typescript-eslint/issues/12518
-
-### npm drops platform binaries when you add a dependency
-
-Adding any dependency rewrites the lockfile and can drop optional platform packages already on
-disk - [npm/cli#4828]. Reproduced deliberately: `npm install -D is-odd`, a package with no relation
-to anything here, removed `@rolldown/binding-darwin-arm64` from `node_modules` and took the
-lockfile from nine references to seven. vitest then refuses to start.
-
-It is not silent - npm prints "removed N packages" - but it does not say what it removed or that it
-mattered, and the failure surfaces later as a vitest startup error. Rolldown's own message names
-the npm issue and the remedy: `rm -rf node_modules package-lock.json && npm install`. Removing
-`node_modules` alone is not enough; the lockfile has to go too.
-
-**In this repo that means all three `node_modules`.** `rm -rf node_modules` at the root leaves
-`web/node_modules` and `server/node_modules` in place, and a package nested there shadows the
-hoisted copy for anything running inside that workspace. The TypeScript 6 migration hit exactly
-this: the root had 6.0.3 while both workspaces still held a stale nested 7.0.2, so `tsc` inside a
-workspace was still the old compiler. The full incantation is:
-
-```bash
-rm -rf node_modules web/node_modules server/node_modules package-lock.json && npm install
-```
-
-[npm/cli#4828]: https://github.com/npm/cli/issues/4828
-
-### Rules that did not fit, and why
-
-Each of these was measured before it was switched off. They are in `eslint.config.js` with the same
-reasons, next to the rule.
+Each was measured before it was switched off, and each sits in `eslint.config.js` with the same
+reason next to it.
 
 | Rule                                                                                              | Why not                                                                                                                                                                                                                    |
 | ------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -190,239 +94,61 @@ reasons, next to the rule.
 | In `e2e/` and `scripts/`: `sonarjs/assertions-in-tests`, `no-os-command-from-path`                | Plugin limits, not findings: it does not recognise `await expect.poll(...)`, and its PATH rule is aimed at services, not a local run of this repo's own toolchain                                                          |
 | In `web/src/groove/audio/**`: `complexity`, `max-params`, `cognitive-complexity`, `pseudo-random` | Building a Web Audio graph is long and linear, a voice's parameters are its signal inputs, and EXPLORATORY.md records that none of it has automated coverage - a refactor to satisfy a metric could only be checked by ear |
 
-### Size thresholds
+**`eslint-plugin-unicorn` is not installed.** Three of its rules fight this codebase directly.
+`prevent-abbreviations` would rename `db` (185 uses), `(req, res)` (39 Express handlers), `(e) =>`
+(73 handlers) and `Props` (32 files). `no-null` hits 301 `null`s, which is not a style habit: SQLite
+stores NULL, the columns are nullable, and `better-sqlite3` binds `null` and rejects `undefined`.
+`filename-case` defaults to kebab-case against PascalCase components. What remains once those are
+off overlaps heavily with `strictTypeChecked` and SonarJS.
 
-CONTROLS.md never named numbers. They are `max-lines` 500, `max-lines-per-function` 200,
-`complexity` 15, `max-depth` 4, `max-params` 5, with seed and patch modules (literal data) exempt
-from the line counts and `max-lines-per-function` off for `.tsx`, whose bodies are mostly a JSX
-tree the rule counts as logic. `complexity` and `cognitive-complexity` are the rules that measure
-whether a function is actually hard to follow, and they stay strict everywhere outside Groove's
-audio.
+## TypeScript 6.0.3, pinned exactly
 
-Those numbers were calibrated against the codebase rather than picked round, and they still bit:
-`databasesRouter` was split into four registration groups, `matchesFilter` became a lookup table,
-and the contact and organization detail pages gave up a duplicated deals list to a shared
-component.
+**The whole repo runs one TypeScript: 6.0.3, pinned exactly in all three `package.json` files.**
 
-## A. npm scripts
+TypeScript 7 is the native Go compiler and ships `tsc.js` and nothing else - the JS compiler API that
+type-aware linting is built on is gone, and typescript-eslint refuses to install alongside 7 at all.
+6.0.3 is the last release carrying that API (`lib/typescript.js`, `createProgram`,
+`createLanguageService`), so one compiler serves both `tsc --noEmit` and the linter.
 
-The base layer every other layer calls.
+The pin is exact rather than `^6.0.3` because 6.1.0 falls outside typescript-eslint's `<6.1.0` peer
+range. That upper bound is a hard constraint, not a preference, so **upgrading past 6.0.3 is a
+deliberate, coordinated change** - check the peer range first.
 
+The cost is build speed: 3.34s across both workspaces against 0.48s under 7.0.2, roughly seven times
+slower and three seconds. **Revisit when typescript-eslint supports the native compiler**, expected
+in TypeScript 7.1 ([typescript-eslint#12518][ts-eslint-7]). At that point this whole arrangement
+collapses into "use 7".
+
+[ts-eslint-7]: https://github.com/typescript-eslint/typescript-eslint/issues/12518
+
+### npm drops platform binaries when you add a dependency
+
+Adding any dependency rewrites the lockfile and can drop optional platform packages already on disk
+([npm/cli#4828]). It is not silent - npm prints "removed N packages" - but it does not say what it
+removed or that it mattered, and the failure surfaces later as vitest refusing to start with "Cannot
+find native binding".
+
+The remedy needs **all three `node_modules`, and the lockfile**. Removing the root one alone leaves
+`web/node_modules` and `server/node_modules` in place, and a package nested there shadows the
+hoisted copy for anything running inside that workspace:
+
+```bash
+rm -rf node_modules web/node_modules server/node_modules package-lock.json && npm install
 ```
-npm run lint          eslint across the repo
-npm run lint:fix      the same, applying fixes
-npm run format        prettier --write
-npm run format:check  prettier --check, for CI
-npm run knip          unused files, exports, dependencies
-npm run gitleaks      leaked credentials - see H
-npm run check:secrets PII and files that must never be tracked - see H
-npm run jscpd         cross-file duplication
-npm run check         typecheck + lint + format:check + gitleaks + check:secrets + knip
-                      + test with coverage
-```
 
-`npm run check` is the one to run when finishing a change, and [PROCESS.md](./PROCESS.md) requires
-it before every commit. Unit tests run **with coverage** inside it, so the 80% threshold in F is a
-gate rather than a report.
+[npm/cli#4828]: https://github.com/npm/cli/issues/4828
 
-`jscpd` stays outside it: duplication findings are advisory rather than pass/fail, so they should
-not gate a green run. It reports 2.2% across the tree today.
+## Prettier
 
-All of these exist and run. `knip` needed `knip.json` to be told the multi-page entry points, or it
-reports all 48 web source files as unused.
+**Prettier's defaults, with no configuration**: semicolons, double quotes, print width 80. An empty
+config file is deliberate - Prettier's value is ending the argument, and every option added reopens
+it. `eslint-config-prettier` goes last in the flat config so Prettier owns formatting outright.
 
-## B. npm lifecycle
+The whole tree was reformatted in one commit that did nothing else, and `.git-blame-ignore-revs`
+names it so `git blame` skips past. GitHub honours that file automatically.
 
-**`prebuild` runs lint.** npm fires it before `npm run build` automatically, so it cannot be
-forgotten and nothing extra needs typing.
-
-**`e2e/global-setup.ts` is deliberately left alone.** It shells out to `npm run build`, so
-`npm run e2e` lints first and pays the cost - roughly doubling its wall time. That is a considered
-trade, not an oversight. Rerouting global-setup to `npm run build -w web` would skip the root
-`prebuild` and buy the time back; do not do it without asking.
-
-Note the one gap: `pre*` scripts only fire for `npm run <script>`. Calling `vite build` directly
-walks past them.
-
-## C. Git hooks - lefthook, on pre-commit
-
-`lefthook`, configured in `lefthook.yml` at the root, installed through a `prepare` script so
-`npm install` wires it up with no extra step. **The hook runs on pre-commit**, two jobs in order:
-
-1. **format** - `prettier --write` over the staged files, with `stage_fixed: true` so what it
-   rewrites is re-staged rather than left as an unstaged surprise.
-2. **lint** - `npm run lint` over the whole tree. Not the staged files: the rules are type-aware,
-   so a staged subset can pass while the change has broken a file that was not staged.
-
-That second job is the cost, and it is worth knowing: **the full lint takes around 30 seconds on
-this tree**, so every commit pays it. Adding `--cache` would cut it, at the price of `npm run lint`
-meaning something slightly different here than in CI.
-
-**This layer is a nudge, not a gate.** `git commit --no-verify` bypasses any client-side hook, by
-design - git lets you override your own hooks. D is the gate.
-
-It is also a **backstop, not the mechanism**. [PROCESS.md](./PROCESS.md) requires whoever did the
-work - agent or human - to run `npm run check` before committing. This hook exists for the times
-that slips. A hook firing means the process already failed.
-
-## D. CI - the real gate
-
-`.github/workflows/ci.yml`, on push and pull request, running **`npm run check` and
-`npm run e2e`** - naming the aggregate rather than restating its parts, so CI cannot drift out of
-step with what A defines. Node 24, npm cached, Chromium installed for Playwright, and
-`test-results/` uploaded when something fails so a red run can be read without reproducing it.
-
-**It installs the gitleaks release rather than using `gitleaks/gitleaks-action`,** which is a
-deviation from the plan above and deliberate. `npm run check` shells out to the `gitleaks` binary
-and fails when it is missing, on purpose; the official action runs its own scan inside a container
-and does not leave the binary on `PATH`, so `check` would still fail there. Installing the release
-tarball lets CI run exactly the command the working tree does. The version is pinned in the
-workflow - bump it in step with whatever `brew install gitleaks` puts on your machine.
-
-**Branch protection on `main` requiring this check is still to be turned on**, and it is Ed's to
-set: it lives in the repository settings, not in this tree. Until then CI reports but does not gate.
-
-This is the only layer that cannot be bypassed. "Nothing lands unless it passes" means nothing is
-_merged_ - not that nothing is _committed_, which no client-side hook can guarantee.
-
-## E. Claude Code Stop hook
-
-A `Stop` hook in `.claude/settings.json` running `scripts/stop-lint.mjs`, which blocks the agent
-from ending a turn while `npm run lint` fails. This is the only lever that binds the coding agent
-rather than asking it to remember; `settings.json` is committed, unlike the `settings.local.json`
-already in the repo. It blocks by exiting 2 with ESLint's own output on stderr, which is what
-reaches the agent - a bare "lint failed" would give it nothing to act on. It runs `lint` only, not
-the full `check`, so a slow suite does not run on every turn end.
-
-**The loop hazard is real and had to be handled a different way than planned.** A Stop hook that
-blocks on failure can cycle forever: the agent stops, the hook fails and forces it to continue, it
-cannot fix the problem, it stops again, the hook fails again. This document said to read
-`stop_hook_active` from the hook's stdin JSON and allow the stop when it is true - and said to
-verify the field name rather than guess it. **Verified: `stop_hook_active` no longer appears in the
-Claude Code hooks documentation at all**, and the documented `Stop` input is `session_id`,
-`prompt_id`, `transcript_path`, `cwd`, `permission_mode`, `hook_event_name`, `last_assistant_message`
-and `effort`.
-
-So the script keeps its own marker instead, in the system temp directory, keyed by `session_id`:
-the first failing stop is blocked and the marker written, the next one clears the marker and lets
-the stop through with a `systemMessage`, and a passing lint clears it. The cap is the same one
-extra turn, and it depends on nothing undocumented.
-
-That is worth generalising: this hook layer sits on someone else's schema, so **check the input
-fields against the current docs before relying on one**, and prefer a mechanism that holds if the
-field is not there.
-
-## F. Coverage thresholds
-
-**This control already exists** and is already set at 80% statements. It is vitest's built-in
-`coverage.thresholds`, configured per workspace:
-
-- `server/vitest.config.ts` - includes `src/**`, excludes `src/index.ts`, `statements: 80`
-- `web/vite.config.ts` - includes **`src/space/**` only**, `statements: 80`
-
-Measured on 2026-08-14 with `npm run coverage`:
-
-| Scope                                  | Statements | Branches | Functions |
-| -------------------------------------- | ---------- | -------- | --------- |
-| `server/src`                           | 81.58%     | 73.01%   | 67.82%    |
-| `web/src/space`                        | 86.11%     | 73.43%   | 86.98%    |
-| `web/src/crm` (not currently measured) | **9.78%**  | 4.08%    | 8.39%     |
-
-**Decided: 80% goes into `npm run check`, measured across every app.** Two consequences, both real
-work rather than configuration:
-
-**The `include` widened from `src/space/**` to all of `src/**`.** That brought in two apps with
-almost no unit tests, and closing that gap was the outstanding work on this document. It is done.
-
-Where it stands, measured with `npm run coverage`:
-
-| Scope                       | Statements | Notes                                          |
-| --------------------------- | ---------- | ---------------------------------------------- |
-| `server/src`                | 82%        |                                                |
-| `web/src/space`             | 92%        |                                                |
-| `web/src/groove`            | 88%        | components, `App` and the pure modules         |
-| `web/src/groove/components` | 97%        |                                                |
-| `web/src/home`              | 100%       | the launcher                                   |
-| `web/src/crm`               | 100%       | `App`, the fetch hook, the wrapper, formatters |
-| `web/src/crm/components`    | 95%        | forms, table, charts, timeline, chips          |
-| `web/src/crm/pages`         | 96%        | all eight pages                                |
-| **web overall**             | **90%**    | against a threshold of 80                      |
-
-**Do not lower the bar to make a red run green.** The remaining gaps are honest ones and named
-below: Groove's audio graph, the two chart-drag paths that only e2e can exercise, and Space's
-`BoardView`, which is the largest single hole left in the tree at 31%.
-
-Six things learned writing these suites, all of them jsdom or library gaps rather than code faults:
-
-- **jsdom implements no pointer capture.** Every knob, fader and grid calls `setPointerCapture` on
-  pointerdown, so all of them threw until `Element.prototype.setPointerCapture` was stubbed in
-  `web/src/space/test/setup.ts` - which despite its path is the setup file for the whole workspace.
-- **jsdom lays nothing out**, so `getBoundingClientRect` returns zeros and any component that maps a
-  coordinate to an index divides by zero. `VelocityLane.test.tsx` stubs the rect.
-- **`exact: true` is a Playwright option, not a Testing Library one.** Testing Library's `name`
-  already matches the full string; passing `exact` there is a type error. The warning in
-  [PROCESS.md](./PROCESS.md) about substring matching applies to the e2e suite only.
-- **recharts renders nothing without a measured size.** `ResponsiveContainer` reads its parent's
-  box, which is zero in jsdom, so every chart came out empty. `DashboardCharts.test.tsx` mocks the
-  container to hand the chart a fixed 640x240 instead - which is what recharts itself does once it
-  has measured one.
-- **recharts also leaves a text-measurement span on `document.body`**, holding the last label it
-  sized. It survives Testing Library's cleanup, so `screen.getByText` finds a phantom second match
-  for whatever the chart last measured. Query the container `render` returns, not `screen`.
-- **dnd cannot drag in jsdom either** - `@hello-pangea/dnd` measures the boxes it moves.
-  `Pipeline.test.tsx` stubs the library and calls the `onDragEnd` the page hands it, which covers
-  the optimistic re-stage; the real drag stays an e2e test, where it always was.
-
-**`web/src/groove/audio/**` is excluded from the `include`** - 1,053 lines across four files. jsdom
-has no `AudioContext`, so they cannot be unit tested without a mock that would assert nothing about
-how anything sounds.
-[EXPLORATORY.md](../e2e/EXPLORATORY.md) already records that Groove's audio is not automatically
-testable, and a coverage threshold must not be allowed to imply otherwise - excluding it and saying
-so is the honest option. Groove's pure modules (`music.ts`, `params.ts`, `patches.ts`, `filter.ts`)
-stay in, and are ordinary logic to test.
-
-**Thresholds stay on `statements` only for now.** Branches are at 81% on web but 72% on the server,
-so a branches threshold at 80 would fail there today. Revisit by raising the server's branch
-coverage first; the statement threshold now holds in both workspaces.
-
-## G. Prettier
-
-**Decided: adopt Prettier and reformat the tree.**
-
-The tree currently carries two styles, split cleanly along the lines of the repos the apps came
-from:
-
-| Area                                 | Semicolons | Quotes |
-| ------------------------------------ | ---------- | ------ |
-| `server/src`, `web/src/space`, `e2e` | yes        | double |
-| `web/src/crm`, `web/src/groove`      | no         | single |
-
-So [STANDARDS.md](./STANDARDS.md)'s "match the file around you" currently means two different things
-depending on which app you are in. Prettier ends that, which is the main prize - but it means
-picking a winner and rewriting roughly two thousand lines of the losing style.
-
-**Settings: Prettier's defaults, with no configuration.** That means semicolons, double quotes and a
-print width of 80 - the first two are what the larger body of code already does. An empty config
-file is deliberate: Prettier's value is ending the argument, and every option added reopens it.
-
-The one visible consequence is width. Parts of the codebase run to about 110 columns, so 80 will
-rewrap JSX and long call signatures noticeably taller - the recharts components in
-`web/src/crm/components/DashboardCharts.tsx` most of all. Raising `printWidth` to 100 is a one-line
-change if the result reads badly, but start from the default.
-
-How to land it:
-
-- **One commit that does nothing but reformat**, separate from any behaviour change, so review and
-  `git blame` stay readable.
-- Add a `.git-blame-ignore-revs` file naming that commit, so `git blame` skips past it. GitHub
-  honours it automatically.
-- `eslint-config-prettier` goes last in the flat config so Prettier owns formatting and ESLint stops
-  having opinions about it.
-
-### Keeping it applied
-
-Formatting must happen automatically, not by remembering to run it. Four places, and the split
-between which ones **write** and which ones **check** matters:
+Formatting is applied in four places, and the split between which ones **write** and which ones
+**check** matters:
 
 | Where                                    | Covers                          | Action               |
 | ---------------------------------------- | ------------------------------- | -------------------- |
@@ -431,90 +157,210 @@ between which ones **write** and which ones **check** matters:
 | lefthook pre-commit                      | Anything that slipped past both | write, then re-stage |
 | `npm run check`, `prebuild`, CI          | The gate                        | **check only**       |
 
-- **On save** is `.vscode/settings.json` with `editor.formatOnSave` and Prettier as the default
-  formatter, plus `.vscode/extensions.json` recommending it and the ESLint extension. Both are
-  committed. The `.gitignore` entry had to become `.vscode/*` rather than `.vscode/` to allow it:
-  **git will not re-include a file whose parent directory is excluded**, so the two `!` negations
-  under a `.vscode/` rule are dead letters. `git check-ignore -v` is how you find that out.
-- **On save does nothing for the agent** - it writes files through tools, not an editor, so
-  format-on-save never fires for its changes. A Claude Code `PostToolUse` hook was considered as the
-  equivalent and **rejected**: reformatting a file immediately after an edit invalidates the text the
-  agent is about to match for its next edit, which is confusing for little gain. Instead
+- **On save** is `.vscode/settings.json` with `editor.formatOnSave`, plus `.vscode/extensions.json`
+  recommending Prettier and ESLint. Both are committed. `.gitignore` lists `.vscode/*` rather than
+  `.vscode/` to allow it: **git will not re-include a file whose parent directory is excluded**, so
+  the `!` negations under a `.vscode/` rule would be dead letters. `git check-ignore -v` is how you
+  find that out.
+- **On save does nothing for the agent** - it writes files through tools, not an editor. A
+  `PostToolUse` hook was considered as the equivalent and rejected: reformatting a file immediately
+  after an edit invalidates the text the agent is about to match for its next edit. Instead
   [PROCESS.md](./PROCESS.md) puts `npm run format` in the finishing steps, before `npm run check`.
-  This matters: without it `format:check` inside `check` fails on every unformatted agent edit.
+  Without it, `format:check` inside `check` fails on every unformatted agent edit.
 - **Never `prettier --write` in `prebuild` or CI.** A build that rewrites its own source is not
-  reproducible, and in CI it would pass while leaving the repository unformatted. Those layers run
-  `--check` and fail.
+  reproducible, and in CI it would pass while leaving the repository unformatted.
 
-## H. Secrets and PII
+## Coverage
 
-**Two tools, with a clean division of labour.** `gitleaks` handles credentials, which is a solved
+vitest's built-in `coverage.thresholds`, **80% statements**, configured per workspace and measured
+across every app: `server/vitest.config.ts` includes `src/**` and excludes `src/index.ts`;
+`web/vite.config.ts` includes `src/**` and excludes `main.tsx`, the test files and Groove's audio.
+
+Where it stands, from `npm run coverage`:
+
+| Scope                       | Statements |
+| --------------------------- | ---------- |
+| `server/src`                | 82%        |
+| `web/src/crm`               | 100%       |
+| `web/src/crm/components`    | 95%        |
+| `web/src/crm/pages`         | 96%        |
+| `web/src/space`             | 92%        |
+| `web/src/groove`            | 88%        |
+| `web/src/groove/components` | 97%        |
+| `web/src/home`              | 100%       |
+| **web overall**             | **90%**    |
+
+**Do not lower the bar to make a red run green.**
+
+**Thresholds stay on `statements` only.** Branches are at 81% on web but 72% on the server, so a
+branches threshold at 80 would fail there. Revisit by raising the server's branch coverage first.
+
+### What is not covered, and why
+
+**`web/src/groove/audio/**` is excluded outright** - 1,053 lines across four files. jsdom has no
+`AudioContext`, so they cannot be unit tested without a mock that would assert nothing about how
+anything sounds. [EXPLORATORY.md](../e2e/EXPLORATORY.md) records that gap, and a coverage threshold
+must not be allowed to imply otherwise. Groove's pure modules (`music.ts`, `params.ts`,
+`patches.ts`, `filter.ts`) stay in, and are ordinary logic to test.
+
+The largest remaining hole is Space's `BoardView` at 31%.
+
+Six jsdom and library gaps shape how the suites are written. None is a fault in the code, and every
+one of them will bite again:
+
+- **jsdom implements no pointer capture.** Every knob, fader and grid calls `setPointerCapture` on
+  pointerdown, so all of them throw without the stub in `web/src/space/test/setup.ts` - which despite
+  its path is the setup file for the whole workspace.
+- **jsdom lays nothing out**, so `getBoundingClientRect` returns zeros and any component that maps a
+  coordinate to an index divides by zero. `VelocityLane.test.tsx` stubs the rect.
+- **recharts renders nothing without a measured size.** `ResponsiveContainer` reads its parent's box,
+  which is zero in jsdom. `DashboardCharts.test.tsx` mocks the container to hand the chart a fixed
+  640x240, which is what recharts itself does once it has measured one.
+- **recharts also leaves a text-measurement span on `document.body`**, holding the last label it
+  sized. It survives Testing Library's cleanup, so `screen.getByText` finds a phantom second match
+  for whatever the chart last measured. Query the container `render` returns, not `screen`.
+- **`@hello-pangea/dnd` cannot drag in jsdom** - it measures the boxes it moves. `Pipeline.test.tsx`
+  stubs the library and calls the `onDragEnd` the page hands it, which covers the optimistic
+  re-stage. The real drag is an e2e test.
+- **`exact: true` is a Playwright option, not a Testing Library one.** Testing Library's `name`
+  already matches the full string; passing `exact` there is a type error. The substring-matching
+  warning in [PROCESS.md](./PROCESS.md) applies to the e2e suite only.
+
+## Enforcement
+
+### prebuild
+
+`prebuild` runs lint, and npm fires it before `npm run build` automatically, so it cannot be
+forgotten. One gap: `pre*` scripts only fire for `npm run <script>`, so calling `vite build` directly
+walks past it.
+
+`e2e/global-setup.ts` shells out to `npm run build`, which means **`npm run e2e` lints first and
+pays the cost** - roughly doubling its wall time, 22s to 44s. That is a considered trade. Rerouting
+global-setup to `npm run build -w web` would skip the root `prebuild` and buy the time back; do not
+do it without asking.
+
+### lefthook, on pre-commit
+
+Configured in `lefthook.yml`, installed through a `prepare` script so `npm install` wires it up.
+Two jobs in order:
+
+1. **format** - `prettier --write` over the staged files, with `stage_fixed: true` so what it
+   rewrites is re-staged rather than left as an unstaged surprise.
+2. **lint** - `npm run lint` over the whole tree. Not the staged files: the rules are type-aware, so
+   a staged subset can pass while the change has broken a file that was not staged.
+
+The second job costs **about 30 seconds, on every commit**. Adding `--cache` would cut it, at the
+price of `npm run lint` meaning something slightly different here than in CI.
+
+### Claude Code Stop hook
+
+`.claude/settings.json` registers a `Stop` hook running `scripts/stop-lint.mjs`, which holds a turn
+open while `npm run lint` fails. This is the only lever that binds the coding agent rather than
+asking it to remember; `settings.json` is committed, unlike `settings.local.json`. It blocks by
+exiting 2 with ESLint's own output on stderr, which is what reaches the agent - a bare "lint failed"
+gives it nothing to act on. It runs `lint` only, not the full `check`, so a slow suite does not run
+on every turn end.
+
+**The loop hazard is the thing to understand before changing it.** A hook that blocks on failure can
+cycle forever: the agent stops, the hook blocks, it cannot fix the problem, it stops again. The
+script caps that with its own marker in the temp directory keyed by `session_id` - the first failing
+stop is blocked, the next clears the marker and lets the stop through with a `systemMessage`, and a
+passing lint clears it. So the cost is one extra turn either way.
+
+It works that way because **`stop_hook_active`, the documented field this was meant to use, is no
+longer in the Claude Code hooks documentation**. The documented `Stop` input is `session_id`,
+`prompt_id`, `transcript_path`, `cwd`, `permission_mode`, `hook_event_name`,
+`last_assistant_message` and `effort`. This layer sits on someone else's schema: check the fields
+against the current docs before relying on one, and prefer a mechanism that holds if the field is
+not there.
+
+### CI - the gate
+
+`.github/workflows/ci.yml`, on push and pull request, running **`npm run check` and `npm run e2e`** -
+naming the aggregates rather than restating their parts, so CI cannot drift out of step with what
+package.json defines. Node 24, npm cached, Chromium installed for Playwright, and `test-results/`
+uploaded on failure so a red run can be read without reproducing it. A full run takes about three
+minutes.
+
+It triggers on both push and pull request, so a PR from a same-repo branch runs the suite twice per
+commit. That is accepted.
+
+**It installs the gitleaks release rather than using `gitleaks/gitleaks-action`.** `npm run check`
+shells out to the `gitleaks` binary and fails when it is missing, on purpose; the action runs its own
+scan inside a container and does not leave the binary on `PATH`, so `check` would still fail. The
+version is pinned in the workflow - bump it in step with whatever `brew install gitleaks` puts on
+your machine.
+
+### Branch protection
+
+A ruleset named `main` on `ed-donner/bench`, enforcement **active**, targeting the default branch,
+with an **empty bypass list** so it binds the repository owner too:
+
+- Restrict deletions, block force pushes
+- Require a pull request before merging, 0 required approvals
+- Require the `check` status check, with branches required to be up to date
+
+**The required check is matched by name.** It is `check`, which is the job name in `ci.yml`. Rename
+that job and the requirement silently stops matching - pull requests then wait forever for a status
+that never reports, which looks like a hang rather than a misconfiguration.
+
+This is the only layer that cannot be bypassed. "Nothing lands unless it passes" means nothing is
+_merged_ - not that nothing is _committed_, which no client-side hook can guarantee.
+
+## Secrets and PII
+
+**Three tools, with a clean division of labour.** `gitleaks` handles credentials, which is a solved
 problem with a maintained ruleset and no reason to hand-roll. A small script in this repo handles
 the two things no general scanner can know about: what counts as PII here, and which files must
-never be tracked.
-
-Turn on **GitHub secret scanning with push protection** as well. It is free on public repositories,
-it is server-side, and it is the only one of the three that can stop a secret before it leaves the
-machine.
+never be tracked. GitHub secret scanning with push protection is on, and is the only one of the
+three that is server-side and can stop a secret before it leaves the machine.
 
 ### gitleaks
 
-Run as `npm run gitleaks`, inside `npm run check`.
+Run as `npm run gitleaks`, inside `npm run check`. Custom rules and allowlists go in
+`.gitleaks.toml`.
 
-`gitleaks` is a Go binary, not an npm package, so it will not arrive with `npm install`. Install it
-locally with `brew install gitleaks`; in CI use the official `gitleaks/gitleaks-action`. **If the
-binary is missing, fail with an actionable message rather than skipping.** A control that silently
-passes when its tool is absent is worse than no control.
+It is a Go binary, not an npm package, so it does not arrive with `npm install` - `brew install
+gitleaks` locally, and the pinned release in CI. **If the binary is missing the check fails with an
+actionable message rather than skipping.** A control that silently passes when its tool is absent is
+worse than no control.
 
-Two modes matter: working-tree scanning for `check` and the pre-commit hook, and history scanning.
-**Do a full history scan once when this is first built** - the repo is only a handful of commits
-old, so it is seconds of work, and it establishes that nothing is already buried in the past.
-
-Custom rules and allowlists go in `.gitleaks.toml`.
+A full history scan was run once when this was built; it was clean across all 27 commits.
 
 ### The bespoke script
 
 `scripts/check-secrets.mjs`, run as `npm run check:secrets`, zero dependencies. Scans tracked files
-only, via `git ls-files`. With gitleaks covering credentials, this script is small and stays that
-way - it exists for the repo-specific rules:
+only, via `git ls-files`. With gitleaks covering credentials it stays small, and exists for the
+repo-specific rules:
 
-**Structural.** Fail if `.env` is tracked, or if anything under `data/` is. Both are gitignored
-today; this makes it durable rather than dependent on `.gitignore` staying correct.
+**Structural.** Fail if `.env` is tracked, or if anything under `data/` is. Both are gitignored;
+this makes it durable rather than dependent on `.gitignore` staying correct.
 
-**PII.** Measured on 2026-08-14 across tracked files: 22 email-shaped strings and 15 phone-shaped
-strings, all of them deliberate fixture data.
+**PII.** Flag email shapes and phone shapes, with three carve-outs:
 
 - **The seed files are excluded** - `server/src/crm/seed.ts` and `server/src/space/seed.ts`. They
   exist to hold synthetic data, and that is the standing assumption: nothing real goes in them. If
-  that assumption ever stops holding, this exclusion is the reason a leak would go unnoticed.
-- Everywhere else, flag email shapes and phone shapes, with one carve-out: **phone numbers in the
-  `555-01xx` range pass.** That is the NANP block reserved for fiction, it cannot dial a real
-  person, and the existing fixtures in the server tests and `e2e/crm/records.spec.ts` already use
-  it.
-- The same idea, added while building it: **addresses on a reserved domain pass** - `example.com`,
-  `.net`, `.org`, and the `.test`, `.invalid` and `.localhost` TLDs. RFC 2606 and RFC 6761 reserve
-  those for exactly this, and a fixture using one cannot reach a real person. Four server fixtures
-  moved onto `example.com` rather than take a suppression; that is the outcome the control is for.
+  that ever stops holding, this exclusion is why a leak would go unnoticed.
+- **Phone numbers in the `555-01xx` range pass.** That is the NANP block reserved for fiction and it
+  cannot dial a real person.
+- **Addresses on a reserved domain pass** - `example.com`, `.net`, `.org`, and the `.test`,
+  `.invalid` and `.localhost` TLDs. RFC 2606 and RFC 6761 reserve those for exactly this.
 
 **No generic entropy check.** It is the classic false-positive engine - hashes, minified output,
 base64 data URIs - and with gitleaks handling real credential patterns it would add noise and
 nothing else.
 
-### Suppression
+**One escape hatch**: an inline `// allow-secret: <reason>` on the offending line. The reason is
+required; a bare marker is not accepted. There is no baseline file - in a repo this size an
+unexplained standing exception is worse than a red run.
 
-One escape hatch: an inline `// allow-secret: <reason>` on the offending line. The reason is
-required; a bare marker is not accepted. No baseline file - in a repo this size an unexplained
-standing exception is worse than a red run.
-
-### What none of this can do
-
-Once a secret has been pushed to a public repository it must be **rotated, not deleted**. Removing
-it from the tree, or even from history, does not unpublish it.
+**What none of this can do:** once a secret has been pushed to a public repository it must be
+**rotated, not deleted**. Removing it from the tree, or even from history, does not unpublish it.
 
 ## Branching
 
 Ed creates a branch before work starts. The agent commits to it and **never pushes**; Ed pushes and
-opens the pull request, CI runs there, and the required check in D gates the merge into `main`.
+opens the pull request, CI runs there, and the required check gates the merge into `main`.
 
 There is no conflict between committing and branch protection: protection governs `main` only, a
 feature branch is unprotected, and the agent never pushes anything anywhere.
@@ -523,24 +369,7 @@ feature branch is unprotected, and the agent never pushes anything anywhere.
 say so in the reply.
 
 Because the agent never pushes, CI does not see the work until Ed pushes the branch. That is what
-makes running `npm run check` locally a requirement rather than a courtesy - see
-[PROCESS.md](./PROCESS.md).
-
-## Order of work
-
-This work lives on the **`controls`** branch, cut from `main` on 2026-08-14.
-
-The pieces depend on each other, so build them in this order:
-
-1. ~~ESLint config, Prettier and the reformat commit, `npm run lint` / `format` / `check`.~~ Done.
-2. ~~Fix what strict finds - the `any` removal is the bulk of it.~~ Done.
-3. ~~`knip`, `jscpd`, `no-restricted-imports`, `gitleaks` (with a one-off history scan) and
-   `check:secrets`.~~ Done; history was clean across all 27 commits.
-4. ~~Coverage: widen the `include`, then reach 80% - Groove's components, `App` and the launcher,
-   then the CRM's components and pages.~~ Done; 52% to 90% on web. See [F](#f-coverage-thresholds).
-5. ~~Enforcement last - `prebuild`, lefthook, the stop hook, the GitHub Action.~~ Done, once the
-   tree was green so that turning them on gated the work rather than blocking it. **Branch
-   protection on `main` is the one piece left, and it is Ed's to set.**
+makes running `npm run check` locally a requirement rather than a courtesy.
 
 ## Related documents
 
