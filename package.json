@@ -8,10 +8,12 @@
     "server"
   ],
   "scripts": {
+    "prepare": "lefthook install",
     "start": "npm run build && npm run start -w server",
     "dev": "concurrently -k -n api,web -c blue,yellow \"npm:dev:api\" \"npm:dev:web\"",
     "dev:api": "npm run dev -w server",
     "dev:web": "npm run dev -w web",
+    "prebuild": "npm run lint",
     "build": "npm run build -w web",
     "typecheck": "npm run typecheck -w server && npm run typecheck -w web",
     "test": "npm run test -w server && npm run test -w web",
@@ -42,6 +44,7 @@
     "globals": "^17.11.0",
     "jscpd": "^5.0.15",
     "knip": "^6.32.2",
+    "lefthook": "^2.1.10",
     "prettier": "^3.9.6",
     "typescript": "6.0.3",
     "typescript-eslint": "^8.67.0"

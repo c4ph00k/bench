@@ -47,8 +47,13 @@ data/                 crm.sqlite, personal-space.db (gitignored, seeded on first
 docs/                 this documentation; docs/<app>/ per app
 e2e/                  Playwright specs
 scripts/              check-secrets.mjs, the repo-specific half of the secrets check
+                      stop-lint.mjs, the Claude Code Stop hook
 eslint.config.js      one flat config covering web, server and e2e
 knip.json             entry points, so knip can see what is reachable
+lefthook.yml          pre-commit: format the staged files, then lint the tree
+.github/workflows/    ci.yml - npm run check and npm run e2e, the only gate
+.claude/settings.json the Stop hook registration (settings.local.json is not committed)
+.vscode/              settings.json and extensions.json only, both shared deliberately
 ```
 
 ## Run

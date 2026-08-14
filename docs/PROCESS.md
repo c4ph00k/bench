@@ -8,9 +8,11 @@ committed.
 coverage threshold in both workspaces. There are no known failures to read past, so anything it
 reports is yours.
 
-**No hook enforces any of this yet.** The lefthook pre-commit hook, the Claude Code stop hook and
-the GitHub Action are the last piece of [CONTROLS.md](./CONTROLS.md) and are not installed, so
-nothing will catch a skipped check for you. Run it.
+**Three things now run on their own**, all of them backstops rather than the mechanism: `prebuild`
+lints before any build, lefthook formats and lints on pre-commit, and a Claude Code Stop hook holds
+a turn open while lint fails. CI runs `check` and `e2e` on every push. None of that lets you skip
+`npm run check` - a hook firing means the process already failed. See
+[CONTROLS.md](./CONTROLS.md).
 
 ## 1. Understand before changing
 
@@ -154,11 +156,10 @@ test --list` answers it on demand.
 6. **Commit**, with everything above green - see [STANDARDS.md](./STANDARDS.md). Then report what
    changed and say honestly which parts are incomplete or unverified.
 
-**Run the checks yourself.** Once they exist, the lefthook pre-commit hook and the Claude Code stop
-hook will both run lint, but they are backstops for the times something slips - not the mechanism.
-Do not hand work over and let a hook discover what `npm run check` would have told you a minute
-earlier. A hook firing means the process already failed. Until they are installed there is no
-backstop at all.
+**Run the checks yourself.** The lefthook pre-commit hook and the Claude Code stop hook both run
+lint, but they are backstops for the times something slips - not the mechanism. Do not hand work
+over and let a hook discover what `npm run check` would have told you a minute earlier. A hook
+firing means the process already failed.
 
 **If vitest will not start**, saying "Cannot find native binding", npm has pruned an optional
 platform package - it does that when a dependency is added. Clear all three `node_modules`, not

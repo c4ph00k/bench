@@ -5,21 +5,23 @@ decision below is settled; nothing here is still under discussion.
 
 ## Status
 
-| Step                                                                  | State                          |
-| --------------------------------------------------------------------- | ------------------------------ |
-| 1. ESLint, Prettier, the reformat commit, `lint` / `format` / `check` | **Done**                       |
-| 2. Fix what strict finds                                              | **Done** - 1,586 errors to 0   |
-| 3. knip, jscpd, no-restricted-imports, gitleaks, check-secrets        | **Done**                       |
-| 4. Coverage widened to every app, then 80%                            | **Done** - server 82%, web 90% |
-| 5. Enforcement: prebuild, lefthook, Stop hook, GitHub Action          | **Not started**                |
+| Step                                                                  | State                                           |
+| --------------------------------------------------------------------- | ----------------------------------------------- |
+| 1. ESLint, Prettier, the reformat commit, `lint` / `format` / `check` | **Done**                                        |
+| 2. Fix what strict finds                                              | **Done** - 1,586 errors to 0                    |
+| 3. knip, jscpd, no-restricted-imports, gitleaks, check-secrets        | **Done**                                        |
+| 4. Coverage widened to every app, then 80%                            | **Done** - server 82%, web 90%                  |
+| 5. Enforcement: prebuild, lefthook, Stop hook, GitHub Action          | **Done** - branch protection is Ed's to turn on |
 
 **`npm run check` passes end to end.** Typecheck, lint, formatting, gitleaks, secrets, dead code and
 both coverage thresholds are green, so any failure it reports now is yours. See
 [F](#f-coverage-thresholds) for where the coverage sits and what is deliberately left out.
 
-**Nothing enforces any of this yet.** Until step 5 lands, `npm run check` is something you run, not
-something that runs itself - so run it. [What implementation changed](#what-implementation-changed)
-records the decisions that could only be made with the code in front of us.
+**All four enforcement layers are wired up**, and none of them replaces running `npm run check`
+yourself - they are backstops for the times that slips. One thing is left, and it is not in this
+tree: **branch protection on `main`**, which lives in the repository settings. Until Ed turns it on,
+CI reports rather than gates. [What implementation changed](#what-implementation-changed) records
+the decisions that could only be made with the code in front of us.
 
 ## The toolset
 
@@ -245,11 +247,16 @@ walks past them.
 ## C. Git hooks - lefthook, on pre-commit
 
 `lefthook`, configured in `lefthook.yml` at the root, installed through a `prepare` script so
-`npm install` wires it up with no extra step. **The hook runs on pre-commit.**
+`npm install` wires it up with no extra step. **The hook runs on pre-commit**, two jobs in order:
 
-Because the rules are type-aware, prefer a full `npm run lint` over linting only staged files.
-typescript-eslint reasons over the whole program, so a staged subset can pass while the change has
-broken a file that was not staged.
+1. **format** - `prettier --write` over the staged files, with `stage_fixed: true` so what it
+   rewrites is re-staged rather than left as an unstaged surprise.
+2. **lint** - `npm run lint` over the whole tree. Not the staged files: the rules are type-aware,
+   so a staged subset can pass while the change has broken a file that was not staged.
+
+That second job is the cost, and it is worth knowing: **the full lint takes around 30 seconds on
+this tree**, so every commit pays it. Adding `--cache` would cut it, at the price of `npm run lint`
+meaning something slightly different here than in CI.
 
 **This layer is a nudge, not a gate.** `git commit --no-verify` bypasses any client-side hook, by
 design - git lets you override your own hooks. D is the gate.
@@ -260,31 +267,50 @@ that slips. A hook firing means the process already failed.
 
 ## D. CI - the real gate
 
-A GitHub Actions workflow on push and pull request running **`npm run check` and `npm run e2e`** -
-naming the aggregate rather than restating its parts, so CI cannot drift out of step with what A
-defines. It needs `gitleaks` installed; use the official `gitleaks/gitleaks-action`.
-**Branch protection on `main` requires it to pass before merge.**
+`.github/workflows/ci.yml`, on push and pull request, running **`npm run check` and
+`npm run e2e`** - naming the aggregate rather than restating its parts, so CI cannot drift out of
+step with what A defines. Node 24, npm cached, Chromium installed for Playwright, and
+`test-results/` uploaded when something fails so a red run can be read without reproducing it.
+
+**It installs the gitleaks release rather than using `gitleaks/gitleaks-action`,** which is a
+deviation from the plan above and deliberate. `npm run check` shells out to the `gitleaks` binary
+and fails when it is missing, on purpose; the official action runs its own scan inside a container
+and does not leave the binary on `PATH`, so `check` would still fail there. Installing the release
+tarball lets CI run exactly the command the working tree does. The version is pinned in the
+workflow - bump it in step with whatever `brew install gitleaks` puts on your machine.
+
+**Branch protection on `main` requiring this check is still to be turned on**, and it is Ed's to
+set: it lives in the repository settings, not in this tree. Until then CI reports but does not gate.
 
 This is the only layer that cannot be bypassed. "Nothing lands unless it passes" means nothing is
 _merged_ - not that nothing is _committed_, which no client-side hook can guarantee.
 
 ## E. Claude Code Stop hook
 
-A `Stop` hook in `.claude/settings.json` running `npm run lint`, blocking the agent from ending a
-turn while it fails. This is the only lever that binds the coding agent rather than asking it to
-remember; `settings.json` is committed, unlike the `settings.local.json` already in the repo.
+A `Stop` hook in `.claude/settings.json` running `scripts/stop-lint.mjs`, which blocks the agent
+from ending a turn while `npm run lint` fails. This is the only lever that binds the coding agent
+rather than asking it to remember; `settings.json` is committed, unlike the `settings.local.json`
+already in the repo. It blocks by exiting 2 with ESLint's own output on stderr, which is what
+reaches the agent - a bare "lint failed" would give it nothing to act on. It runs `lint` only, not
+the full `check`, so a slow suite does not run on every turn end.
 
-**The loop hazard is real and must be handled.** A Stop hook that blocks on failure can cycle
-forever: the agent stops, the hook fails and forces it to continue, it cannot fix the problem, it
-stops again, the hook fails again. Claude Code passes `stop_hook_active` in the hook's stdin JSON,
-set true when the agent is already continuing because of a Stop hook. **The hook must read it and
-allow the stop when it is true**, which caps the cost at one extra turn instead of an unbounded
-loop. Verify the field name against the current Claude Code hooks documentation when implementing -
-this is the whole safety mechanism, so do not guess it.
+**The loop hazard is real and had to be handled a different way than planned.** A Stop hook that
+blocks on failure can cycle forever: the agent stops, the hook fails and forces it to continue, it
+cannot fix the problem, it stops again, the hook fails again. This document said to read
+`stop_hook_active` from the hook's stdin JSON and allow the stop when it is true - and said to
+verify the field name rather than guess it. **Verified: `stop_hook_active` no longer appears in the
+Claude Code hooks documentation at all**, and the documented `Stop` input is `session_id`,
+`prompt_id`, `transcript_path`, `cwd`, `permission_mode`, `hook_event_name`, `last_assistant_message`
+and `effort`.
 
-Two more things that keep it sane: run `lint` only, not the full `check`, so a slow suite does not
-run on every turn end; and pass ESLint's actual messages back through the hook output, since a bare
-"lint failed" gives the agent nothing to act on.
+So the script keeps its own marker instead, in the system temp directory, keyed by `session_id`:
+the first failing stop is blocked and the marker written, the next one clears the marker and lets
+the stop through with a `systemMessage`, and a passing lint clears it. The cap is the same one
+extra turn, and it depends on nothing undocumented.
+
+That is worth generalising: this hook layer sits on someone else's schema, so **check the input
+fields against the current docs before relying on one**, and prefer a mechanism that holds if the
+field is not there.
 
 ## F. Coverage thresholds
 
@@ -405,10 +431,11 @@ between which ones **write** and which ones **check** matters:
 | lefthook pre-commit                      | Anything that slipped past both | write, then re-stage |
 | `npm run check`, `prebuild`, CI          | The gate                        | **check only**       |
 
-- **On save** needs `.vscode/settings.json` with `editor.formatOnSave` and Prettier as the default
-  formatter, plus `.vscode/extensions.json` recommending the extension. Note that `.gitignore`
-  currently ignores `.vscode/`, so shipping these needs `!.vscode/settings.json` and
-  `!.vscode/extensions.json` exceptions.
+- **On save** is `.vscode/settings.json` with `editor.formatOnSave` and Prettier as the default
+  formatter, plus `.vscode/extensions.json` recommending it and the ESLint extension. Both are
+  committed. The `.gitignore` entry had to become `.vscode/*` rather than `.vscode/` to allow it:
+  **git will not re-include a file whose parent directory is excluded**, so the two `!` negations
+  under a `.vscode/` rule are dead letters. `git check-ignore -v` is how you find that out.
 - **On save does nothing for the agent** - it writes files through tools, not an editor, so
   format-on-save never fires for its changes. A Claude Code `PostToolUse` hook was considered as the
   equivalent and **rejected**: reformatting a file immediately after an edit invalidates the text the
@@ -511,8 +538,9 @@ The pieces depend on each other, so build them in this order:
    `check:secrets`.~~ Done; history was clean across all 27 commits.
 4. ~~Coverage: widen the `include`, then reach 80% - Groove's components, `App` and the launcher,
    then the CRM's components and pages.~~ Done; 52% to 90% on web. See [F](#f-coverage-thresholds).
-5. Enforcement last - `prebuild`, lefthook, the stop hook, the GitHub Action. **Not started**, and
-   now unblocked: the tree is green, so turning these on gates the work rather than blocking it.
+5. ~~Enforcement last - `prebuild`, lefthook, the stop hook, the GitHub Action.~~ Done, once the
+   tree was green so that turning them on gated the work rather than blocking it. **Branch
+   protection on `main` is the one piece left, and it is Ed's to set.**
 
 ## Related documents
 
