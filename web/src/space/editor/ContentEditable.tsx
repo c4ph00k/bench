@@ -42,6 +42,7 @@ const ContentEditable = memo(
         className={className}
         contentEditable
         role="textbox"
+        tabIndex={0}
         suppressContentEditableWarning
         data-placeholder={placeholder ?? ""}
         onInput={(e) => {

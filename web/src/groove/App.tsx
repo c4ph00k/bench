@@ -224,8 +224,8 @@ export default function App() {
           onMute={() => setMutes((m) => ({ ...m, drums: !m.drums }))}
           onParam={(k, v) => onParam("drums", k, v)}
           onDrumStep={onDrumStep}
-          onNoteStep={() => {}}
-          onAudition={() => {}}
+          onNoteStep={() => undefined}
+          onAudition={() => undefined}
         />
         {(UNIT_IDS.filter((u) => u !== "drums") as MelodicId[]).map((id) => (
           <Unit
@@ -236,7 +236,7 @@ export default function App() {
             muted={mutes[id]}
             onMute={() => setMutes((m) => ({ ...m, [id]: !m[id] }))}
             onParam={(k, v) => onParam(id, k, v)}
-            onDrumStep={() => {}}
+            onDrumStep={() => undefined}
             onNoteStep={(i, step) => onNoteStep(id, i, step)}
             onAudition={(step) => onAudition(id, step)}
           />

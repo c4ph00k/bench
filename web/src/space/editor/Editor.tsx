@@ -313,7 +313,7 @@ export default function Editor({ pageId, initialBlocks }: Props) {
     (id: string, text: string, caret: number) => {
       setText(id, text);
       const s = slashRef.current;
-      if (s && s.blockId === id) {
+      if (s?.blockId === id) {
         // the filter runs from the slash to the caret, so text after the caret is left alone
         const end = caret > s.index ? caret : undefined;
         if (text[s.index] !== "/") setSlash(null);
@@ -327,7 +327,7 @@ export default function Editor({ pageId, initialBlocks }: Props) {
   const onKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>, id: string) => {
       const s = slashRef.current;
-      if (s && s.blockId === id) {
+      if (s?.blockId === id) {
         const items = filterBlockTypes(s.query);
         if (e.key === "ArrowDown" && items.length > 0) {
           e.preventDefault();

@@ -1,3 +1,4 @@
+import { valueText } from "./valueText";
 import type {
   DbRow,
   Filter,
@@ -71,16 +72,12 @@ export function matchesFilter(
     case "contains":
       return (
         typeof fv === "string" &&
-        String(value ?? "")
-          .toLowerCase()
-          .includes(fv.toLowerCase())
+        valueText(value).toLowerCase().includes(fv.toLowerCase())
       );
     case "not_contains":
       return (
         typeof fv === "string" &&
-        !String(value ?? "")
-          .toLowerCase()
-          .includes(fv.toLowerCase())
+        !valueText(value).toLowerCase().includes(fv.toLowerCase())
       );
     case "eq":
       return typeof value === "number" && value === Number(fv);
@@ -122,7 +119,7 @@ export function applyFilters(
   filters: Filter[],
   properties: Property[],
 ): DbRow[] {
-  if (!filters || filters.length === 0) return rows;
+  if (filters.length === 0) return rows;
   return rows.filter((row) =>
     filters.every((f) => matchesFilter(row, f, properties)),
   );
@@ -141,7 +138,7 @@ function sortKey(
     case "number":
       return typeof value === "number" ? value : Number.NEGATIVE_INFINITY;
     case "checkbox":
-      return value ? 1 : 0;
+      return value === true ? 1 : 0;
     case "select": {
       const opt = prop.options.find((o) => o.id === value);
       return (opt?.name ?? "").toLowerCase();
@@ -152,10 +149,10 @@ function sortKey(
         .map((id) => prop.options.find((o) => o.id === id)?.name ?? "")
         .filter(Boolean)
         .map((n) => n.toLowerCase());
-      return names.sort().join(",");
+      return [...names].sort((a, b) => a.localeCompare(b)).join(",");
     }
     default:
-      return String(value).toLowerCase();
+      return valueText(value).toLowerCase();
   }
 }
 

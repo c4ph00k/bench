@@ -56,7 +56,7 @@ export class Engine {
   }[] = [];
 
   playing = false;
-  onStep: (step: number) => void = () => {};
+  onStep: (step: number) => void = () => undefined;
   /** last scheduled filter macro and sweep phase, read by the scope */
   filterMacro = 0.5;
   sweepPhase = 0;

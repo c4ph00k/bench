@@ -2,6 +2,7 @@ import { Router } from "express";
 import type Database from "better-sqlite3";
 import { randomUUID } from "node:crypto";
 import type { PropertyOptionRow, PropertyRow } from "../db.js";
+import { asText } from "../text.js";
 
 export const PROPERTY_TYPES = [
   "text",
@@ -137,8 +138,8 @@ export function databasesRouter(db: Database.Database): Router {
       res.status(404).json({ error: "database not found" });
       return;
     }
-    // `name` stays unknown: it is untrusted JSON, so the String() below is a real coercion rather
-    // than the redundant one the type would otherwise imply.
+    // `name` stays unknown: it is untrusted JSON, and asText below is a real coercion rather than
+    // the redundant one a `string` type would have implied.
     const { name = "", type = "" } = (req.body ?? {}) as {
       name?: unknown;
       type?: string;
@@ -155,10 +156,10 @@ export function databasesRouter(db: Database.Database): Router {
     const id = randomUUID();
     db.prepare(
       "INSERT INTO properties (id, database_id, name, type, position) VALUES (?, ?, ?, ?, ?)",
-    ).run(id, req.params.id, String(name), type, pos);
+    ).run(id, req.params.id, asText(name), type, pos);
     res
       .status(201)
-      .json({ id, name: String(name), type, position: pos, options: [] });
+      .json({ id, name: asText(name), type, position: pos, options: [] });
   });
 
   router.patch("/properties/:id", (req, res) => {
@@ -181,7 +182,7 @@ export function databasesRouter(db: Database.Database): Router {
     }
     if (name !== undefined) {
       db.prepare("UPDATE properties SET name = ? WHERE id = ?").run(
-        String(name),
+        asText(name),
         req.params.id,
       );
     }
@@ -256,7 +257,7 @@ export function databasesRouter(db: Database.Database): Router {
     const id = randomUUID();
     db.prepare(
       "INSERT INTO pages (id, parent_id, type, title, position) VALUES (?, ?, 'row', ?, ?)",
-    ).run(id, req.params.id, String(title), pos);
+    ).run(id, req.params.id, asText(title), pos);
     const upsert = db.prepare(
       "INSERT INTO row_values (row_id, property_id, value) VALUES (?, ?, ?) ON CONFLICT(row_id, property_id) DO UPDATE SET value = excluded.value",
     );
@@ -265,7 +266,7 @@ export function databasesRouter(db: Database.Database): Router {
     }
     res
       .status(201)
-      .json({ id, title: String(title), icon: null, position: pos, values });
+      .json({ id, title: asText(title), icon: null, position: pos, values });
   });
 
   /** Reorder the rows of a database; ids must be a permutation of its current rows. */

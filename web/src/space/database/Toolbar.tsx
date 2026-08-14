@@ -1,3 +1,4 @@
+import { valueText } from "./valueText";
 import { useState } from "react";
 import { ArrowUpDown, Columns3, ListFilter, X } from "lucide-react";
 import type {
@@ -75,7 +76,7 @@ function FilterValueInput({
         className="filter-input filter-number"
         aria-label="Filter value"
         inputMode="decimal"
-        value={filter.value == null ? "" : String(filter.value)}
+        value={valueText(filter.value)}
         onChange={(e) =>
           onChange(e.target.value === "" ? null : Number(e.target.value))
         }

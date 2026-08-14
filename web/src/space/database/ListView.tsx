@@ -1,3 +1,4 @@
+import { valueText } from "./valueText";
 import { useNavigate } from "react-router";
 import type { DbRow, Property } from "../api";
 import { Chip } from "./cells";
@@ -36,7 +37,7 @@ export function ValuePreview({
     case "checkbox":
       return <span className="preview-check">{value ? "✓" : ""}</span>;
     default:
-      return <span className="preview-text">{String(value)}</span>;
+      return <span className="preview-text">{valueText(value)}</span>;
   }
 }
 

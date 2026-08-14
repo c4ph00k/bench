@@ -2,7 +2,6 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
   ComposedChart,
   Funnel,
   FunnelChart,
@@ -34,8 +33,10 @@ const tooltipStyle = {
   fontSize: 13,
 };
 
-const shortMoney = (v: number) =>
-  `$${v >= 1000 ? `${Math.round(v / 1000)}k` : v}`;
+const shortMoney = (v: number) => {
+  const amount = v >= 1000 ? `${Math.round(v / 1000)}k` : String(v);
+  return `$${amount}`;
+};
 
 const REVENUE_LABEL: Record<string, string> = {
   actual: "Won",
@@ -144,20 +145,21 @@ export function RevenueFunnel({ data }: { data: FunnelRow[] }) {
       <FunnelChart margin={{ top: 8, right: 96, left: 96, bottom: 8 }}>
         <Tooltip
           contentStyle={tooltipStyle}
-          formatter={(value, _name, item) => [
-            `${formatMoney(Number(value))} · ${item?.payload?.count ?? 0} at or past this stage, ${item?.payload?.inStage ?? 0} in it`,
-            item?.payload?.name ?? "",
-          ]}
+          formatter={(value, _name, item) => {
+            const row = item.payload as FunnelRow;
+            return [
+              `${formatMoney(Number(value))} · ${row.count} at or past this stage, ${row.inStage} in it`,
+              row.name,
+            ];
+          }}
         />
+        {/* Each row carries its own `fill`, which is what replaces the deprecated <Cell>. */}
         <Funnel
           dataKey="value"
           data={data}
           isAnimationActive={false}
           lastShapeType="rectangle"
         >
-          {data.map((row) => (
-            <Cell key={row.name} fill={row.fill} />
-          ))}
           <LabelList
             position="right"
             dataKey="label"
@@ -193,10 +195,13 @@ export function WinRateDonut({ data }: { data: WinLoss }) {
         <PieChart>
           <Tooltip
             contentStyle={tooltipStyle}
-            formatter={(value, name, item) => [
-              `${value} deals · ${formatMoney(Number(item?.payload?.money ?? 0))}`,
-              name,
-            ]}
+            formatter={(value, name, item) => {
+              const slice = item.payload as (typeof slices)[number];
+              return [
+                `${Number(value)} deals · ${formatMoney(slice.money)}`,
+                name,
+              ];
+            }}
           />
           <Pie
             data={slices}
@@ -206,11 +211,7 @@ export function WinRateDonut({ data }: { data: WinLoss }) {
             outerRadius={92}
             paddingAngle={2}
             isAnimationActive={false}
-          >
-            {slices.map((slice) => (
-              <Cell key={slice.name} fill={slice.fill} />
-            ))}
-          </Pie>
+          />
           <Legend wrapperStyle={{ fontSize: 12, color: "#6b7280" }} />
         </PieChart>
       </ResponsiveContainer>
@@ -251,10 +252,13 @@ export function TopOrganizations({ data }: { data: OrgPipeline[] }) {
         <Tooltip
           cursor={{ fill: "#f2f4f6" }}
           contentStyle={tooltipStyle}
-          formatter={(value, _name, item) => [
-            `${formatMoney(Number(value))} · ${item?.payload?.count ?? 0} open deals`,
-            item?.payload?.name ?? "",
-          ]}
+          formatter={(value, _name, item) => {
+            const org = item.payload as OrgPipeline;
+            return [
+              `${formatMoney(Number(value))} · ${org.count} open deals`,
+              org.name,
+            ];
+          }}
         />
         <Bar
           dataKey="value"

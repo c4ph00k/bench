@@ -2,6 +2,7 @@ import { Router } from "express";
 import type Database from "better-sqlite3";
 import { randomUUID } from "node:crypto";
 import type { BlockRow } from "../db.js";
+import { asText } from "../text.js";
 
 export interface PageRow {
   id: string;
@@ -76,7 +77,7 @@ export function pagesRouter(db: Database.Database): Router {
     const id = randomUUID();
     db.prepare(
       "INSERT INTO pages (id, parent_id, type, title, icon, position) VALUES (?, ?, ?, ?, ?, ?)",
-    ).run(id, parentId, type, String(title), icon, nextPosition(parentId));
+    ).run(id, parentId, type, asText(title), icon, nextPosition(parentId));
     res
       .status(201)
       .json(db.prepare("SELECT * FROM pages WHERE id = ?").get(id));
@@ -117,7 +118,7 @@ export function pagesRouter(db: Database.Database): Router {
     if (title !== undefined) {
       db.prepare(
         "UPDATE pages SET title = ?, updated_at = datetime('now') WHERE id = ?",
-      ).run(String(title), req.params.id);
+      ).run(asText(title), req.params.id);
     }
     if (icon !== undefined) {
       db.prepare(

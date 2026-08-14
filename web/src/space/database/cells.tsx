@@ -1,3 +1,4 @@
+import { valueText } from "./valueText";
 import { useEffect, useRef, useState } from "react";
 import { ExternalLink, Plus, X } from "lucide-react";
 import type { Property, PropertyOption } from "../api";
@@ -43,9 +44,9 @@ function TextLikeCell({
   onChange,
   kind,
 }: CellProps & { kind: "text" | "url" | "number" }) {
-  const [draft, setDraft] = useState(value == null ? "" : String(value));
+  const [draft, setDraft] = useState(valueText(value));
   useEffect(() => {
-    setDraft(value == null ? "" : String(value));
+    setDraft(valueText(value));
   }, [value]);
   const commit = () => {
     if (kind === "number") {
