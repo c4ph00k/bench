@@ -6,7 +6,7 @@ import { test, expect } from "./fixtures";
 import type { Page } from "@playwright/test";
 
 const APPS = [
-  { path: "/", title: "ADLC" },
+  { path: "/", title: "Bench" },
   { path: "/crm/", title: "Personal CRM" },
   { path: "/space/", title: "Personal Space" },
   { path: "/groove/", title: "GROOVEBOX GX-4" },
@@ -68,9 +68,9 @@ test("the launcher links into each app and the back button returns", async ({ pa
   // name computation does not apply.
   for (const name of ["CRM", "Space", "Groove"]) {
     await page.getByRole("link", { name: new RegExp(`^${name}`, "i") }).click();
-    await expect(page).not.toHaveTitle("ADLC");
+    await expect(page).not.toHaveTitle("Bench");
     await page.goBack();
-    await expect(page).toHaveTitle("ADLC");
+    await expect(page).toHaveTitle("Bench");
   }
 });
 
@@ -89,7 +89,7 @@ test("every app has a Home link back to the launcher", async ({ page }) => {
     const home = page.getByRole("link", { name: "Home" });
     await expect(home, `${path} should offer a Home link`).toBeVisible();
     await home.click();
-    await expect(page).toHaveTitle("ADLC");
+    await expect(page).toHaveTitle("Bench");
   }
 });
 

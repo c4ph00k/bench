@@ -18,7 +18,7 @@ npm start       # everything from :8100 - the production path
 for production, the `appFallback` plugin in `web/vite.config.ts` for the dev server. They have
 already disagreed once: prod served the right app while dev served the launcher.
 
-With `agent-browser`: `agent-browser --session adlc open http://localhost:8101/crm/`, then
+With `agent-browser`: `agent-browser --session bench open http://localhost:8101/crm/`, then
 `snapshot -i` to list interactive elements. Two traps worth knowing - `fill @ref ""` does **not**
 clear a field (reload instead), and refs go stale after navigation, so re-snapshot before clicking.
 

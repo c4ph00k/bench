@@ -1,4 +1,4 @@
-# ADLC
+# Bench
 
 Three local-first apps behind one server. No login, no cloud - everything runs on your machine and
 your data lives in local SQLite files.
@@ -26,7 +26,7 @@ sample data.
 - `npm run dev` - API on :8100 plus the Vite dev server with hot reload on :8101. Use **:8101**.
 - `npm run build` - typecheck and bundle the frontend.
 - `npm test` - unit tests, backend and frontend.
-- `npm run e2e` - Playwright end-to-end suite, 57 tests across all three apps
+- `npm run e2e` - Playwright end-to-end suite, 74 tests across all three apps
   (`npx playwright install chromium` once, first). Each worker runs its own server and database,
   so specs never share state.
 - [e2e/EXPLORATORY.md](./e2e/EXPLORATORY.md) - the manual checks automation cannot make, Groove's

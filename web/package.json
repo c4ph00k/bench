@@ -1,5 +1,5 @@
 {
-  "name": "@adlc/web",
+  "name": "@bench/web",
   "private": true,
   "type": "module",
   "scripts": {

@@ -11,7 +11,7 @@ const APPS = ["crm", "space", "groove"];
 /** Dev only: send a deep link like /crm/contacts to that app's HTML, not the launcher. */
 function appFallback(): PluginOption {
   return {
-    name: "adlc-app-fallback",
+    name: "bench-app-fallback",
     configureServer(server) {
       server.middlewares.use((req, _res, next) => {
         const { pathname } = new URL(req.url ?? "/", "http://localhost");

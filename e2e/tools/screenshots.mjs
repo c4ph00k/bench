@@ -1,6 +1,6 @@
 /**
  * Drives the running app in real Chromium and captures screenshots of every screen
- * in both themes into screenshots/. Usage: node e2e/screenshots.setup.mjs [baseURL]
+ * in both themes into screenshots/. Usage: node e2e/tools/screenshots.mjs [baseURL]
  */
 import { chromium } from "@playwright/test";
 import { mkdirSync } from "node:fs";

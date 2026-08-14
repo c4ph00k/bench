@@ -43,7 +43,8 @@ new derived value or a new column default should get one.
 ### End-to-end tests - `npm run e2e`
 
 Playwright, in `e2e/`. Layout: `smoke.spec.ts` (the seams between the apps), then `crm/`, `space/`,
-`groove/`.
+`groove/`. 74 tests in 13 files. `e2e/tools/screenshots.mjs` is not part of the suite - it drives a
+running app and captures every screen in both themes, for reviewing a visual change in one pass.
 
 Rules that keep this suite reliable:
 
@@ -67,6 +68,10 @@ Rules that keep this suite reliable:
 
 Run one file while iterating: `npx playwright test e2e/crm/revenue.spec.ts --retries=0`.
 
+**A new API route can 404 against a stale dev server.** `tsx watch` does not always pick up a new
+route, and an old process can still hold the port. If a route you just added 404s, restart before
+you debug the routing: `pkill -f concurrently; pkill -f vite; pkill -f tsx` then `npm run dev`.
+
 ### Browser testing with Agent Browser
 
 Automated tests confirm what you already thought to assert. Driving the real app finds what you did
@@ -76,12 +81,12 @@ again afterwards to confirm the feature feels right.
 Invoke the `agent-browser` skill, then:
 
 ```bash
-agent-browser --session adlc open http://localhost:8101/crm/
-agent-browser --session adlc snapshot -i          # interactive elements with @eN refs
-agent-browser --session adlc click @e12
-agent-browser --session adlc screenshot /tmp/x.png
-agent-browser --session adlc errors               # console and page errors
-agent-browser --session adlc close
+agent-browser --session bench open http://localhost:8101/crm/
+agent-browser --session bench snapshot -i          # interactive elements with @eN refs
+agent-browser --session bench click @e12
+agent-browser --session bench screenshot /tmp/x.png
+agent-browser --session bench errors               # console and page errors
+agent-browser --session bench close
 ```
 
 Traps worth knowing:
@@ -123,8 +128,8 @@ elements around it, above and below included.
 4. Look at it in a browser.
 5. Update the docs the change invalidates - the app doc for behaviour, `PROJECT.md` for structure,
    `EXPLORATORY.md` for coverage gaps.
-6. Commit with a message that says what changed and why. Report honestly: if something is
-   incomplete or unverified, say which part.
+6. **Do not commit** - see [STANDARDS.md](./STANDARDS.md). Report what changed, offer a commit
+   message, and say honestly which parts are incomplete or unverified.
 
 ## Related documents
 

@@ -23,5 +23,5 @@ const space = openSpaceDb(path.join(dataDir, "personal-space.db"));
 seedIfEmpty(space);
 
 createApp({ crm, space }).listen(port, () => {
-  console.log(`ADLC running at http://localhost:${port}`);
+  console.log(`Bench running at http://localhost:${port}`);
 });

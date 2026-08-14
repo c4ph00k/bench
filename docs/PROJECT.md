@@ -1,4 +1,4 @@
-# ADLC - project overview
+# Bench - project overview
 
 Three local-first apps, merged from three separate repos into one project with **one frontend
 server and one backend server**. Everything runs on your own machine: no login, no cloud, no
@@ -75,7 +75,10 @@ These are settled. Changing one is a project-level decision, not an implementati
 - **API namespaces.** `/api/crm/*` and `/api/space/*`. The underlying route names were already
   disjoint; the prefixes keep ownership obvious.
 - **Two SQLite files, one process.** The schemas are unrelated - do not merge them. Each is opened
-  separately and seeded if empty.
+  separately and seeded if empty. They run in WAL mode, so recent writes live in the `-wal` sidecar
+  rather than the main file: copy or move the whole set together, or checkpoint first
+  (`sqlite3 f.sqlite "PRAGMA wal_checkpoint(TRUNCATE);"`). Deleting a `-wal` as a stray artifact
+  discards data - a 4KB `.sqlite` beside a 3MB `-wal` is a full database, not an empty one.
 - **Ports:** 8100 API, 8101 Vite, 8150+ e2e (one per Playwright worker).
 - **Deep-link fallback lives in two places.** `server/src/app.ts` handles production; the
   `appFallback` plugin in `web/vite.config.ts` does the same for the dev server. Without it a

@@ -36,7 +36,7 @@ export default function App() {
   return (
     <div className="home">
       <header className="home-header">
-        <h1>ADLC</h1>
+        <h1>Bench</h1>
         <p>Three local-first apps, one server. Everything runs on this machine.</p>
       </header>
       <div className="home-grid">

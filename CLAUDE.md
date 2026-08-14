@@ -1,4 +1,4 @@
-# ADLC
+# Bench
 
 @docs/PROJECT.md
 @docs/PROCESS.md

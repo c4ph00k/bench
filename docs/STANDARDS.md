@@ -106,10 +106,17 @@ The exception, kept deliberately: the small conic-gradient brand mark.
 
 ## Commits
 
-- Say what changed and why, in plain sentences. Wrap at roughly 80 columns.
-- No emoji, no "feat:"/"chore:" prefixes.
-- Mention anything a reader would otherwise be surprised by: a fixed bug that was pre-existing, a
-  deliberate gap, a decision that looks odd without the reason.
+**Do not commit.** Leave finished work in the working tree; Ed reviews and commits it himself. The
+same goes for `git add`, amending, rebasing, tagging and pushing - do none of them unless asked
+directly, and never rewrite history.
+
+What to do instead, when a piece of work is done:
+
+- Say what changed and why, and name anything a reader would otherwise be surprised by: a bug that
+  turned out to be pre-existing, a deliberate gap, a decision that looks odd without the reason.
+- Offer a commit message he can use. Plain sentences, wrapped at roughly 80 columns, no emoji and
+  no `feat:` / `chore:` prefixes.
+- Leave the tree clean of scratch files - delete any throwaway scripts you wrote along the way.
 
 ## Related documents
 
