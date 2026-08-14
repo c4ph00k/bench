@@ -1,6 +1,7 @@
 import { Router } from "express";
 import type Database from "better-sqlite3";
 import { randomUUID } from "node:crypto";
+import type { BlockRow } from "../db.js";
 
 export const BLOCK_TYPES = [
   "paragraph",
@@ -20,6 +21,15 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function isBlockType(value: string): boolean {
+  return (BLOCK_TYPES as readonly string[]).includes(value);
+}
+
+/** A block as the API returns it: the stored `content` text parsed back into an object. */
+function withParsedContent(row: BlockRow) {
+  return { ...row, content: JSON.parse(row.content) as unknown };
+}
+
 export function blocksRouter(db: Database.Database): Router {
   const router = Router();
 
@@ -36,8 +46,13 @@ export function blocksRouter(db: Database.Database): Router {
       type = "paragraph",
       content = {},
       index,
-    } = req.body ?? {};
-    if (!BLOCK_TYPES.includes(type)) {
+    } = (req.body ?? {}) as {
+      id?: string;
+      type?: string;
+      content?: unknown;
+      index?: number;
+    };
+    if (!isBlockType(type)) {
       res.status(400).json({ error: `unknown block type '${type}'` });
       return;
     }
@@ -60,21 +75,26 @@ export function blocksRouter(db: Database.Database): Router {
         "INSERT INTO blocks (id, page_id, type, content, position) VALUES (?, ?, ?, ?, ?)",
       ).run(id, req.params.pageId, type, JSON.stringify(content), at);
     })();
-    const row = db.prepare("SELECT * FROM blocks WHERE id = ?").get(id) as any;
-    res.status(201).json({ ...row, content: JSON.parse(row.content) });
+    const row = db
+      .prepare("SELECT * FROM blocks WHERE id = ?")
+      .get(id) as BlockRow;
+    res.status(201).json(withParsedContent(row));
   });
 
   router.patch("/blocks/:id", (req, res) => {
     const block = db
       .prepare("SELECT * FROM blocks WHERE id = ?")
-      .get(req.params.id) as any;
+      .get(req.params.id) as BlockRow | undefined;
     if (!block) {
       res.status(404).json({ error: "block not found" });
       return;
     }
-    const { type, content } = req.body ?? {};
+    const { type, content } = (req.body ?? {}) as {
+      type?: string;
+      content?: unknown;
+    };
     if (type !== undefined) {
-      if (!BLOCK_TYPES.includes(type)) {
+      if (!isBlockType(type)) {
         res.status(400).json({ error: `unknown block type '${type}'` });
         return;
       }
@@ -95,14 +115,14 @@ export function blocksRouter(db: Database.Database): Router {
     }
     const row = db
       .prepare("SELECT * FROM blocks WHERE id = ?")
-      .get(req.params.id) as any;
-    res.json({ ...row, content: JSON.parse(row.content) });
+      .get(req.params.id) as BlockRow;
+    res.json(withParsedContent(row));
   });
 
   router.delete("/blocks/:id", (req, res) => {
     const block = db
       .prepare("SELECT page_id, position FROM blocks WHERE id = ?")
-      .get(req.params.id) as any;
+      .get(req.params.id) as Pick<BlockRow, "page_id" | "position"> | undefined;
     if (!block) {
       res.status(404).json({ error: "block not found" });
       return;
@@ -117,11 +137,13 @@ export function blocksRouter(db: Database.Database): Router {
   });
 
   router.put("/pages/:pageId/blocks/order", (req, res) => {
-    const { ids } = req.body ?? {};
-    const existing = db
-      .prepare("SELECT id FROM blocks WHERE page_id = ? ORDER BY position")
-      .all(req.params.pageId)
-      .map((r: any) => r.id);
+    // Shape asserted here, then checked below: it must be a permutation of the page's block ids.
+    const { ids } = (req.body ?? {}) as { ids?: string[] };
+    const existing = (
+      db
+        .prepare("SELECT id FROM blocks WHERE page_id = ? ORDER BY position")
+        .all(req.params.pageId) as Pick<BlockRow, "id">[]
+    ).map((r) => r.id);
     if (
       !Array.isArray(ids) ||
       ids.length !== existing.length ||
@@ -133,7 +155,7 @@ export function blocksRouter(db: Database.Database): Router {
       return;
     }
     const existingSet = new Set(existing);
-    if (!ids.every((id: string) => existingSet.has(id))) {
+    if (!ids.every((id) => existingSet.has(id))) {
       res
         .status(400)
         .json({ error: "ids must be a permutation of the page's block ids" });
@@ -141,7 +163,7 @@ export function blocksRouter(db: Database.Database): Router {
     }
     const update = db.prepare("UPDATE blocks SET position = ? WHERE id = ?");
     db.transaction(() => {
-      ids.forEach((id: string, i: number) => update.run(i, id));
+      ids.forEach((id, i) => update.run(i, id));
     })();
     res.json({ ok: true });
   });

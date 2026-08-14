@@ -92,9 +92,9 @@ describe("toggling task completion", () => {
       due_date: "2026-07-10",
     });
     updateActivity(db, activity.id, { done: true });
-    expect(getActivity(db, activity.id).done).toBe(1);
+    expect(getActivity(db, activity.id)!.done).toBe(1);
     updateActivity(db, activity.id, { done: false });
-    expect(getActivity(db, activity.id).done).toBe(0);
+    expect(getActivity(db, activity.id)!.done).toBe(0);
   });
 
   it("keeps other fields intact when toggling", () => {

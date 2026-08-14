@@ -105,7 +105,7 @@ describe("date and checkbox cells", () => {
         onChange={onChange}
       />,
     );
-    const input = screen.getByLabelText("Field for Row") as HTMLInputElement;
+    const input = screen.getByLabelText<HTMLInputElement>("Field for Row");
     expect(input.value).toBe("2026-01-01");
   });
 

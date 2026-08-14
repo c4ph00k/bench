@@ -45,9 +45,7 @@ function renderEditor(blocks = makeBlocks()) {
 }
 
 function blockText(id: string): HTMLElement {
-  return document.querySelector(
-    `[data-block-id="${id}"] [contenteditable]`,
-  ) as HTMLElement;
+  return document.querySelector(`[data-block-id="${id}"] [contenteditable]`)!;
 }
 
 describe("Editor rendering", () => {

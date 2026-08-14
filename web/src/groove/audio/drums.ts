@@ -219,17 +219,29 @@ export function triggerDrum(
   const gain = (p[LANE_LEVEL[lane]] ?? 0.8) * (accent ? 1.35 : 0.85);
   if (gain <= 0.001) return;
   switch (lane) {
-    case "kick":
-      return kick(c, t, p, gain);
-    case "snare":
-      return snare(c, t, p, gain);
-    case "clap":
-      return clap(c, t, p, gain);
-    case "hat":
-      return hat(c, t, p, gain, false);
-    case "ohat":
-      return hat(c, t, p, gain, true);
-    case "perc":
-      return perc(c, t, p, gain);
+    case "kick": {
+      kick(c, t, p, gain);
+      return;
+    }
+    case "snare": {
+      snare(c, t, p, gain);
+      return;
+    }
+    case "clap": {
+      clap(c, t, p, gain);
+      return;
+    }
+    case "hat": {
+      hat(c, t, p, gain, false);
+      return;
+    }
+    case "ohat": {
+      hat(c, t, p, gain, true);
+      return;
+    }
+    case "perc": {
+      perc(c, t, p, gain);
+      return;
+    }
   }
 }

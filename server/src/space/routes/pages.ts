@@ -1,6 +1,7 @@
 import { Router } from "express";
 import type Database from "better-sqlite3";
 import { randomUUID } from "node:crypto";
+import type { BlockRow } from "../db.js";
 
 export interface PageRow {
   id: string;
@@ -55,7 +56,12 @@ export function pagesRouter(db: Database.Database): Router {
       title = "",
       icon = null,
       type = "page",
-    } = req.body ?? {};
+    } = (req.body ?? {}) as {
+      parentId?: string | null;
+      title?: string;
+      icon?: string | null;
+      type?: string;
+    };
     if (!["page", "database"].includes(type)) {
       res.status(400).json({ error: "type must be 'page' or 'database'" });
       return;
@@ -89,7 +95,10 @@ export function pagesRouter(db: Database.Database): Router {
         "SELECT id, page_id, type, content, position FROM blocks WHERE page_id = ? ORDER BY position",
       )
       .all(req.params.id)
-      .map((b: any) => ({ ...b, content: JSON.parse(b.content) }));
+      .map((b) => {
+        const block = b as BlockRow;
+        return { ...block, content: JSON.parse(block.content) as unknown };
+      });
     res.json({ ...page, blocks });
   });
 
@@ -101,7 +110,10 @@ export function pagesRouter(db: Database.Database): Router {
       res.status(404).json({ error: "page not found" });
       return;
     }
-    const { title, icon } = req.body ?? {};
+    const { title, icon } = (req.body ?? {}) as {
+      title?: string;
+      icon?: string | null;
+    };
     if (title !== undefined) {
       db.prepare(
         "UPDATE pages SET title = ?, updated_at = datetime('now') WHERE id = ?",

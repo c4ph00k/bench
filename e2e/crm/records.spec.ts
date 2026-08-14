@@ -46,7 +46,7 @@ test("create an organization, see it listed, then delete it", async ({
   await expect(
     page.getByRole("row", { name: /Test Industries Ltd/ }),
   ).toBeVisible();
-  expect(await page.locator("tbody tr").count()).toBe(before + 1);
+  await expect(page.locator("tbody tr")).toHaveCount(before + 1);
 
   await page.getByRole("row", { name: /Test Industries Ltd/ }).click();
   await expect(

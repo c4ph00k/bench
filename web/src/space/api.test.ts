@@ -43,7 +43,7 @@ describe("api client", () => {
       ok: false,
       status: 404,
       json: () => Promise.resolve({ error: "page not found" }),
-    } as Response);
+    });
     await expect(api.getPage("nope")).rejects.toThrow("page not found");
   });
 
@@ -52,7 +52,7 @@ describe("api client", () => {
       ok: false,
       status: 500,
       json: () => Promise.reject(new Error("bad json")),
-    } as Response);
+    });
     await expect(api.deletePage("x")).rejects.toThrow(
       "DELETE /api/space/pages/x failed (500)",
     );

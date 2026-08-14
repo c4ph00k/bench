@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   DB,
   DEAL_STAGES,
+  DealStage,
   openDb,
   createDeal,
   getDeal,
@@ -24,8 +25,8 @@ describe("deal stage changes", () => {
     });
     for (const stage of DEAL_STAGES) {
       const updated = updateDealStage(db, deal.id, stage);
-      expect(updated.stage).toBe(stage);
-      expect(getDeal(db, deal.id).stage).toBe(stage);
+      expect(updated!.stage).toBe(stage);
+      expect(getDeal(db, deal.id)!.stage).toBe(stage);
     }
   });
 
@@ -36,7 +37,7 @@ describe("deal stage changes", () => {
       value: 50000,
     });
     updateDealStage(db, deal.id, "Won");
-    expect(getDeal(db, deal.id).stage).toBe("Won");
+    expect(getDeal(db, deal.id)!.stage).toBe("Won");
     expect(listDeals(db, { stage: "Won" }).map((d) => d.name)).toContain(
       "Winner",
     );
@@ -49,14 +50,16 @@ describe("deal stage changes", () => {
       value: 20000,
     });
     updateDealStage(db, deal.id, "Lost");
-    expect(getDeal(db, deal.id).stage).toBe("Lost");
+    expect(getDeal(db, deal.id)!.stage).toBe("Lost");
     expect(listDeals(db, { stage: "Proposal" })).toHaveLength(0);
     expect(listDeals(db, { stage: "Lost" })).toHaveLength(1);
   });
 
   it("rejects an invalid stage", () => {
     const deal = createDeal(db, { name: "Deal", stage: "New", value: 1000 });
-    expect(() => updateDealStage(db, deal.id, "Imaginary" as any)).toThrow();
-    expect(getDeal(db, deal.id).stage).toBe("New");
+    expect(() =>
+      updateDealStage(db, deal.id, "Imaginary" as unknown as DealStage),
+    ).toThrow();
+    expect(getDeal(db, deal.id)!.stage).toBe("New");
   });
 });

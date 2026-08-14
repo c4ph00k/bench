@@ -78,7 +78,7 @@ test("melodic steps carry their unit name so the four grids stay distinguishable
 test("switching patches changes the tempo", async ({ page }) => {
   await page.goto("/groove/");
   const bpm = () =>
-    page.evaluate(() => document.body.textContent?.match(/(\d+)BPM/)?.[1]);
+    page.evaluate(() => /(\d+)BPM/.exec(document.body.textContent)?.[1]);
 
   const first = await bpm();
   await page.getByRole("button", { name: /BASALT/ }).click();

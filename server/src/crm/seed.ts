@@ -8,6 +8,7 @@ import {
   ContactStatus,
   DealStage,
   ActivityType,
+  Contact,
 } from "./db.js";
 
 function daysFromNow(days: number): string {
@@ -91,9 +92,14 @@ export function seed(db: DB) {
     fernwood,
   ] = orgs;
 
-  const contactRows: Array<
-    [string, string, string, string, number | null, ContactStatus]
-  > = [
+  const contactRows: [
+    string,
+    string,
+    string,
+    string,
+    number | null,
+    ContactStatus,
+  ][] = [
     [
       "Maria Delgado",
       "maria.delgado@northwindlogistics.com",
@@ -245,9 +251,14 @@ export function seed(db: DB) {
     grace,
   ] = contacts;
 
-  const dealRows: Array<
-    [string, number | null, number | null, DealStage, number, string]
-  > = [
+  const dealRows: [
+    string,
+    number | null,
+    number | null,
+    DealStage,
+    number,
+    string,
+  ][] = [
     // Won deals spread over recent months so the dashboard chart has history.
     [
       "Fleet telematics rollout",
@@ -397,7 +408,7 @@ export function seed(db: DB) {
     type: ActivityType,
     description: string,
     opts: {
-      contact?: any;
+      contact?: Contact;
       deal?: string;
       daysAgo?: number;
       due?: number;

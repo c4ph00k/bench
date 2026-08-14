@@ -29,7 +29,10 @@ export function createApp(dbs: Dbs): express.Express {
   if (existsSync(webDist)) {
     app.use(express.static(webDist));
     app.use((req, res, next) => {
-      if (req.method !== "GET" || req.path.startsWith("/api")) return next();
+      if (req.method !== "GET" || req.path.startsWith("/api")) {
+        next();
+        return;
+      }
       const owner = APPS.find(
         (name) => req.path === `/${name}` || req.path.startsWith(`/${name}/`),
       );

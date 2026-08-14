@@ -53,6 +53,54 @@ export interface ActivityInput {
   done?: boolean;
 }
 
+/** The shapes the tables below actually return. `done` is SQLite's 0 or 1, not a boolean. */
+export interface Organization {
+  id: number;
+  name: string;
+  website: string | null;
+  industry: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface Contact {
+  id: number;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  job_title: string | null;
+  organization_id: number | null;
+  status: ContactStatus;
+  created_at: string;
+}
+
+export interface Deal {
+  id: number;
+  name: string;
+  organization_id: number | null;
+  contact_id: number | null;
+  stage: DealStage;
+  value: number;
+  probability: number;
+  close_date: string | null;
+  created_at: string;
+}
+
+export interface Activity {
+  id: number;
+  type: ActivityType;
+  contact_id: number | null;
+  deal_id: number | null;
+  description: string;
+  occurred_at: string;
+  due_date: string | null;
+  done: number;
+  created_at: string;
+}
+
+/** Everything these queries bind is a string or a number. */
+type BindValue = string | number;
+
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS organizations (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -150,11 +198,15 @@ export function createOrganization(db: DB, input: OrganizationInput) {
       input.industry ?? null,
       input.notes ?? null,
     );
-  return getOrganization(db, Number(info.lastInsertRowid))!;
+  // Just inserted, so the read back cannot miss - hence the non-optional row type.
+  return db
+    .prepare("SELECT * FROM organizations WHERE id = ?")
+    .get(info.lastInsertRowid) as Organization;
 }
 
 export function getOrganization(db: DB, id: number) {
-  return db.prepare("SELECT * FROM organizations WHERE id = ?").get(id) as any;
+  return db.prepare("SELECT * FROM organizations WHERE id = ?").get(id) as
+    Organization | undefined;
 }
 
 export function listOrganizations(db: DB, q?: string) {
@@ -164,9 +216,11 @@ export function listOrganizations(db: DB, q?: string) {
       .prepare(
         "SELECT * FROM organizations WHERE name LIKE ? OR website LIKE ? OR industry LIKE ? ORDER BY name",
       )
-      .all(like, like, like) as any[];
+      .all(like, like, like) as Organization[];
   }
-  return db.prepare("SELECT * FROM organizations ORDER BY name").all() as any[];
+  return db
+    .prepare("SELECT * FROM organizations ORDER BY name")
+    .all() as Organization[];
 }
 
 export function updateOrganization(
@@ -205,11 +259,14 @@ export function createContact(db: DB, input: ContactInput) {
       input.organization_id ?? null,
       input.status,
     );
-  return getContact(db, Number(info.lastInsertRowid))!;
+  return db
+    .prepare("SELECT * FROM contacts WHERE id = ?")
+    .get(info.lastInsertRowid) as Contact;
 }
 
 export function getContact(db: DB, id: number) {
-  return db.prepare("SELECT * FROM contacts WHERE id = ?").get(id) as any;
+  return db.prepare("SELECT * FROM contacts WHERE id = ?").get(id) as
+    Contact | undefined;
 }
 
 export function listContacts(
@@ -217,7 +274,7 @@ export function listContacts(
   opts: { q?: string; status?: string; organization_id?: number } = {},
 ) {
   const where: string[] = [];
-  const params: any[] = [];
+  const params: BindValue[] = [];
   if (opts.q) {
     where.push("(name LIKE ? OR email LIKE ? OR job_title LIKE ?)");
     const like = `%${opts.q}%`;
@@ -232,7 +289,7 @@ export function listContacts(
     params.push(opts.organization_id);
   }
   const sql = `SELECT * FROM contacts ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY name`;
-  return db.prepare(sql).all(...params) as any[];
+  return db.prepare(sql).all(...params) as Contact[];
 }
 
 export function updateContact(db: DB, id: number, input: ContactInput) {
@@ -270,11 +327,14 @@ export function createDeal(db: DB, input: DealInput) {
       input.probability ?? STAGE_PROBABILITY[input.stage],
       input.close_date ?? null,
     );
-  return getDeal(db, Number(info.lastInsertRowid))!;
+  return db
+    .prepare("SELECT * FROM deals WHERE id = ?")
+    .get(info.lastInsertRowid) as Deal;
 }
 
 export function getDeal(db: DB, id: number) {
-  return db.prepare("SELECT * FROM deals WHERE id = ?").get(id) as any;
+  return db.prepare("SELECT * FROM deals WHERE id = ?").get(id) as
+    Deal | undefined;
 }
 
 export function listDeals(
@@ -287,7 +347,7 @@ export function listDeals(
   } = {},
 ) {
   const where: string[] = [];
-  const params: any[] = [];
+  const params: BindValue[] = [];
   if (opts.q) {
     where.push(
       "(deals.name LIKE ? OR organizations.name LIKE ? OR contacts.name LIKE ?)",
@@ -313,7 +373,7 @@ export function listDeals(
     LEFT JOIN organizations ON organizations.id = deals.organization_id
     LEFT JOIN contacts ON contacts.id = deals.contact_id
     ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY deals.close_date`;
-  return db.prepare(sql).all(...params) as any[];
+  return db.prepare(sql).all(...params) as Deal[];
 }
 
 export function updateDeal(db: DB, id: number, input: DealInput) {
@@ -363,11 +423,14 @@ export function createActivity(db: DB, input: ActivityInput) {
       input.due_date ?? null,
       input.done ? 1 : 0,
     );
-  return getActivity(db, Number(info.lastInsertRowid))!;
+  return db
+    .prepare("SELECT * FROM activities WHERE id = ?")
+    .get(info.lastInsertRowid) as Activity;
 }
 
 export function getActivity(db: DB, id: number) {
-  return db.prepare("SELECT * FROM activities WHERE id = ?").get(id) as any;
+  return db.prepare("SELECT * FROM activities WHERE id = ?").get(id) as
+    Activity | undefined;
 }
 
 export function listActivities(
@@ -375,7 +438,7 @@ export function listActivities(
   opts: { contact_id?: number; deal_id?: number; limit?: number } = {},
 ) {
   const where: string[] = [];
-  const params: any[] = [];
+  const params: BindValue[] = [];
   if (opts.contact_id != null) {
     where.push("contact_id = ?");
     params.push(opts.contact_id);
@@ -389,7 +452,7 @@ export function listActivities(
     sql += " LIMIT ?";
     params.push(opts.limit);
   }
-  return db.prepare(sql).all(...params) as any[];
+  return db.prepare(sql).all(...params) as Activity[];
 }
 
 export function updateActivity(

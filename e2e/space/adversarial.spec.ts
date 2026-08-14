@@ -38,7 +38,7 @@ test("script-looking titles and block text render inert", async ({ page }) => {
   await expect(page.locator(".block-text").first()).toHaveText(
     '<script>alert("xss")</script> & <b>not bold</b>',
   );
-  expect(await page.locator(".block-text b").count()).toBe(0);
+  await expect(page.locator(".block-text b")).toHaveCount(0);
   await expect(page.getByRole("treeitem", { name: /onerror/ })).toBeVisible();
   expect(alertFired).toBe(false);
   await deletePage(page, /onerror/);
@@ -62,7 +62,7 @@ test("pasting rich HTML lands as plain text", async ({ page }) => {
   await expect(page.locator(".block-text").first()).toHaveText(
     "just plain text",
   );
-  expect(await page.locator(".block-text b").count()).toBe(0);
+  await expect(page.locator(".block-text b")).toHaveCount(0);
   await deletePage(page, /Paste Test/);
 });
 

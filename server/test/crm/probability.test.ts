@@ -48,11 +48,11 @@ describe("deal probability", () => {
     expect(d.probability).toBe(10);
 
     const moved = updateDealStage(db, d.id, "Negotiation");
-    expect(moved.stage).toBe("Negotiation");
-    expect(moved.probability).toBe(STAGE_PROBABILITY.Negotiation);
+    expect(moved!.stage).toBe("Negotiation");
+    expect(moved!.probability).toBe(STAGE_PROBABILITY.Negotiation);
 
-    expect(updateDealStage(db, d.id, "Won").probability).toBe(100);
-    expect(updateDealStage(db, d.id, "Lost").probability).toBe(0);
+    expect(updateDealStage(db, d.id, "Won")!.probability).toBe(100);
+    expect(updateDealStage(db, d.id, "Lost")!.probability).toBe(0);
   });
 
   it("keeps the stage default when an edit does not mention probability", () => {
@@ -62,7 +62,7 @@ describe("deal probability", () => {
       stage: "Proposal",
       value: 5000,
     });
-    expect(updated.probability).toBe(STAGE_PROBABILITY.Proposal);
+    expect(updated!.probability).toBe(STAGE_PROBABILITY.Proposal);
   });
 
   it("survives a round trip through the database", () => {
@@ -72,7 +72,7 @@ describe("deal probability", () => {
       value: 2000,
       probability: 40,
     });
-    expect(getDeal(db, d.id).probability).toBe(40);
+    expect(getDeal(db, d.id)!.probability).toBe(40);
   });
 
   it("weights value by probability", () => {

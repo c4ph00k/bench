@@ -114,5 +114,14 @@ export default tseslint.config(
     },
   },
 
+  // `no-non-null-assertion` and `non-nullable-type-assertion-style` pull against each other: one
+  // forbids `x!`, the other asks for it in preference to `x as T`. Split them by where the mistake
+  // lands. In a test a wrong assumption fails loudly and at once, which is what an assertion is
+  // for; in src it can ship a crash, so the rule stays on there.
+  {
+    files: ["server/test/**/*.ts", "web/src/**/*.test.{ts,tsx}", "e2e/**/*.ts"],
+    rules: { "@typescript-eslint/no-non-null-assertion": "off" },
+  },
+
   prettier,
 );

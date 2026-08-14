@@ -93,7 +93,7 @@ export function matchesFilter(
     case "is_not":
       return value !== fv;
     case "has":
-      return Array.isArray(value) && value.includes(fv as string);
+      return Array.isArray(value) && value.includes(fv);
     case "before":
       return (
         typeof value === "string" &&

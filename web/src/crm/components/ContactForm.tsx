@@ -28,9 +28,8 @@ export default function ContactForm({
     email: existing?.email ?? "",
     phone: existing?.phone ?? "",
     job_title: existing?.job_title ?? "",
-    organization_id:
-      existing?.organization_id ?? defaultOrganizationId ?? ("" as number | ""),
-    status: existing?.status ?? ("lead" as ContactStatus),
+    organization_id: existing?.organization_id ?? defaultOrganizationId ?? "",
+    status: existing?.status ?? "lead",
   });
 
   async function submit(e: FormEvent) {

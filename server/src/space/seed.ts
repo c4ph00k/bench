@@ -1,7 +1,10 @@
 import type Database from "better-sqlite3";
 import { randomUUID } from "node:crypto";
 
-type BlockSpec = { type: string; [key: string]: unknown };
+interface BlockSpec {
+  type: string;
+  [key: string]: unknown;
+}
 
 export class Seeder {
   private positions = new Map<string | null, number>();
@@ -394,8 +397,8 @@ function seedReadingList(s: Seeder): void {
 
   const dune = s.row(dbId, "Dune", {
     [author]: "Frank Herbert",
-    [status]: st["Finished"],
-    [genre]: [g["Sci-fi"], g["Classic"]],
+    [status]: st.Finished,
+    [genre]: [g["Sci-fi"], g.Classic],
     [rating]: 4.5,
     [finished]: "2026-03-02",
     [owned]: true,
@@ -411,7 +414,7 @@ function seedReadingList(s: Seeder): void {
 
   s.row(dbId, "Project Hail Mary", {
     [author]: "Andy Weir",
-    [status]: st["Finished"],
+    [status]: st.Finished,
     [genre]: [g["Sci-fi"]],
     [rating]: 4,
     [finished]: "2026-05-11",
@@ -420,15 +423,15 @@ function seedReadingList(s: Seeder): void {
   });
   s.row(dbId, "The Making of the Atomic Bomb", {
     [author]: "Richard Rhodes",
-    [status]: st["Reading"],
+    [status]: st.Reading,
     [genre]: [g["Non-fiction"]],
     [owned]: true,
     [link]: "https://en.wikipedia.org/wiki/The_Making_of_the_Atomic_Bomb",
   });
   const weeks = s.row(dbId, "Four Thousand Weeks", {
     [author]: "Oliver Burkeman",
-    [status]: st["Finished"],
-    [genre]: [g["Non-fiction"], g["Essays"]],
+    [status]: st.Finished,
+    [genre]: [g["Non-fiction"], g.Essays],
     [rating]: 5,
     [finished]: "2026-01-20",
     [owned]: true,
@@ -442,24 +445,24 @@ function seedReadingList(s: Seeder): void {
   s.row(dbId, "Piranesi", {
     [author]: "Susanna Clarke",
     [status]: st["To read"],
-    [genre]: [g["Fantasy"]],
+    [genre]: [g.Fantasy],
     [owned]: false,
   });
   s.row(dbId, "The Left Hand of Darkness", {
     [author]: "Ursula K. Le Guin",
     [status]: st["To read"],
-    [genre]: [g["Sci-fi"], g["Classic"]],
+    [genre]: [g["Sci-fi"], g.Classic],
     [owned]: true,
   });
   s.row(dbId, "Middlemarch", {
     [author]: "George Eliot",
     [status]: st["To read"],
-    [genre]: [g["Classic"]],
+    [genre]: [g.Classic],
     [owned]: false,
   });
   s.row(dbId, "Slow Productivity", {
     [author]: "Cal Newport",
-    [status]: st["Reading"],
+    [status]: st.Reading,
     [genre]: [g["Non-fiction"]],
     [rating]: 3.5,
     [owned]: false,
@@ -506,9 +509,9 @@ function seedTripPlanner(s: Seeder, travelId: string): void {
   const guide = s.property(dbId, "Guide", "url");
 
   const japan = s.row(dbId, "Japan, ten days", {
-    [status]: st["Booked"],
-    [region]: rg["Asia"],
-    [vibes]: [vb["Food"], vb["Culture"]],
+    [status]: st.Booked,
+    [region]: rg.Asia,
+    [vibes]: [vb.Food, vb.Culture],
     [budget]: 4800,
     [depart]: "2026-10-14",
     [flights]: true,
@@ -523,32 +526,32 @@ function seedTripPlanner(s: Seeder, travelId: string): void {
     { type: "todo", text: "Activate rail pass on day 2", checked: false },
   ]);
   s.row(dbId, "Lisbon long weekend", {
-    [status]: st["Planning"],
-    [region]: rg["Europe"],
-    [vibes]: [vb["Food"], vb["Beach"]],
+    [status]: st.Planning,
+    [region]: rg.Europe,
+    [vibes]: [vb.Food, vb.Beach],
     [budget]: 900,
     [depart]: "2026-09-05",
     [flights]: false,
   });
   s.row(dbId, "Dolomites hut to hut", {
-    [status]: st["Dreaming"],
-    [region]: rg["Europe"],
-    [vibes]: [vb["Hiking"]],
+    [status]: st.Dreaming,
+    [region]: rg.Europe,
+    [vibes]: [vb.Hiking],
     [budget]: 1500,
     [flights]: false,
     [guide]: "https://www.alta-badia.org",
   });
   s.row(dbId, "Mexico City", {
-    [status]: st["Dreaming"],
-    [region]: rg["Americas"],
-    [vibes]: [vb["Food"], vb["Culture"]],
+    [status]: st.Dreaming,
+    [region]: rg.Americas,
+    [vibes]: [vb.Food, vb.Culture],
     [budget]: 1700,
     [flights]: false,
   });
   s.row(dbId, "Scottish Highlands", {
-    [status]: st["Done"],
-    [region]: rg["Europe"],
-    [vibes]: [vb["Hiking"]],
+    [status]: st.Done,
+    [region]: rg.Europe,
+    [vibes]: [vb.Hiking],
     [budget]: 700,
     [depart]: "2026-04-18",
     [flights]: true,
@@ -588,7 +591,7 @@ function seedProjectTracker(s: Seeder, projectsId: string): void {
   const migrate = s.row(dbId, "Migrate home lab services", {
     [status]: st["In progress"],
     [owner]: "Ed",
-    [tags]: [tg["hardware"], tg["software"]],
+    [tags]: [tg.hardware, tg.software],
     [effort]: 6,
     [due]: "2026-08-30",
     [funded]: true,
@@ -601,9 +604,9 @@ function seedProjectTracker(s: Seeder, projectsId: string): void {
     { type: "callout", text: "Snapshot before every move." },
   ]);
   s.row(dbId, "Drip irrigation for the balcony", {
-    [status]: st["Shipped"],
+    [status]: st.Shipped,
     [owner]: "Ed",
-    [tags]: [tg["home"]],
+    [tags]: [tg.home],
     [effort]: 2,
     [due]: "2026-05-15",
     [funded]: true,
@@ -611,22 +614,22 @@ function seedProjectTracker(s: Seeder, projectsId: string): void {
   s.row(dbId, "Slow tools essay", {
     [status]: st["In progress"],
     [owner]: "Ed",
-    [tags]: [tg["writing"]],
+    [tags]: [tg.writing],
     [effort]: 3,
     [due]: "2026-07-31",
     [funded]: false,
   });
   s.row(dbId, "E-ink hallway dashboard", {
-    [status]: st["Backlog"],
+    [status]: st.Backlog,
     [owner]: "Ed",
-    [tags]: [tg["hardware"], tg["software"]],
+    [tags]: [tg.hardware, tg.software],
     [effort]: 5,
     [funded]: false,
   });
   s.row(dbId, "Fix the wobbly bookshelf", {
-    [status]: st["Blocked"],
+    [status]: st.Blocked,
     [owner]: "Anna",
-    [tags]: [tg["home"]],
+    [tags]: [tg.home],
     [effort]: 1,
     [funded]: false,
   });
@@ -634,6 +637,6 @@ function seedProjectTracker(s: Seeder, projectsId: string): void {
   s.view(dbId, "board", { groupBy: status });
   s.view(dbId, "table", { sort: { propertyId: due, direction: "asc" } });
   s.view(dbId, "list", {
-    filters: [{ propertyId: status, operator: "is_not", value: st["Shipped"] }],
+    filters: [{ propertyId: status, operator: "is_not", value: st.Shipped }],
   });
 }

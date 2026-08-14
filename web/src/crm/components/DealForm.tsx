@@ -31,10 +31,9 @@ export default function DealForm({
 }: Props) {
   const [form, setForm] = useState({
     name: existing?.name ?? "",
-    organization_id:
-      existing?.organization_id ?? defaultOrganizationId ?? ("" as number | ""),
-    contact_id: existing?.contact_id ?? ("" as number | ""),
-    stage: existing?.stage ?? ("New" as DealStage),
+    organization_id: existing?.organization_id ?? defaultOrganizationId ?? "",
+    contact_id: existing?.contact_id ?? "",
+    stage: existing?.stage ?? "New",
     value: existing?.value ?? 0,
     probability: existing?.probability ?? STAGE_PROBABILITY.New,
     close_date: existing?.close_date ?? "",
