@@ -25,17 +25,17 @@ beforeEach(() => {
   });
   createContact(db, {
     name: "Maria Delgado",
-    email: "maria@northwind.com",
+    email: "maria@example.com",
     status: "customer",
   });
   const jonas = createContact(db, {
     name: "Jonas Lindqvist",
-    email: "jonas@bluepeak.io",
+    email: "jonas@example.com",
     status: "qualified",
   });
   createContact(db, {
     name: "Sam Okafor",
-    email: "sam@quarry.com",
+    email: "sam@example.com",
     status: "lead",
   });
   createDeal(db, {
@@ -73,7 +73,8 @@ describe("contact search and filter", () => {
   });
 
   it("searches by email", () => {
-    expect(listContacts(db, { q: "bluepeak.io" }).map((c) => c.name)).toEqual([
+    // The fixtures share a reserved domain, so the local part is what distinguishes them.
+    expect(listContacts(db, { q: "jonas@" }).map((c) => c.name)).toEqual([
       "Jonas Lindqvist",
     ]);
   });

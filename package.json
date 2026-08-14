@@ -20,7 +20,12 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "knip": "knip",
+    "gitleaks": "command -v gitleaks >/dev/null || { echo 'gitleaks is required for this check: brew install gitleaks'; exit 1; }; gitleaks dir . --no-banner --redact",
+    "check:secrets": "node scripts/check-secrets.mjs",
+    "jscpd": "jscpd",
+    "check": "npm run typecheck && npm run lint && npm run format:check && npm run gitleaks && npm run check:secrets && npm run knip && npm run coverage"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
@@ -35,6 +40,8 @@
     "eslint-plugin-react-refresh": "^0.5.4",
     "eslint-plugin-sonarjs": "^4.2.0",
     "globals": "^17.11.0",
+    "jscpd": "^5.0.15",
+    "knip": "^6.32.2",
     "prettier": "^3.9.6",
     "typescript": "5.9.3",
     "typescript-eslint": "^8.67.0"

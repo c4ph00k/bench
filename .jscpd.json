@@ -1,0 +1,15 @@
+{
+  "threshold": 100,
+  "reporters": ["consoleFull"],
+  "absolute": false,
+  "gitignore": true,
+  "pattern": "**/*.{ts,tsx}",
+  "ignore": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/coverage/**",
+    "e2e/.tmp/**",
+    "**/seed.ts",
+    "web/src/groove/patches.ts"
+  ]
+}

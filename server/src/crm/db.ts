@@ -12,9 +12,9 @@ export const DEAL_STAGES = [
   "Lost",
 ] as const;
 export type DealStage = (typeof DEAL_STAGES)[number];
-export const CONTACT_STATUSES = ["lead", "qualified", "customer"] as const;
+const CONTACT_STATUSES = ["lead", "qualified", "customer"] as const;
 export type ContactStatus = (typeof CONTACT_STATUSES)[number];
-export const ACTIVITY_TYPES = ["note", "call", "email"] as const;
+const ACTIVITY_TYPES = ["note", "call", "email"] as const;
 export type ActivityType = (typeof ACTIVITY_TYPES)[number];
 
 export interface OrganizationInput {
@@ -54,7 +54,7 @@ export interface ActivityInput {
 }
 
 /** The shapes the tables below actually return. `done` is SQLite's 0 or 1, not a boolean. */
-export interface Organization {
+interface Organization {
   id: number;
   name: string;
   website: string | null;
@@ -74,7 +74,7 @@ export interface Contact {
   created_at: string;
 }
 
-export interface Deal {
+interface Deal {
   id: number;
   name: string;
   organization_id: number | null;
@@ -86,7 +86,7 @@ export interface Deal {
   created_at: string;
 }
 
-export interface Activity {
+interface Activity {
   id: number;
   type: ActivityType;
   contact_id: number | null;

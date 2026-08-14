@@ -149,6 +149,23 @@ export default tseslint.config(
     languageOptions: { globals: globals.browser },
   },
 
+  // The three apps stay separate. A denylist of the siblings rather than an allowlist of what is
+  // permitted, so a future shared module needs no rule change. This guards the module graph only:
+  // the collision PROJECT.md warns about is the three global stylesheets, which no lint rule sees.
+  ...["crm", "space", "groove"].map((app) => ({
+    files: [`web/src/${app}/**`],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: ["crm", "space", "groove"]
+            .filter((other) => other !== app)
+            .flatMap((other) => [`**/${other}/**`, `../${other}/*`]),
+        },
+      ],
+    },
+  })),
+
   {
     files: ["web/src/**/*.tsx"],
     extends: [reactRefresh.configs.vite],

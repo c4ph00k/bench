@@ -71,13 +71,13 @@ describe("contacts CRUD", () => {
     const org = createOrganization(db, { name: "Acme Corp" });
     const contact = createContact(db, {
       name: "Jane Doe",
-      email: "jane@acme.com",
+      email: "jane@example.com",
       status: "lead",
       organization_id: org.id,
     });
     expect(getContact(db, contact.id)).toMatchObject({
       name: "Jane Doe",
-      email: "jane@acme.com",
+      email: "jane@example.com",
       status: "lead",
       organization_id: org.id,
     });

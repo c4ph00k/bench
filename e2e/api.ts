@@ -50,18 +50,18 @@ export interface TreeNode {
   children: TreeNode[];
 }
 
-export interface SpaceOption {
+interface SpaceOption {
   id: string;
   name: string;
 }
 
-export interface SpaceProperty {
+interface SpaceProperty {
   id: string;
   name: string;
   options: SpaceOption[];
 }
 
-export interface SpaceRow {
+interface SpaceRow {
   id: string;
   title: string;
 }

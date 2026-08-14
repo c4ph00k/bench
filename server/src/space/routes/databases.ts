@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import type { PropertyOptionRow, PropertyRow } from "../db.js";
 import { asText } from "../text.js";
 
-export const PROPERTY_TYPES = [
+const PROPERTY_TYPES = [
   "text",
   "number",
   "select",
@@ -13,8 +13,8 @@ export const PROPERTY_TYPES = [
   "checkbox",
   "url",
 ] as const;
-export const VIEW_KINDS = ["table", "board", "list"] as const;
-export const OPTION_COLORS = [
+const VIEW_KINDS = ["table", "board", "list"] as const;
+const OPTION_COLORS = [
   "gray",
   "amber",
   "blue",

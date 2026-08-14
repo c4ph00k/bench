@@ -6,7 +6,7 @@ interface BlockSpec {
   [key: string]: unknown;
 }
 
-export class Seeder {
+class Seeder {
   private positions = new Map<string | null, number>();
 
   constructor(private db: Database.Database) {}
