@@ -102,27 +102,49 @@ gone. typescript-eslint peer-requires `<6.1.0` and refuses to install alongside 
 issue tracker says the programmatic API for tsgo lands in 7.1. So `strictTypeChecked` - the whole
 point of the toolset - cannot run against the compiler this project builds with.
 
-The resolution: **two TypeScripts, deliberately.** The root pins `typescript` to 5.9.3 purely as
-ESLint's analysis engine; both workspaces keep `^7.0.2` and `tsc --noEmit` still runs 7.
+This is not a quirk of this repo. It is where the whole ecosystem is: typescript-eslint
+[#12518][ts-eslint-7] tracks it, and the API it needs lands in TypeScript 7.1. Anyone running
+type-aware linting who upgrades to 7 hits exactly this.
 
-That has one consequence worth knowing. Hoisting 5.9 to the root pushes 7 down into the workspaces,
-and npm does not install the optional platform binaries of a nested package, so `tsc` died with
-"Unable to resolve @typescript/typescript-darwin-arm64". The **root `optionalDependencies` block**
-exists for that: it lists all twenty `@typescript/typescript-*` platform packages so they hoist
-where the nested compiler can find them. npm installs only the one matching the machine. Delete
-that block and `tsc` stops working; it is not stray.
+**The current arrangement is a poor version of the standard answer, and should be revisited.** The
+root pins `typescript` to 5.9.3 as ESLint's analysis engine while both workspaces keep `^7.0.2` for
+`tsc --noEmit`. Two things are wrong with it:
 
-They also disagree, rarely. TS 5.9 and TS 7 infer some generics differently, so `eslint --fix` once
+- **5.9 was two majors further back than necessary.** TypeScript **6.0.3 still ships the JS compiler
+  API** (`lib/typescript.js`, `createProgram`, `createLanguageService`) and sits inside
+  typescript-eslint's `<6.1.0` range. 6 is the version to pin, not 5.9.
+- **Hoisting is the wrong mechanism.** Putting 5.9 at the root pushes 7 down into the workspaces,
+  and npm does not install the optional platform binaries of a nested package, so `tsc` died with
+  "Unable to resolve @typescript/typescript-darwin-arm64". The **root `optionalDependencies`
+  block** listing all twenty `@typescript/typescript-*` packages exists solely to work around that.
+  It is load-bearing today - delete it and `tsc` stops - but it should not need to exist. An npm
+  **alias** keeps both compilers top-level and avoids the problem outright.
+
+So the two real options, both cheaper than what is here:
+
+1. **Move the whole repo to TypeScript 6.0.3.** One version, no alias, no `optionalDependencies`
+   block, type-aware linting works. Costs TypeScript 7's speed, and reverses the decision in
+   [PROJECT.md](./PROJECT.md), so it is Ed's call.
+2. **Alias**, if 7's build speed is worth keeping: `"typescript": "npm:@typescript/typescript6@^6"`
+   for the linter with 7 under a second alias for builds.
+
+They also disagree, rarely. 5.9 and 7 infer some generics differently, so `eslint --fix` once
 removed an assertion that `tsc` then demanded back. `npm run check` runs typecheck **and** lint for
-that reason - neither is a substitute for the other, and after any `--fix` run, typecheck.
+that reason - neither substitutes for the other, and after any `--fix` run, typecheck.
 
-### npm drops platform binaries on every install
+[ts-eslint-7]: https://github.com/typescript-eslint/typescript-eslint/issues/12518
 
-Adding any dependency with `npm install -D <pkg>` rewrites the lockfile and can silently prune
-optional platform packages that are already on disk - [npm/cli#4828]. It happened twice here, both
-times taking out `@rolldown/binding-darwin-arm64`, and both times vitest failed to start with
-"Cannot find native binding" rather than anything about npm. The fix is
-`rm -rf node_modules package-lock.json && npm install`. Check it before debugging vitest.
+### npm drops platform binaries when you add a dependency
+
+Adding any dependency rewrites the lockfile and can drop optional platform packages already on
+disk - [npm/cli#4828]. Reproduced deliberately: `npm install -D is-odd`, a package with no relation
+to anything here, removed `@rolldown/binding-darwin-arm64` from `node_modules` and took the
+lockfile from nine references to seven. vitest then refuses to start.
+
+It is not silent - npm prints "removed N packages" - but it does not say what it removed or that it
+mattered, and the failure surfaces later as a vitest startup error. Rolldown's own message names
+the npm issue and the remedy: `rm -rf node_modules package-lock.json && npm install`. Removing
+`node_modules` alone is not enough; the lockfile has to go too.
 
 [npm/cli#4828]: https://github.com/npm/cli/issues/4828
 

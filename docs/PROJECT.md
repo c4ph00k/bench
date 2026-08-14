@@ -90,11 +90,13 @@ These are settled. Changing one is a project-level decision, not an implementati
   disagreed before - check both when you touch routing.
 - **One dependency set per workspace.** All three UIs live in `web/`, so they share one set of
   versions: TypeScript 7, Vite 8, vitest 4, react-router 8, React 19.
-- **Two TypeScripts, deliberately.** The workspaces compile with 7; the repo root pins 5.9 purely
-  as ESLint's analysis engine, because TypeScript 7's native build no longer exposes the compiler
-  API that type-aware linting needs. The root `optionalDependencies` block carrying every
-  `@typescript/typescript-*` platform package exists to keep the nested 7 working, and is not
-  stray. [CONTROLS.md](./CONTROLS.md) has the detail.
+- **Two TypeScripts, for now.** The workspaces compile with 7; the repo root pins 5.9 purely as
+  ESLint's analysis engine, because TypeScript 7's native build no longer exposes the compiler API
+  that type-aware linting needs. The root `optionalDependencies` block carrying every
+  `@typescript/typescript-*` platform package keeps the nested 7 working and is load-bearing, not
+  stray. **This arrangement is worth revisiting**: TypeScript 6.0.3 still has the compiler API and
+  would let one version serve both, or an alias would keep 7 for builds without the
+  `optionalDependencies` workaround. See [CONTROLS.md](./CONTROLS.md).
 
 ## Adding a fourth app
 
