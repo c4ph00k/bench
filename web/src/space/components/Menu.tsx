@@ -13,6 +13,7 @@ interface Props {
 export default function Menu({ at, items, onClose }: Props) {
   return (
     <div
+      role="presentation"
       className="menu-overlay"
       onMouseDown={onClose}
       onClick={(e) => e.stopPropagation()}
@@ -20,6 +21,7 @@ export default function Menu({ at, items, onClose }: Props) {
       <div
         className="menu"
         role="menu"
+        tabIndex={-1}
         style={{
           left: Math.min(at.x, window.innerWidth - 180),
           top: Math.min(at.y, window.innerHeight - items.length * 36 - 16),

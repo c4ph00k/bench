@@ -15,7 +15,8 @@ import {
 import DataTable from "../components/DataTable";
 import DealForm from "../components/DealForm";
 import ConfirmDialog from "../components/ConfirmDialog";
-import { StageChip, formatDate, formatMoney } from "../components/Chips";
+import { StageChip } from "../components/Chips";
+import { formatDate, formatMoney } from "../format";
 import { IconPlus, IconSearch } from "../components/Icons";
 
 export default function Deals() {

@@ -4,7 +4,8 @@ import { api, type PageData } from "../api";
 import EmojiPicker from "./EmojiPicker";
 import Editor from "../editor/Editor";
 import DatabaseView from "../database/DatabaseView";
-import { RowBreadcrumb, RowPropsGrid, useRow } from "../database/RowProperties";
+import { RowBreadcrumb, RowPropsGrid } from "../database/RowProperties";
+import { useRow } from "../database/useRow";
 
 interface Props {
   onTreeChange: () => Promise<void> | void;

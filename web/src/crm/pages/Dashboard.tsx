@@ -22,7 +22,7 @@ import {
   TopOrganizations,
   WinRateDonut,
 } from "../components/DashboardCharts";
-import { formatDate, formatDateTime, formatMoney } from "../components/Chips";
+import { formatDate, formatDateTime, formatMoney } from "../format";
 
 /** Six months behind and six ahead: what landed, then what is forecast to. */
 const MONTHS_BACK = 5;

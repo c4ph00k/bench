@@ -2,7 +2,8 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
-import Sidebar, { subtreeContains } from "./Sidebar";
+import Sidebar from "./Sidebar";
+import { subtreeContains } from "../tree";
 import { api } from "../api";
 import { node, pageData } from "../test/helpers";
 

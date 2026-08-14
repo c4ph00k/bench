@@ -10,7 +10,7 @@ import {
   STAGE_PROBABILITY,
   expectedValue,
 } from "../types";
-import { formatMoney } from "./Chips";
+import { formatMoney } from "../format";
 
 interface Props {
   existing?: Deal;
@@ -166,8 +166,8 @@ export default function DealForm({
             />
           </div>
           <div className="field">
-            <label>Expected value</label>
-            <output className="field-output">
+            <label htmlFor="deal-expected">Expected value</label>
+            <output id="deal-expected" className="field-output">
               {formatMoney(
                 expectedValue({
                   value: form.value,

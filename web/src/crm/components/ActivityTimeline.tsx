@@ -1,6 +1,6 @@
 import { api } from "../api";
 import { Activity } from "../types";
-import { formatDate, formatDateTime } from "./Chips";
+import { formatDate, formatDateTime } from "../format";
 
 interface Props {
   activities: Activity[];

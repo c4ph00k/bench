@@ -57,7 +57,7 @@ export default function BlockRow({
     transition,
     isDragging,
   } = useSortable({ id: block.id });
-  const text = (block.content.text as string) ?? "";
+  const text = (block.content.text as string | undefined) ?? "";
   const checked = Boolean(block.content.checked);
 
   const editable = (extraClass = "") => (

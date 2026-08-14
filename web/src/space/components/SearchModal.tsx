@@ -66,13 +66,14 @@ export default function SearchModal({ onClose }: Props) {
   };
 
   return (
-    <div className="overlay search-overlay" onMouseDown={onClose}>
-      <div
-        className="search-modal"
-        role="dialog"
-        aria-label="Quick find"
-        onMouseDown={(e) => e.stopPropagation()}
-      >
+    <div
+      role="presentation"
+      className="overlay search-overlay"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="search-modal" role="dialog" aria-label="Quick find">
         <div className="search-input-row">
           <Search size={17} className="search-glyph" />
           <input

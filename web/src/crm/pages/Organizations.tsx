@@ -7,7 +7,7 @@ import { Contact, Deal, Organization, isOpen, sumValue } from "../types";
 import DataTable from "../components/DataTable";
 import OrganizationForm from "../components/OrganizationForm";
 import ConfirmDialog from "../components/ConfirmDialog";
-import { formatMoney } from "../components/Chips";
+import { formatMoney } from "../format";
 import { IconPlus, IconSearch } from "../components/Icons";
 
 interface OrgRow extends Organization {

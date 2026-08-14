@@ -11,6 +11,7 @@ export default function Modal({
 }) {
   return (
     <div
+      role="presentation"
       className="modal-overlay"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();

@@ -60,8 +60,16 @@ function Card({
       style={{ transform: CSS.Translate.toString(transform), transition }}
       {...attributes}
       {...listeners}
+      role="button"
+      tabIndex={0}
       onClick={() => {
         if (!isDragging && !justDragged.current) void navigate(`/p/${row.id}`);
+      }}
+      onKeyDown={(e) => {
+        // dnd-kit's listeners own Space and the arrows for dragging; Enter opens the row.
+        listeners?.onKeyDown?.(e);
+        if (e.key === "Enter" && !e.defaultPrevented)
+          void navigate(`/p/${row.id}`);
       }}
     >
       <div className="board-card-title">{row.title || "Untitled"}</div>

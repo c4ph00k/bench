@@ -89,7 +89,10 @@ test("cancelling a delete keeps the record", async ({ page }) => {
 test("editing an organization persists across a reload", async ({ page }) => {
   await openSection(page, "Organizations");
   await page.locator("tbody tr").first().click();
-  await page.getByRole("button", { name: "Edit" }).click();
+  // Wait for the detail page: until it loads, the list's per-row "Edit <name>" buttons all match
+  // this substring and the click is ambiguous.
+  await expect(page).toHaveURL(/\/crm\/organizations\/\d+/);
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
 
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Industry").fill("Rewritten Industry");

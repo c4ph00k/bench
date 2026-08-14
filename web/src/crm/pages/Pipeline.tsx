@@ -20,7 +20,7 @@ import {
   sumExpected,
   sumValue,
 } from "../types";
-import { formatMoney } from "../components/Chips";
+import { formatMoney } from "../format";
 
 export default function Pipeline() {
   const [deals, setDeals] = useState<Deal[]>([]);
@@ -129,9 +129,20 @@ export default function Pipeline() {
                               ref={dragProvided.innerRef}
                               {...dragProvided.draggableProps}
                               {...dragProvided.dragHandleProps}
+                              // Both come from dragHandleProps too, but ESLint cannot see through
+                              // the spread, and these are the values it already sets.
+                              role="button"
+                              tabIndex={0}
                               className={`deal-card${dragSnapshot.isDragging ? " dragging" : ""}`}
                               onClick={(e) => {
                                 if (!e.defaultPrevented)
+                                  void navigate(`/deals/${deal.id}`);
+                              }}
+                              onKeyDown={(e) => {
+                                // The library drags from a global keyboard sensor rather than a
+                                // handler here, so Space and the arrows still reach it; Enter is
+                                // ours and opens the deal.
+                                if (e.key === "Enter")
                                   void navigate(`/deals/${deal.id}`);
                               }}
                             >

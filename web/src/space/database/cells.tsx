@@ -2,23 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { ExternalLink, Plus, X } from "lucide-react";
 import type { Property, PropertyOption } from "../api";
 
-export const OPTION_COLORS = [
-  "gray",
-  "amber",
-  "blue",
-  "purple",
-  "green",
-  "red",
-  "pink",
-  "teal",
-  "orange",
-  "brown",
-] as const;
-
-export function nextColor(existing: PropertyOption[]): string {
-  return OPTION_COLORS[existing.length % OPTION_COLORS.length];
-}
-
 export function Chip({
   option,
   onRemove,
@@ -237,7 +220,11 @@ function SelectCell({
       </button>
       {open && (
         <>
-          <div className="menu-overlay" onMouseDown={() => setOpen(false)} />
+          <div
+            role="presentation"
+            className="menu-overlay"
+            onMouseDown={() => setOpen(false)}
+          />
           <OptionPicker
             property={property}
             selected={selected ? [selected.id] : []}
@@ -282,7 +269,11 @@ function MultiSelectCell({
       </button>
       {open && (
         <>
-          <div className="menu-overlay" onMouseDown={() => setOpen(false)} />
+          <div
+            role="presentation"
+            className="menu-overlay"
+            onMouseDown={() => setOpen(false)}
+          />
           <OptionPicker
             property={property}
             selected={ids}

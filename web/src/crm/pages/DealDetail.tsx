@@ -7,7 +7,8 @@ import DealForm from "../components/DealForm";
 import ConfirmDialog from "../components/ConfirmDialog";
 import ActivityForm from "../components/ActivityForm";
 import ActivityTimeline from "../components/ActivityTimeline";
-import { StageChip, formatDate, formatMoney } from "../components/Chips";
+import { StageChip } from "../components/Chips";
+import { formatDate, formatMoney } from "../format";
 
 export default function DealDetail() {
   const { id } = useParams();

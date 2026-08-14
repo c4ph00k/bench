@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import Cell, { Chip, nextColor, OPTION_COLORS } from "./cells";
+import Cell, { Chip } from "./cells";
+import { nextColor, OPTION_COLORS } from "./optionColors";
 import type { Property, PropertyOption } from "../api";
 
 const option = (id: string, name: string, color = "blue"): PropertyOption => ({

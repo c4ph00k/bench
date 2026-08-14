@@ -7,7 +7,8 @@ import ContactForm from "../components/ContactForm";
 import ConfirmDialog from "../components/ConfirmDialog";
 import ActivityForm from "../components/ActivityForm";
 import ActivityTimeline from "../components/ActivityTimeline";
-import { StageChip, StatusChip, formatMoney } from "../components/Chips";
+import { StageChip, StatusChip } from "../components/Chips";
+import { formatMoney } from "../format";
 
 export default function ContactDetail() {
   const { id } = useParams();

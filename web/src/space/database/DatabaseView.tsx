@@ -7,7 +7,7 @@ import {
   type ViewConfig,
   type ViewKind,
 } from "../api";
-import { nextColor } from "./cells";
+import { nextColor } from "./optionColors";
 import TableView from "./TableView";
 import BoardView from "./BoardView";
 import ListView from "./ListView";

@@ -5,7 +5,8 @@ import { useFetch } from "../hooks";
 import { Contact, Deal, Organization } from "../types";
 import OrganizationForm from "../components/OrganizationForm";
 import ConfirmDialog from "../components/ConfirmDialog";
-import { StageChip, StatusChip, formatMoney } from "../components/Chips";
+import { StageChip, StatusChip } from "../components/Chips";
+import { formatMoney } from "../format";
 
 export default function OrganizationDetail() {
   const { id } = useParams();

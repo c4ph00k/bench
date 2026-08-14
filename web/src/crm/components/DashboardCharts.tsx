@@ -18,7 +18,7 @@ import {
   YAxis,
 } from "recharts";
 import { FunnelRow, MonthlyRow, OrgPipeline, WinLoss } from "../types";
-import { formatMoney } from "./Chips";
+import { formatMoney } from "../format";
 
 const BLUE = "#1b86b8";
 const PURPLE = "#753991";

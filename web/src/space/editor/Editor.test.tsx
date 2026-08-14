@@ -1,7 +1,8 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import Editor, { applyReorder } from "./Editor";
+import Editor from "./Editor";
+import { applyReorder } from "./reorder";
 import { api, type Block } from "../api";
 import { block } from "../test/helpers";
 

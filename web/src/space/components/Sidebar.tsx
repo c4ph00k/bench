@@ -4,16 +4,12 @@ import { Database, Home, Moon, Plus, Search, Sun } from "lucide-react";
 import { api, type TreeNode } from "../api";
 import { currentTheme, toggleTheme, type Theme } from "../theme";
 import TreeItem from "./TreeItem";
+import { subtreeContains } from "../tree";
 
 interface Props {
   tree: TreeNode[];
   onChange: () => Promise<void> | void;
   onSearch: () => void;
-}
-
-export function subtreeContains(node: TreeNode, id: string): boolean {
-  if (node.id === id) return true;
-  return node.children.some((c) => subtreeContains(c, id));
 }
 
 function loadExpanded(): Set<string> {

@@ -15,7 +15,6 @@ import {
 } from "@dnd-kit/core";
 import {
   SortableContext,
-  arrayMove,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
@@ -24,6 +23,7 @@ import { caretOffset, focusBlock, selectionCollapsed } from "./caret";
 import { filterBlockTypes } from "./blockTypes";
 import BlockRow from "./BlockRow";
 import SlashMenu from "./SlashMenu";
+import { applyReorder } from "./reorder";
 
 const LIST_TYPES = new Set(["bulleted", "numbered", "todo"]);
 const EMPTY_ENTER_RESETS = new Set([
@@ -45,18 +45,6 @@ interface SlashState {
 interface Props {
   pageId: string;
   initialBlocks: Block[];
-}
-
-/** Move activeId to overId's position; returns a new array (or the same one if a no-op). */
-export function applyReorder(
-  blocks: Block[],
-  activeId: string,
-  overId: string,
-): Block[] {
-  const from = blocks.findIndex((b) => b.id === activeId);
-  const to = blocks.findIndex((b) => b.id === overId);
-  if (from < 0 || to < 0 || from === to) return blocks;
-  return arrayMove(blocks, from, to);
 }
 
 export default function Editor({ pageId, initialBlocks }: Props) {
@@ -237,7 +225,7 @@ export default function Editor({ pageId, initialBlocks }: Props) {
       const bs = blocksRef.current;
       const i = bs.findIndex((b) => b.id === id);
       const block = bs[i];
-      const text = (block.content.text as string) ?? "";
+      const text = (block.content.text as string | undefined) ?? "";
       if (text === "" && EMPTY_ENTER_RESETS.has(block.type)) {
         convertType(id, "paragraph", { text: "" });
         return true;
@@ -262,7 +250,7 @@ export default function Editor({ pageId, initialBlocks }: Props) {
       const bs = blocksRef.current;
       const i = bs.findIndex((b) => b.id === id);
       const block = bs[i];
-      const text = (block.content.text as string) ?? "";
+      const text = (block.content.text as string | undefined) ?? "";
       const prev = bs[i - 1];
 
       if (prev?.type === "divider") {
@@ -286,7 +274,7 @@ export default function Editor({ pageId, initialBlocks }: Props) {
       }
       if (prev && prev.type !== "divider") {
         e.preventDefault();
-        const prevText = (prev.content.text as string) ?? "";
+        const prevText = (prev.content.text as string | undefined) ?? "";
         setText(prev.id, prevText + text, true);
         removeBlock(id);
         pendingFocus.current = { id: prev.id, offset: prevText.length };
@@ -304,7 +292,7 @@ export default function Editor({ pageId, initialBlocks }: Props) {
       const i = bs.findIndex((b) => b.id === s.blockId);
       if (i < 0) return;
       const block = bs[i];
-      const text = (block.content.text as string) ?? "";
+      const text = (block.content.text as string | undefined) ?? "";
       const newText =
         text.slice(0, s.index) + text.slice(s.index + 1 + s.query.length);
       if (type === "divider") {
@@ -428,7 +416,7 @@ export default function Editor({ pageId, initialBlocks }: Props) {
       if (
         last &&
         last.type === "paragraph" &&
-        !((last.content.text as string) ?? "")
+        !((last.content.text as string | undefined) ?? "")
       ) {
         focusBlock(last.id, "end");
       } else {
@@ -440,7 +428,12 @@ export default function Editor({ pageId, initialBlocks }: Props) {
 
   let numberCounter = 0;
   return (
-    <div className="editor" onClick={onBodyClick} data-testid="editor-body">
+    <div
+      role="presentation"
+      className="editor"
+      onClick={onBodyClick}
+      data-testid="editor-body"
+    >
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}

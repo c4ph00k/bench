@@ -56,7 +56,14 @@ export default function TreeItem(props: Props) {
         aria-expanded={node.children.length > 0 ? isOpen : undefined}
         className={`tree-row${node.id === activeId ? " active" : ""}`}
         style={{ paddingLeft: 8 + depth * 16 }}
+        tabIndex={0}
         onClick={() => onNavigate(node.id)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onNavigate(node.id);
+          }
+        }}
       >
         <button
           className={`chevron${isOpen ? " open" : ""}${node.children.length === 0 ? " hidden" : ""}`}

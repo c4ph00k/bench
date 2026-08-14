@@ -41,6 +41,7 @@ const ContentEditable = memo(
       <div
         className={className}
         contentEditable
+        role="textbox"
         suppressContentEditableWarning
         data-placeholder={placeholder ?? ""}
         onInput={(e) => {

@@ -2,7 +2,8 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
-import { RowBreadcrumb, RowPropsGrid, useRow } from "./RowProperties";
+import { RowBreadcrumb, RowPropsGrid } from "./RowProperties";
+import { useRow } from "./useRow";
 import { api, type RowData } from "../api";
 
 vi.mock("../api", () => ({

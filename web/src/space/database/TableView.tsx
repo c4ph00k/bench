@@ -10,16 +10,7 @@ import type {
 } from "../api";
 import Cell from "./cells";
 import type { DbActions } from "./DatabaseView";
-
-export const PROPERTY_TYPE_LABELS: Record<PropertyType, string> = {
-  text: "Text",
-  number: "Number",
-  select: "Select",
-  multi_select: "Multi-select",
-  date: "Date",
-  checkbox: "Checkbox",
-  url: "URL",
-};
+import { PROPERTY_TYPE_LABELS } from "./propertyTypes";
 
 interface Props {
   data: DatabaseData;
@@ -159,6 +150,7 @@ export default function TableView({ data, actions, rows }: Props) {
                   {menuFor === p.id && (
                     <>
                       <div
+                        role="presentation"
                         className="menu-overlay"
                         onMouseDown={() => setMenuFor(null)}
                       />
@@ -184,6 +176,7 @@ export default function TableView({ data, actions, rows }: Props) {
                 {adding && (
                   <>
                     <div
+                      role="presentation"
                       className="menu-overlay"
                       onMouseDown={() => setAdding(false)}
                     />

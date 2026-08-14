@@ -46,7 +46,7 @@ function FilterValueInput({
       <select
         className="filter-input"
         aria-label="Filter value"
-        value={(filter.value as string) ?? ""}
+        value={(filter.value as string | undefined) ?? ""}
         onChange={(e) => onChange(e.target.value || null)}
       >
         <option value="">option…</option>
@@ -64,7 +64,7 @@ function FilterValueInput({
         type="date"
         className="filter-input"
         aria-label="Filter value"
-        value={(filter.value as string) ?? ""}
+        value={(filter.value as string | undefined) ?? ""}
         onChange={(e) => onChange(e.target.value || null)}
       />
     );
@@ -87,7 +87,7 @@ function FilterValueInput({
       className="filter-input"
       aria-label="Filter value"
       placeholder="value…"
-      value={(filter.value as string) ?? ""}
+      value={(filter.value as string | undefined) ?? ""}
       onChange={(e) => onChange(e.target.value)}
     />
   );
@@ -299,6 +299,7 @@ export default function Toolbar({
             {open === "group" && (
               <>
                 <div
+                  role="presentation"
                   className="menu-overlay"
                   onMouseDown={() => setOpen(null)}
                 />
@@ -322,7 +323,11 @@ export default function Toolbar({
           </button>
           {open === "filter" && (
             <>
-              <div className="menu-overlay" onMouseDown={() => setOpen(null)} />
+              <div
+                role="presentation"
+                className="menu-overlay"
+                onMouseDown={() => setOpen(null)}
+              />
               <FilterPanel
                 data={data}
                 config={config}
@@ -341,7 +346,11 @@ export default function Toolbar({
           </button>
           {open === "sort" && (
             <>
-              <div className="menu-overlay" onMouseDown={() => setOpen(null)} />
+              <div
+                role="presentation"
+                className="menu-overlay"
+                onMouseDown={() => setOpen(null)}
+              />
               <SortPanel
                 data={data}
                 config={config}
