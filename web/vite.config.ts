@@ -50,8 +50,16 @@ export default defineConfig({
     include: ["src/**/*.test.{ts,tsx}"],
     coverage: {
       provider: "v8",
-      include: ["src/space/**"],
-      exclude: ["src/**/main.tsx", "src/**/test/**", "src/**/*.test.*"],
+      include: ["src/**"],
+      // jsdom has no AudioContext, so Groove's audio graph cannot be unit tested without a mock
+      // that would assert nothing about how it sounds. EXPLORATORY.md records that gap; excluding
+      // it here keeps this threshold from implying coverage it does not have.
+      exclude: [
+        "src/**/main.tsx",
+        "src/**/test/**",
+        "src/**/*.test.*",
+        "src/groove/audio/**",
+      ],
       thresholds: { statements: 80 },
     },
   },
