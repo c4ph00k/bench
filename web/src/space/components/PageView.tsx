@@ -55,7 +55,7 @@ export default function PageView({ onTreeChange }: Props) {
         void api.updatePage(pageId, { title }).then(onTreeChange);
       }, 350);
     },
-    [pageId, onTreeChange],
+    [pageId, onTreeChange, setPage],
   );
 
   const setIcon = async (icon: string | null) => {

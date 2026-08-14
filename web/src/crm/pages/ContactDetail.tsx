@@ -7,8 +7,41 @@ import ContactForm from "../components/ContactForm";
 import ConfirmDialog from "../components/ConfirmDialog";
 import ActivityForm from "../components/ActivityForm";
 import ActivityTimeline from "../components/ActivityTimeline";
-import { StageChip, StatusChip } from "../components/Chips";
-import { formatMoney } from "../format";
+import { StatusChip } from "../components/Chips";
+import { DealList } from "../components/RelatedLists";
+
+function ContactFacts({
+  contact,
+  org,
+}: {
+  contact: Contact;
+  org?: Organization;
+}) {
+  return (
+    <dl className="props">
+      <dt>Status</dt>
+      <dd>
+        <StatusChip status={contact.status} />
+      </dd>
+      <dt>Email</dt>
+      <dd>{contact.email || "—"}</dd>
+      <dt>Phone</dt>
+      <dd>{contact.phone || "—"}</dd>
+      <dt>Job title</dt>
+      <dd>{contact.job_title || "—"}</dd>
+      <dt>Organization</dt>
+      <dd>
+        {org ? (
+          <Link className="entity-link" to={`/organizations/${org.id}`}>
+            {org.name}
+          </Link>
+        ) : (
+          "—"
+        )}
+      </dd>
+    </dl>
+  );
+}
 
 export default function ContactDetail() {
   const { id } = useParams();
@@ -61,48 +94,11 @@ export default function ContactDetail() {
       <div className="detail-grid">
         <div className="card">
           <h2>Details</h2>
-          <dl className="props">
-            <dt>Status</dt>
-            <dd>
-              <StatusChip status={contact.status} />
-            </dd>
-            <dt>Email</dt>
-            <dd>{contact.email || "—"}</dd>
-            <dt>Phone</dt>
-            <dd>{contact.phone || "—"}</dd>
-            <dt>Job title</dt>
-            <dd>{contact.job_title || "—"}</dd>
-            <dt>Organization</dt>
-            <dd>
-              {org ? (
-                <Link className="entity-link" to={`/organizations/${org.id}`}>
-                  {org.name}
-                </Link>
-              ) : (
-                "—"
-              )}
-            </dd>
-          </dl>
+          <ContactFacts contact={contact} org={org} />
         </div>
         <div className="card">
           <h2>Deals ({deals?.length ?? 0})</h2>
-          {deals?.length ? (
-            <div className="task-list">
-              {deals.map((d) => (
-                <div key={d.id} className="task-item">
-                  <div style={{ flex: 1 }}>
-                    <Link className="entity-link" to={`/deals/${d.id}`}>
-                      {d.name}
-                    </Link>
-                    <div className="muted">{formatMoney(d.value)}</div>
-                  </div>
-                  <StageChip stage={d.stage} />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="muted">No deals yet.</p>
-          )}
+          <DealList deals={deals ?? []} />
         </div>
         <div className="card full">
           <h2>Activity</h2>

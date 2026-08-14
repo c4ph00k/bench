@@ -75,7 +75,7 @@ export default function DatabaseView({ databaseId }: Props) {
       );
       void api.setRowValue(rowId, propertyId, value);
     },
-    [],
+    [setData],
   );
 
   /** Persist a new row order for the whole database, reordering optimistically first. */
@@ -89,7 +89,7 @@ export default function DatabaseView({ databaseId }: Props) {
       });
       void api.reorderRows(databaseId, orderedIds);
     },
-    [databaseId],
+    [databaseId, setData],
   );
 
   const actions: DbActions = {
@@ -172,7 +172,7 @@ export default function DatabaseView({ databaseId }: Props) {
       );
       void api.updateView(databaseId, kind, patch);
     },
-    [databaseId],
+    [databaseId, setData],
   );
 
   if (!data) return <div className="db-loading" aria-busy="true" />;

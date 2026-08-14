@@ -21,6 +21,43 @@ interface Props {
   onClose: () => void;
 }
 
+interface FormState {
+  name: string;
+  organization_id: number | "";
+  contact_id: number | "";
+  stage: DealStage;
+  value: number;
+  probability: number;
+  close_date: string;
+}
+
+/** An edit starts from the deal; a new deal starts blank, on the stage's default probability. */
+function initialForm(
+  existing?: Deal,
+  defaultOrganizationId?: number,
+): FormState {
+  if (!existing) {
+    return {
+      name: "",
+      organization_id: defaultOrganizationId ?? "",
+      contact_id: "",
+      stage: "New",
+      value: 0,
+      probability: STAGE_PROBABILITY.New,
+      close_date: "",
+    };
+  }
+  return {
+    name: existing.name,
+    organization_id: existing.organization_id ?? defaultOrganizationId ?? "",
+    contact_id: existing.contact_id ?? "",
+    stage: existing.stage,
+    value: existing.value,
+    probability: existing.probability,
+    close_date: existing.close_date ?? "",
+  };
+}
+
 export default function DealForm({
   existing,
   organizations,
@@ -29,23 +66,17 @@ export default function DealForm({
   onSaved,
   onClose,
 }: Props) {
-  const [form, setForm] = useState({
-    name: existing?.name ?? "",
-    organization_id: existing?.organization_id ?? defaultOrganizationId ?? "",
-    contact_id: existing?.contact_id ?? "",
-    stage: existing?.stage ?? "New",
-    value: existing?.value ?? 0,
-    probability: existing?.probability ?? STAGE_PROBABILITY.New,
-    close_date: existing?.close_date ?? "",
-  });
+  const [form, setForm] = useState(() =>
+    initialForm(existing, defaultOrganizationId),
+  );
 
   async function submit(e: SubmitEvent) {
     e.preventDefault();
     const body = {
       ...form,
       organization_id:
-        form.organization_id === "" ? null : Number(form.organization_id),
-      contact_id: form.contact_id === "" ? null : Number(form.contact_id),
+        form.organization_id === "" ? null : form.organization_id,
+      contact_id: form.contact_id === "" ? null : form.contact_id,
       value: form.value,
       probability: form.probability,
       close_date: form.close_date || null,

@@ -128,7 +128,7 @@ export default function Editor({ pageId, initialBlocks }: Props) {
         }),
       );
     }
-  }, [pageId]);
+  }, [pageId, enqueue]);
 
   useLayoutEffect(() => {
     if (pendingFocus.current) {
@@ -138,13 +138,16 @@ export default function Editor({ pageId, initialBlocks }: Props) {
     }
   });
 
-  const flushSave = useCallback((id: string) => {
-    const timer = timers.current.get(id);
-    if (timer) clearTimeout(timer);
-    timers.current.delete(id);
-    const block = blocksRef.current.find((b) => b.id === id);
-    if (block) enqueue(() => api.updateBlock(id, { content: block.content }));
-  }, []);
+  const flushSave = useCallback(
+    (id: string) => {
+      const timer = timers.current.get(id);
+      if (timer) clearTimeout(timer);
+      timers.current.delete(id);
+      const block = blocksRef.current.find((b) => b.id === id);
+      if (block) enqueue(() => api.updateBlock(id, { content: block.content }));
+    },
+    [enqueue],
+  );
 
   const scheduleSave = useCallback(
     (id: string) => {
@@ -178,7 +181,7 @@ export default function Editor({ pageId, initialBlocks }: Props) {
         scheduleSave(id);
       }
     },
-    [scheduleSave],
+    [scheduleSave, enqueue],
   );
 
   const insertBlock = useCallback(
@@ -205,13 +208,16 @@ export default function Editor({ pageId, initialBlocks }: Props) {
         pendingFocus.current = { id, offset: focusOffset };
       return id;
     },
-    [pageId],
+    [pageId, enqueue],
   );
 
-  const removeBlock = useCallback((id: string) => {
-    setBlocks((bs) => bs.filter((b) => b.id !== id));
-    enqueue(() => api.deleteBlock(id));
-  }, []);
+  const removeBlock = useCallback(
+    (id: string) => {
+      setBlocks((bs) => bs.filter((b) => b.id !== id));
+      enqueue(() => api.deleteBlock(id));
+    },
+    [enqueue],
+  );
 
   const convertType = useCallback(
     (id: string, type: string, content?: Record<string, unknown>) => {
@@ -225,7 +231,7 @@ export default function Editor({ pageId, initialBlocks }: Props) {
         api.updateBlock(id, { type, content: content ?? block?.content }),
       );
     },
-    [],
+    [enqueue],
   );
 
   const handleEnter = useCallback(
@@ -249,7 +255,7 @@ export default function Editor({ pageId, initialBlocks }: Props) {
       insertBlock(i + 1, newType, content, 0);
       return true;
     },
-    [convertType, setText, flushSave, insertBlock],
+    [convertType, setText, insertBlock],
   );
 
   const handleBackspace = useCallback(
@@ -290,7 +296,7 @@ export default function Editor({ pageId, initialBlocks }: Props) {
         pendingFocus.current = { id: prev.id, offset: prevText.length };
       }
     },
-    [removeBlock, convertType, setText, flushSave],
+    [removeBlock, convertType, setText],
   );
 
   const pickSlash = useCallback(
@@ -338,35 +344,42 @@ export default function Editor({ pageId, initialBlocks }: Props) {
     [setText],
   );
 
+  /** The slash menu's own keys while it is open. True means it consumed the event. */
+  const handleSlashKey = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>, s: SlashState) => {
+      const items = filterBlockTypes(s.query);
+      if (e.key === "ArrowDown" && items.length > 0) {
+        e.preventDefault();
+        setSlash({ ...s, selected: (s.selected + 1) % items.length });
+        return true;
+      }
+      if (e.key === "ArrowUp" && items.length > 0) {
+        e.preventDefault();
+        setSlash({
+          ...s,
+          selected: (s.selected - 1 + items.length) % items.length,
+        });
+        return true;
+      }
+      if (e.key === "Enter" && items[s.selected]) {
+        e.preventDefault();
+        pickSlash(items[s.selected].type);
+        return true;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setSlash(null);
+        return true;
+      }
+      return false;
+    },
+    [pickSlash],
+  );
+
   const onKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>, id: string) => {
       const s = slashRef.current;
-      if (s?.blockId === id) {
-        const items = filterBlockTypes(s.query);
-        if (e.key === "ArrowDown" && items.length > 0) {
-          e.preventDefault();
-          setSlash({ ...s, selected: (s.selected + 1) % items.length });
-          return;
-        }
-        if (e.key === "ArrowUp" && items.length > 0) {
-          e.preventDefault();
-          setSlash({
-            ...s,
-            selected: (s.selected - 1 + items.length) % items.length,
-          });
-          return;
-        }
-        if (e.key === "Enter" && items[s.selected]) {
-          e.preventDefault();
-          pickSlash(items[s.selected].type);
-          return;
-        }
-        if (e.key === "Escape") {
-          e.preventDefault();
-          setSlash(null);
-          return;
-        }
-      }
+      if (s?.blockId === id && handleSlashKey(e, s)) return;
       if (e.key === "/" && !s) {
         const el = e.currentTarget;
         const rect = el.getBoundingClientRect();
@@ -385,7 +398,7 @@ export default function Editor({ pageId, initialBlocks }: Props) {
       }
       if (e.key === "Backspace") handleBackspace(id, e);
     },
-    [pickSlash, handleEnter, handleBackspace],
+    [handleSlashKey, handleEnter, handleBackspace],
   );
 
   const onBlur = useCallback(
@@ -395,16 +408,20 @@ export default function Editor({ pageId, initialBlocks }: Props) {
     [flushSave],
   );
 
-  const onToggleTodo = useCallback((id: string, checked: boolean) => {
-    setBlocks((bs) => {
-      const next = bs.map((b) =>
-        b.id === id ? { ...b, content: { ...b.content, checked } } : b,
-      );
-      const block = next.find((b) => b.id === id);
-      if (block) enqueue(() => api.updateBlock(id, { content: block.content }));
-      return next;
-    });
-  }, []);
+  const onToggleTodo = useCallback(
+    (id: string, checked: boolean) => {
+      setBlocks((bs) => {
+        const next = bs.map((b) =>
+          b.id === id ? { ...b, content: { ...b.content, checked } } : b,
+        );
+        const block = next.find((b) => b.id === id);
+        if (block)
+          enqueue(() => api.updateBlock(id, { content: block.content }));
+        return next;
+      });
+    },
+    [enqueue],
+  );
 
   const onDragEnd = useCallback(
     (event: DragEndEvent) => {
@@ -419,7 +436,7 @@ export default function Editor({ pageId, initialBlocks }: Props) {
         return next;
       });
     },
-    [pageId],
+    [pageId, enqueue],
   );
 
   const onBodyClick = useCallback(

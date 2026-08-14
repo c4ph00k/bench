@@ -22,6 +22,53 @@ import {
 } from "../types";
 import { formatMoney } from "../format";
 
+function DealCard({
+  deal,
+  index,
+  orgName,
+}: {
+  deal: Deal;
+  index: number;
+  orgName: string;
+}) {
+  const navigate = useNavigate();
+  const open = () => void navigate(`/deals/${deal.id}`);
+  return (
+    <Draggable draggableId={String(deal.id)} index={index}>
+      {(dragProvided, dragSnapshot) => (
+        <div
+          ref={dragProvided.innerRef}
+          {...dragProvided.draggableProps}
+          {...dragProvided.dragHandleProps}
+          // Both come from dragHandleProps too, but ESLint cannot see through the spread, and
+          // these are the values it already sets.
+          role="button"
+          tabIndex={0}
+          className={`deal-card${dragSnapshot.isDragging ? " dragging" : ""}`}
+          onClick={(e) => {
+            if (!e.defaultPrevented) open();
+          }}
+          onKeyDown={(e) => {
+            // The library drags from a global keyboard sensor rather than a handler here, so
+            // Space and the arrows still reach it; Enter is ours and opens the deal.
+            if (e.key === "Enter") open();
+          }}
+        >
+          <div className="deal-name">{deal.name}</div>
+          <div className="deal-org">{orgName}</div>
+          <div className="deal-figures">
+            <span className="deal-value">{formatMoney(deal.value)}</span>
+            <span className="deal-prob">{deal.probability}%</span>
+          </div>
+          <div className="deal-expected">
+            {formatMoney(expectedValue(deal))} expected
+          </div>
+        </div>
+      )}
+    </Draggable>
+  );
+}
+
 export default function Pipeline() {
   const { data: fetched } = useFetch<Deal[]>("/api/crm/deals");
   // Once a card has been dragged the local order wins; until then the fetched list is what shows.
@@ -29,7 +76,6 @@ export default function Pipeline() {
   const [moved, setMoved] = useState<Deal[] | null>(null);
   const deals = moved ?? fetched ?? [];
   const { data: orgs } = useFetch<Organization[]>("/api/crm/organizations");
-  const navigate = useNavigate();
   const orgName = useMemo(
     () => new Map((orgs ?? []).map((o) => [o.id, o.name])),
     [orgs],
@@ -118,51 +164,14 @@ export default function Pipeline() {
                     </div>
                     <div className="board-cards">
                       {inStage.map((deal, index) => (
-                        <Draggable
-                          draggableId={String(deal.id)}
-                          index={index}
+                        <DealCard
                           key={deal.id}
-                        >
-                          {(dragProvided, dragSnapshot) => (
-                            <div
-                              ref={dragProvided.innerRef}
-                              {...dragProvided.draggableProps}
-                              {...dragProvided.dragHandleProps}
-                              // Both come from dragHandleProps too, but ESLint cannot see through
-                              // the spread, and these are the values it already sets.
-                              role="button"
-                              tabIndex={0}
-                              className={`deal-card${dragSnapshot.isDragging ? " dragging" : ""}`}
-                              onClick={(e) => {
-                                if (!e.defaultPrevented)
-                                  void navigate(`/deals/${deal.id}`);
-                              }}
-                              onKeyDown={(e) => {
-                                // The library drags from a global keyboard sensor rather than a
-                                // handler here, so Space and the arrows still reach it; Enter is
-                                // ours and opens the deal.
-                                if (e.key === "Enter")
-                                  void navigate(`/deals/${deal.id}`);
-                              }}
-                            >
-                              <div className="deal-name">{deal.name}</div>
-                              <div className="deal-org">
-                                {orgName.get(deal.organization_id ?? -1) ?? ""}
-                              </div>
-                              <div className="deal-figures">
-                                <span className="deal-value">
-                                  {formatMoney(deal.value)}
-                                </span>
-                                <span className="deal-prob">
-                                  {deal.probability}%
-                                </span>
-                              </div>
-                              <div className="deal-expected">
-                                {formatMoney(expectedValue(deal))} expected
-                              </div>
-                            </div>
-                          )}
-                        </Draggable>
+                          deal={deal}
+                          index={index}
+                          orgName={
+                            orgName.get(deal.organization_id ?? -1) ?? ""
+                          }
+                        />
                       ))}
                       {provided.placeholder}
                     </div>
