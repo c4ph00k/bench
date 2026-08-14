@@ -195,6 +195,12 @@ export default tseslint.config(
     },
   },
 
+  // Same reasoning: these run git and the local toolchain on a developer machine.
+  {
+    files: ["scripts/**"],
+    rules: { "sonarjs/no-os-command-from-path": "off" },
+  },
+
   {
     files: ["server/test/**/*.ts", "web/src/**/*.test.{ts,tsx}"],
     extends: [vitest.configs.recommended],

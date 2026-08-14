@@ -12,10 +12,8 @@ export const DEAL_STAGES = [
   "Lost",
 ] as const;
 export type DealStage = (typeof DEAL_STAGES)[number];
-const CONTACT_STATUSES = ["lead", "qualified", "customer"] as const;
-export type ContactStatus = (typeof CONTACT_STATUSES)[number];
-const ACTIVITY_TYPES = ["note", "call", "email"] as const;
-export type ActivityType = (typeof ACTIVITY_TYPES)[number];
+export type ContactStatus = "lead" | "qualified" | "customer";
+export type ActivityType = "note" | "call" | "email";
 
 export interface OrganizationInput {
   name: string;

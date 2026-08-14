@@ -15,7 +15,8 @@ const SYNTHETIC = new Set([
   "server/src/space/seed.ts",
 ]);
 
-const EMAIL = /[\w.+-]+@[\w-]+\.[a-z]{2,}/gi;
+// Bounded quantifiers: an unbounded local part backtracks badly on long lines.
+const EMAIL = /[\w.+-]{1,64}@[\w-]{1,63}\.[a-z]{2,24}/gi;
 /** Separators required, so plain runs of digits are not mistaken for phone numbers. */
 const PHONE = /(?:\+1[\s.-]?)?\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}\b/g;
 const ALLOW = /allow-secret:\s*\S+/;
