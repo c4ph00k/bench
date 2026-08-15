@@ -170,25 +170,11 @@ describe("Sidebar", () => {
   });
 });
 
-describe("Sidebar search and theme controls", () => {
+describe("Sidebar search", () => {
   it("opens quick-find from the visible Search control", async () => {
     const { onSearch } = renderSidebar();
     await userEvent.click(screen.getByRole("button", { name: /Search/ }));
     expect(onSearch).toHaveBeenCalled();
-  });
-
-  it("toggles dark mode and persists the choice", async () => {
-    renderSidebar();
-    await userEvent.click(
-      screen.getByRole("button", { name: "Switch to dark mode" }),
-    );
-    expect(document.documentElement.dataset.theme).toBe("dark");
-    expect(localStorage.getItem("ps.theme")).toBe("dark");
-    await userEvent.click(
-      screen.getByRole("button", { name: "Switch to light mode" }),
-    );
-    expect(document.documentElement.dataset.theme).toBeUndefined();
-    expect(localStorage.getItem("ps.theme")).toBe("light");
   });
 });
 

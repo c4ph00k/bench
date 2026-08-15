@@ -77,6 +77,8 @@ These read as machine-written and are unwelcome here.
 **In UI**
 
 - Gradients. Flat colour only.
+- A brand colour per app. In Bench chrome, colour means state - amber is "you are here" - and an
+  app is told apart by its glyph. One colour per app stops scaling at about four.
 - Left-border accent stripes on cards and callouts.
 - Drop shadows used for decoration rather than to lift something that is genuinely floating.
 - Emoji as icons. Use the inline SVG set in `web/src/crm/components/Icons.tsx`, or `lucide-react`
@@ -97,9 +99,13 @@ The exception, kept deliberately: the small conic-gradient brand mark.
 
 ## CSS
 
-- Each app owns one global `styles.css`. They are **not** scoped, and class names across the three
+- Each app owns one global `styles.css`. They are **not** scoped, and class names across the four
   apps genuinely collide - see [PROJECT.md](./PROJECT.md).
 - Reuse the palette variables in `:root`. Do not introduce a new colour without a reason.
+- **Every colour goes through a variable, and every variable has a dark value.** A literal in a
+  rule is a colour that cannot be themed; the exceptions are the nav strip, which is deliberately
+  self-contained, and the handful of tokens that mean "on a dark block" and stay put in both
+  themes. Set `color-scheme` too, or native date pickers and scrollbars stay light.
 - Prefer grid or flex sizing that adapts over fixed widths that overflow. A board built from
   `repeat(6, minmax(0, 1fr))` never produces a horizontal scrollbar; six 210px columns do.
 - Check the whole box when you change spacing - above, below, left and right. Insets are often

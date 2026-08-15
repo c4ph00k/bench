@@ -1,18 +1,35 @@
-/* Launcher. Flat, sharp, amber / blue / purple over grays. No gradients. */
+/**
+ * Launcher. Flat, sharp, no gradients. Colour means state, not identity: amber marks what you
+ * are about to open, and the apps are told apart by their glyph and their words.
+ */
 
 :root {
+  color-scheme: light;
   --amber: #ecad0a;
-  --blue: #209dd7;
-  --purple: #753991;
+  --amber-deep: #a97d05;
   --ink: #1c2128;
-  --gray-500: #6b7280;
-  --gray-300: #d4d8de;
-  --gray-100: #f2f4f6;
-  --white: #ffffff;
+  --bg: #f2f4f6;
+  --surface: #ffffff;
+  --border: #dfe3e8;
+  --text: #1c2128;
+  --text-soft: #5b636e;
+  --text-faint: #868e99;
+  --ghost: rgba(28, 33, 40, 0.05);
   font-family:
     -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
     Arial, sans-serif;
-  color: var(--ink);
+  color: var(--text);
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #14171c;
+  --surface: #1c2128;
+  --border: #2b323b;
+  --text: #e9edf2;
+  --text-soft: #9aa3ae;
+  --text-faint: #6f7884;
+  --ghost: rgba(255, 255, 255, 0.05);
 }
 
 * {
@@ -21,12 +38,13 @@
 
 body {
   margin: 0;
-  background: var(--gray-100);
+  background: var(--bg);
+  color: var(--text);
   font-size: 14px;
   line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* The nav strip and the page below it. The amber line now belongs to the strip. */
 #root {
   display: flex;
   flex-direction: column;
@@ -36,68 +54,179 @@ body {
 .home {
   flex: 1;
   width: 100%;
-  padding: 64px 32px;
-  max-width: 1080px;
+  max-width: 1180px;
   margin: 0 auto;
+  padding: 72px 32px 48px;
+}
+
+.home-eyebrow {
+  margin: 0 0 14px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-faint);
 }
 
 .home-header h1 {
   margin: 0;
-  font-size: 40px;
-  letter-spacing: -0.5px;
+  font-size: 76px;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  font-weight: 800;
 }
 
-.home-header p {
-  margin: 8px 0 48px;
-  color: var(--gray-500);
-  font-size: 16px;
+.home-lede {
+  margin: 18px 0 0;
+  max-width: 46ch;
+  font-size: 17px;
+  line-height: 1.55;
+  color: var(--text-soft);
 }
 
 .home-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin: 52px 0 0;
 }
 
+@media (max-width: 820px) {
+  .home-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .home-header h1 {
+    font-size: 52px;
+  }
+}
+
+/* The glyph is the card's identity, so it is drawn large and faint behind the words rather
+   than shrunk into a badge. It picks up the amber on hover, with the border. */
 .home-card {
-  display: block;
-  background: var(--white);
-  border: 1px solid var(--gray-300);
-  border-top: 4px solid var(--gray-300);
-  border-radius: 6px;
-  padding: 24px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 236px;
+  padding: 26px 26px 22px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
   text-decoration: none;
   color: inherit;
+  transition:
+    border-color 120ms ease,
+    transform 120ms ease;
+}
+
+.home-card > svg:first-child {
+  position: absolute;
+  top: -14px;
+  right: -14px;
+  color: var(--ghost);
+  transition: color 120ms ease;
+  pointer-events: none;
 }
 
 .home-card:hover {
-  border-color: var(--ink);
+  border-color: var(--amber);
+  transform: translateY(-2px);
+}
+
+.home-card:hover > svg:first-child {
+  color: rgba(236, 173, 10, 0.16);
+}
+
+.home-card:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 2px;
+}
+
+.home-card-body {
+  flex: 1;
+  position: relative;
 }
 
 .home-card h2 {
-  display: flex;
-  align-items: center;
-  gap: 10px;
   margin: 0;
-  font-size: 22px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
+  font-size: 27px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }
 
 .home-tagline {
-  margin: 4px 0 12px;
+  margin: 3px 0 12px;
+  font-size: 14px;
   font-weight: 600;
+  color: var(--text-soft);
 }
 
 .home-detail {
-  margin: 0 0 20px;
-  color: var(--gray-500);
-  min-height: 42px;
+  margin: 0;
+  max-width: 42ch;
+  color: var(--text-faint);
+}
+
+.home-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.home-facts li {
+  padding: 3px 9px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-faint);
 }
 
 .home-open {
-  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 20px;
   font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  color: var(--text-faint);
+}
+
+.home-card:hover .home-open {
+  color: var(--amber-deep);
+}
+
+[data-theme="dark"] .home-card:hover .home-open {
+  color: var(--amber);
+}
+
+.home-card:hover .home-open svg {
+  transform: translateX(3px);
+}
+
+.home-open svg {
+  transition: transform 120ms ease;
+}
+
+.home-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 44px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+  font-size: 12.5px;
+  color: var(--text-faint);
+}
+
+.home-footer strong {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 600;
+  color: var(--text-soft);
 }

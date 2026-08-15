@@ -20,9 +20,9 @@ which is what makes running the checks locally a requirement rather than a court
 
 ## 1. Understand before changing
 
-- Read the app's docs first: [crm/](./crm/), [space/](./space/), [groove/](./groove/). Each holds
-  an IMPLEMENTATION.md with the domain rules and the traps, and a REQUIREMENTS.md with the original
-  brief.
+- Read the app's docs first: [crm/](./crm/), [space/](./space/), [rolodex/](./rolodex/),
+  [groove/](./groove/). Each holds an IMPLEMENTATION.md with the domain rules and the traps, and a
+  REQUIREMENTS.md with the original brief.
 - For a bug, **prove the root cause before fixing it.** Reproduce it, measure it, show the evidence.
   Do not apply a workaround to a symptom you have not explained. If a fix depends on a guess, the
   guess is the thing to test first.
@@ -48,18 +48,18 @@ Three layers, each with a different job. Add to whichever ones the change touche
 
 ### Unit tests - `npm test`
 
-vitest, server and web. Server suites live in `server/test/{crm,space}/`; web suites sit beside the
-code they cover. Coverage is measured across every app at 80% statements and currently sits at 82%
-on the server and 90% on web, with `web/src/groove/audio/**` excluded because jsdom has no
-`AudioContext`.
+vitest, server and web. Server suites live in `server/test/{crm,space,rolodex}/`; web suites sit
+beside the code they cover. Coverage is measured across every app at 80% statements and currently
+sits at 87% on the server and 86% on web, with `web/src/groove/audio/**` excluded because jsdom has
+no `AudioContext`.
 
 Use these for logic with edges: calculations, filtering, sorting, migrations, data transforms. A
 new derived value or a new column default should get one.
 
-jsdom implements no layout, no pointer capture, no canvas and no audio, so any component that
-measures itself needs a stub before it will render at all. [CONTROLS.md](./CONTROLS.md) lists the
-six that have bitten so far and what each suite does about them - read it before concluding that a
-component is untestable.
+jsdom implements no layout, no pointer capture, no canvas, no audio and no `Blob.text()`, so any
+component that measures itself or reads a file needs a stub before it will render at all.
+[CONTROLS.md](./CONTROLS.md) lists the seven that have bitten so far and what each suite does
+about them - read it before concluding that a component is untestable.
 
 ### End-to-end tests - `npm run e2e`
 
@@ -83,7 +83,10 @@ Rules that keep this suite reliable:
   the viewport and dnd-kit drags never activate.
 - **Drag with the keyboard where the library supports it.** CRM's pipeline uses
   `@hello-pangea/dnd`: Space to lift, arrows to move, Space to drop - deterministic, no coordinates.
-  Space's board uses dnd-kit, which has no keyboard sensor here, so its drags stay mouse-driven.
+  Space's board and Rolodex's circles use dnd-kit; the board now has a keyboard sensor, but its
+  specs stay mouse-driven because a column drag starts from a grip that only appears on hover.
+  A dnd-kit drag needs the pointer to move past its 6px activation distance in several steps before
+  it starts, so `mouse.move(..., { steps })` is not optional.
 - `getByRole` name matching is substring-based: `{ name: "BASS step 1" }` also matches steps 10-16.
   Pass `exact: true` for numbered labels. **This is a Playwright rule only** - Testing Library's
   `name` already matches the whole string, and `exact` is not one of its options there.

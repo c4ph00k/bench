@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { useMatch, useNavigate } from "react-router";
-import { Database, Moon, Plus, Search, Sun } from "lucide-react";
+import { Database, Plus, Search } from "lucide-react";
 import { IconSpace } from "../../shared/AppIcons";
 import { api, type TreeNode } from "../api";
-import { currentTheme, toggleTheme, type Theme } from "../theme";
 import TreeItem from "./TreeItem";
 import { subtreeContains } from "../tree";
 
@@ -27,7 +26,6 @@ export default function Sidebar({ tree, onChange, onSearch }: Props) {
   const navigate = useNavigate();
   const pageId = useMatch("/p/:pageId")?.params.pageId;
   const [expanded, setExpanded] = useState<Set<string>>(loadExpanded);
-  const [theme, setTheme] = useState<Theme>(currentTheme);
 
   const toggle = (id: string) => {
     const next = new Set(expanded);
@@ -98,16 +96,6 @@ export default function Sidebar({ tree, onChange, onSearch }: Props) {
         >
           <Database size={15} />
           New database
-        </button>
-        <button
-          className="sidebar-action"
-          aria-label={
-            theme === "dark" ? "Switch to light mode" : "Switch to dark mode"
-          }
-          onClick={() => setTheme(toggleTheme())}
-        >
-          {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
-          {theme === "dark" ? "Light mode" : "Dark mode"}
         </button>
       </div>
     </nav>

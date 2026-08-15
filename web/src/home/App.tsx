@@ -1,13 +1,18 @@
 /** Launcher: one card per app. Plain anchors - each app is its own document. */
 import BenchNav from "../shared/BenchNav";
-import { IconCrm, IconGroove, IconSpace } from "../shared/AppIcons";
+import {
+  IconCrm,
+  IconGroove,
+  IconRolodex,
+  IconSpace,
+} from "../shared/AppIcons";
 
 interface AppCard {
   href: string;
   name: string;
   tagline: string;
   detail: string;
-  color: string;
+  facts: string[];
   Icon: (p: { size?: number }) => React.ReactElement;
 }
 
@@ -15,28 +20,37 @@ const APPS: AppCard[] = [
   {
     href: "/crm/",
     name: "CRM",
-    tagline: "Personal sales CRM",
+    tagline: "Deals, and the people behind them",
     detail:
-      "Organizations, contacts, deals, a drag-and-drop pipeline and a dashboard.",
-    color: "var(--blue)",
+      "Organizations, contacts and a drag-and-drop pipeline, with a dashboard that adds up what is actually in play.",
+    facts: ["Pipeline", "Dashboard", "Activities"],
     Icon: IconCrm,
   },
   {
     href: "/space/",
     name: "Space",
-    tagline: "Personal knowledge manager",
+    tagline: "Everything you know, in one place",
     detail:
-      "Pages and blocks, databases with table, board and list views, quick search.",
-    color: "var(--amber)",
+      "Pages and blocks that nest as deep as you like, databases with table, board and list views, and search across the lot.",
+    facts: ["Pages", "Databases", "Search"],
     Icon: IconSpace,
+  },
+  {
+    href: "/rolodex/",
+    name: "Rolodex",
+    tagline: "The people in your life, kept close",
+    detail:
+      "Who you are due to contact, what is going on with them, birthdays coming up, and a timeline of every conversation.",
+    facts: ["Check-ins", "Circles", "Calendar"],
+    Icon: IconRolodex,
   },
   {
     href: "/groove/",
     name: "Groove",
-    tagline: "Browser groovebox",
+    tagline: "A groovebox in the browser",
     detail:
-      "Four synth units, one transport, a master DJ filter. All Web Audio, no samples.",
-    color: "var(--purple)",
+      "Four synth units, one transport and a master DJ filter. Pure Web Audio — no samples, no plugins, no latency budget.",
+    facts: ["4 units", "16 steps", "Web Audio"],
     Icon: IconGroove,
   },
 ];
@@ -47,29 +61,54 @@ export default function App() {
       <BenchNav active="home" />
       <div className="home">
         <header className="home-header">
+          <p className="home-eyebrow">Local-first · no login · no cloud</p>
           <h1>Bench</h1>
-          <p>
-            Three local-first apps, one server. Everything runs on this machine.
+          <p className="home-lede">
+            Four apps, one server, one machine. Your data lives in SQLite files
+            on this disk and goes nowhere else.
           </p>
         </header>
+
         <div className="home-grid">
           {APPS.map((app) => (
-            <a
-              className="home-card"
-              href={app.href}
-              key={app.href}
-              style={{ borderTopColor: app.color }}
-            >
-              <h2 style={{ color: app.color }}>
-                <app.Icon size={22} />
-                {app.name}
-              </h2>
-              <p className="home-tagline">{app.tagline}</p>
-              <p className="home-detail">{app.detail}</p>
-              <span className="home-open">Open</span>
+            <a className="home-card" href={app.href} key={app.href}>
+              <app.Icon size={104} />
+              <div className="home-card-body">
+                <h2>{app.name}</h2>
+                <p className="home-tagline">{app.tagline}</p>
+                <p className="home-detail">{app.detail}</p>
+                <ul className="home-facts">
+                  {app.facts.map((f) => (
+                    <li key={f}>{f}</li>
+                  ))}
+                </ul>
+              </div>
+              <span className="home-open">
+                Open
+                <svg
+                  width="15"
+                  height="15"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M5 12h13M12 5.5 18.5 12 12 18.5" />
+                </svg>
+              </span>
             </a>
           ))}
         </div>
+
+        <footer className="home-footer">
+          <span>
+            <strong>npm run dev</strong> · API on 8100, Vite on 8101
+          </span>
+          <span>SQLite in ./data</span>
+        </footer>
       </div>
     </>
   );

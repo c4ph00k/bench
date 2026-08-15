@@ -180,20 +180,29 @@ Where it stands, from `npm run coverage`:
 
 | Scope                       | Statements |
 | --------------------------- | ---------- |
-| `server/src`                | 82%        |
+| `server/src`                | 87%        |
 | `web/src/crm`               | 100%       |
 | `web/src/crm/components`    | 95%        |
 | `web/src/crm/pages`         | 96%        |
 | `web/src/space`             | 92%        |
+| `web/src/rolodex`           | 82%        |
+| `web/src/rolodex/pages`     | 80%        |
 | `web/src/groove`            | 88%        |
 | `web/src/groove/components` | 97%        |
 | `web/src/home`              | 100%       |
-| **web overall**             | **90%**    |
+| **web overall**             | **86%**    |
 
 **Do not lower the bar to make a red run green.**
 
 **Thresholds stay on `statements` only.** Branches are at 81% on web but 72% on the server, so a
 branches threshold at 80 would fail there. Revisit by raising the server's branch coverage first.
+
+**Seed files are covered by asserting on the seeded database, not by exclusion.**
+`server/test/rolodex/seed.test.ts` runs `seedIfEmpty` and checks the shape of what comes out -
+every circle populated, an overdue person and an in-touch one, dates inside the next month, no
+interaction in the future. It is 1,000 lines of literal data, so the alternative was excluding it
+from the measure; the test is worth more, because the seed is the first thing anyone sees.
+`server/src/crm/seed.ts` has no such test and is the largest uncovered file left.
 
 ### What is not covered, and why
 
@@ -205,7 +214,7 @@ must not be allowed to imply otherwise. Groove's pure modules (`music.ts`, `para
 
 The largest remaining hole is Space's `BoardView` at 31%.
 
-Six jsdom and library gaps shape how the suites are written. None is a fault in the code, and every
+Seven jsdom and library gaps shape how the suites are written. None is a fault in the code, and every
 one of them will bite again:
 
 - **jsdom implements no pointer capture.** Every knob, fader and grid calls `setPointerCapture` on
@@ -221,7 +230,11 @@ one of them will bite again:
   for whatever the chart last measured. Query the container `render` returns, not `screen`.
 - **`@hello-pangea/dnd` cannot drag in jsdom** - it measures the boxes it moves. `Pipeline.test.tsx`
   stubs the library and calls the `onDragEnd` the page hands it, which covers the optimistic
-  re-stage. The real drag is an e2e test.
+  re-stage. The real drag is an e2e test. dnd-kit is the same: Space's board and Rolodex's circles
+  are dragged in `e2e/`, and their unit tests cover what the drag hands back.
+- **jsdom has no `Blob.text()`**, which is how Rolodex's import modal reads a chosen file - the
+  upload succeeds and the read throws. The setup file polyfills it through `FileReader`, which
+  jsdom does implement.
 - **`exact: true` is a Playwright option, not a Testing Library one.** Testing Library's `name`
   already matches the full string; passing `exact` there is a type error. The substring-matching
   warning in [PROCESS.md](./PROCESS.md) applies to the e2e suite only.
@@ -338,9 +351,13 @@ this makes it durable rather than dependent on `.gitignore` staying correct.
 
 **PII.** Flag email shapes and phone shapes, with three carve-outs:
 
-- **The seed files are excluded** - `server/src/crm/seed.ts` and `server/src/space/seed.ts`. They
-  exist to hold synthetic data, and that is the standing assumption: nothing real goes in them. If
-  that ever stops holding, this exclusion is why a leak would go unnoticed.
+- **The seed files are excluded** - `server/src/crm/seed.ts`, `server/src/space/seed.ts` and
+  `server/src/rolodex/seed.ts`. They exist to hold synthetic data, and that is the standing
+  assumption: nothing real goes in them. If that ever stops holding, this exclusion is why a leak
+  would go unnoticed. Rolodex's seed is a list of invented people with addresses to match, and it
+  earned the exclusion the hard way: the check found 24 of them the moment the file was staged.
+  The three that sat at **live** domains were changed rather than excused - an invented person at
+  a real mailbox is the one case where synthetic data reaches someone.
 - **Phone numbers in the `555-01xx` range pass.** That is the NANP block reserved for fiction and it
   cannot dial a real person.
 - **Addresses on a reserved domain pass** - `example.com`, `.net`, `.org`, and the `.test`,

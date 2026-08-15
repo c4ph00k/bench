@@ -1,8 +1,9 @@
 /**
  * The navigation strip. Loaded into all four documents, so every class is prefixed and every
- * value is literal: the three app stylesheets collide on .brand and :root, Space redefines its
+ * value is literal: the four app stylesheets collide on .brand and :root, each redefines its
  * palette under [data-theme="dark"], and Groove restyles every element and sets a monospace
- * body font. The strip can inherit none of it and must look the same over all of them.
+ * body font. The strip can inherit none of it and must look the same over all of them - which
+ * is why the theme is read from the document element here too, rather than from a variable.
  */
 
 .bench-nav {
@@ -13,8 +14,9 @@
   flex: 0 0 auto;
   height: 47px;
   padding: 0 18px;
-  background: #1c2128;
+  background: #ffffff;
   border-top: 3px solid #ecad0a;
+  border-bottom: 1px solid #e3e6ea;
   font-family:
     -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
     Arial, sans-serif;
@@ -23,33 +25,48 @@
   letter-spacing: normal;
 }
 
+[data-theme="dark"] .bench-nav {
+  background: #1c2128;
+  border-bottom-color: #000000;
+}
+
 .bench-nav-brand {
   display: flex;
   align-items: center;
   gap: 9px;
   flex: 0 0 auto;
-  color: #ffffff;
+  color: #1c2128;
   font-size: 15px;
   font-weight: 700;
   letter-spacing: -0.01em;
 }
 
+[data-theme="dark"] .bench-nav-brand {
+  color: #ffffff;
+}
+
 .bench-nav-links {
   display: flex;
-  align-self: stretch;
+  align-items: center;
+  gap: 2px;
+  margin-right: auto;
 }
 
 .bench-nav-link {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 0 15px;
-  color: #98a1ad;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 6px;
+  color: #5b636e;
   text-decoration: none;
   font-weight: 600;
   white-space: nowrap;
-  /* Transparent on every tab, coloured on the active one, so nothing shifts when it moves. */
-  border-bottom: 3px solid transparent;
+}
+
+[data-theme="dark"] .bench-nav-link {
+  color: #98a1ad;
 }
 
 .bench-nav-link svg {
@@ -57,10 +74,51 @@
 }
 
 .bench-nav-link:hover {
+  color: #1c2128;
+  background: #f0f2f5;
+}
+
+[data-theme="dark"] .bench-nav-link:hover {
   color: #ffffff;
   background: #272d36;
 }
 
+/* Amber is the one accent, and it means "you are here" - not "this is the CRM". */
 .bench-nav-link[aria-current="page"] {
+  color: #a97d05;
+  background: rgba(236, 173, 10, 0.14);
+}
+
+[data-theme="dark"] .bench-nav-link[aria-current="page"] {
+  color: #f0b81f;
+  background: rgba(236, 173, 10, 0.16);
+}
+
+.bench-nav-theme {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: #5b636e;
+  cursor: pointer;
+}
+
+[data-theme="dark"] .bench-nav-theme {
+  color: #98a1ad;
+}
+
+.bench-nav-theme:hover {
+  color: #1c2128;
+  background: #f0f2f5;
+}
+
+[data-theme="dark"] .bench-nav-theme:hover {
   color: #ffffff;
+  background: #272d36;
 }

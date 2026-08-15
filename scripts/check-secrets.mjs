@@ -13,6 +13,7 @@ import { readFileSync } from "node:fs";
 const SYNTHETIC = new Set([
   "server/src/crm/seed.ts",
   "server/src/space/seed.ts",
+  "server/src/rolodex/seed.ts",
 ]);
 
 // Bounded quantifiers: an unbounded local part backtracks badly on long lines.

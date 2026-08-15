@@ -1,8 +1,7 @@
 import { describe, expect, it, beforeEach } from "vitest";
 import request from "supertest";
 import { openDb } from "../../src/space/db.js";
-import { openDb as openCrmDb } from "../../src/crm/db.js";
-import { createApp } from "../../src/app.js";
+import { appWithSpace } from "./app.js";
 import type Database from "better-sqlite3";
 import type express from "express";
 import type { Block, Ok, Page } from "./responses.js";
@@ -13,7 +12,7 @@ let pageId: string;
 
 beforeEach(async () => {
   db = openDb(":memory:");
-  app = createApp({ crm: openCrmDb(":memory:"), space: db });
+  app = appWithSpace(db);
   pageId = (
     (await request(app).post("/api/space/pages").send({ title: "Doc" }))
       .body as Page

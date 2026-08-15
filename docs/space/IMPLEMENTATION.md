@@ -1,10 +1,10 @@
 # Space
 
 A personal knowledge manager at `/space` - a single-user Notion. Pages and blocks, databases with
-table, board and list views, quick-find search, light and dark themes. Backed by
+table, board and list views, quick-find search. Backed by
 `data/personal-space.db`.
 
-- Frontend: `web/src/space/` - `components/`, `editor/`, `database/`, `api.ts`, `theme.ts`
+- Frontend: `web/src/space/` - `components/`, `editor/`, `database/`, `api.ts`
 - Backend: `server/src/space/` - `db.ts`, `routes/`, `seed.ts`
 - Tests: `server/test/space/`, `web/src/space/**/*.test.tsx`, `e2e/space/`
 
@@ -69,7 +69,9 @@ tested directly; prefer adding there rather than inside a view component.
 
 ## The kanban board
 
-`BoardView.tsx`, drag via dnd-kit (`@dnd-kit/core` + `@dnd-kit/sortable`).
+`BoardView.tsx`, drag via dnd-kit (`@dnd-kit/core` + `@dnd-kit/sortable`). It is styled to match
+CRM's pipeline, because they are the same object seen twice: a column with a coloured dot, a
+count, and cards that lift as you pick them up.
 
 - Cards group by a select property. Dropping on a column changes the row's value for that property.
 - **Cards can also be reordered within a column.** Cards are `useSortable` inside a
@@ -77,15 +79,29 @@ tested directly; prefer adding there rather than inside a view component.
   reorders against the full row list so `position` stays meaningful outside the board. Persisted
   through `PUT /api/space/databases/:id/rows/order`, which validates that the ids are a permutation
   of the database's rows.
-- The board is a **grid** - `grid-auto-flow: column` with `minmax(150px, 1fr)` - so any number of
+- **Columns can be reordered too**, by the grip in a column header, which is the only thing that
+  starts a column drag - dragging from anywhere else in the header would fight the cards inside it.
+  A column's position is the position of its option, so this persists through
+  `PUT /api/space/properties/:id/options/order` and shows up anywhere else the options are listed.
+- **The card follows the cursor into its new column while you drag.** `onDragOver` computes the
+  arrangement the drop would produce and holds it in `preview`, which the board renders instead of
+  the rows until the drop commits. Without it the gap only opens after you let go, and the board
+  feels like it is guessing. `DragOverlay` draws the card under the cursor; the original stays
+  behind at low opacity as the gap it came from.
+- The board is a **grid** - `grid-auto-flow: column` with `minmax(158px, 1fr)` - so any number of
   columns shares the width instead of overflowing.
-- **dnd-kit has no keyboard sensor here**, so e2e drags are mouse-driven and need the 1440x900
-  viewport. At 1280 a card sits partly outside the viewport and the drag never activates.
+- **Collision detection changes with what is being dragged**: `pointerWithin` for a card, which is
+  what makes a small card land where the cursor is, and `closestCenter` for a column, which is what
+  makes the other columns slide out of the way.
+- e2e drags are mouse-driven and need the 1440x900 viewport; at 1280 a card sits partly outside the
+  viewport and the drag never activates. A drag must also move in several steps, or dnd-kit never
+  sees it pass its 6px activation distance.
 
 ## Themes
 
-`theme.ts` sets `data-theme` on the root element and persists the choice. Every colour is a
-`:root` custom property with a dark override - do not hardcode a colour in a component.
+The theme is Bench-wide: `web/src/shared/theme.ts` owns it, the toggle lives in the nav strip, and
+Space reads it like every other app. Every colour is a `:root` custom property with a
+`[data-theme="dark"]` override - do not hardcode a colour in a component.
 
 ## Related
 

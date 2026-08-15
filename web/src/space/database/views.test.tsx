@@ -139,6 +139,7 @@ describe("board", () => {
           onMove={onMove}
           allRows={dbData().rows}
           onReorder={vi.fn()}
+          onReorderColumns={vi.fn()}
         />
       </MemoryRouter>,
     );

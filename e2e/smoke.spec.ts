@@ -35,6 +35,12 @@ const APPS: {
     ready: (p) => p.getByRole("treeitem").first(),
   },
   {
+    path: "/rolodex/",
+    title: "Rolodex",
+    tab: "Rolodex",
+    ready: (p) => p.getByRole("heading", { name: "Today" }),
+  },
+  {
     path: "/groove/",
     title: "GROOVEBOX GX-4",
     tab: "Groove",
@@ -69,6 +75,8 @@ test("deep links load the owning app, not the launcher", async ({ page }) => {
     ["/crm/contacts", "Personal CRM"],
     ["/crm/pipeline", "Personal CRM"],
     ["/space/p/does-not-exist", "Personal Space"],
+    ["/rolodex/people", "Rolodex"],
+    ["/rolodex/circles", "Rolodex"],
     ["/groove/anything", "GROOVEBOX GX-4"],
   ]) {
     await page.goto(path);
@@ -102,18 +110,23 @@ test("both API namespaces answer and stay separate", async ({
   expect(tree.ok()).toBeTruthy();
   expect((await json<TreeNode[]>(tree)).length).toBeGreaterThan(0);
 
+  const people = await page.request.get(`${baseURL}/api/rolodex/people`);
+  expect(people.ok()).toBeTruthy();
+  expect((await json<{ id: number }[]>(people)).length).toBeGreaterThan(0);
+
   // The pre-merge, un-namespaced paths must not resolve.
   expect(
     (await page.request.get(`${baseURL}/api/organizations`)).status(),
   ).toBe(404);
   expect((await page.request.get(`${baseURL}/api/tree`)).status()).toBe(404);
+  expect((await page.request.get(`${baseURL}/api/people`)).status()).toBe(404);
 });
 
 test("the launcher links into each app and the back button returns", async ({
   page,
 }) => {
   await page.goto("/");
-  for (const name of ["CRM", "Space", "Groove"]) {
+  for (const name of ["CRM", "Space", "Rolodex", "Groove"]) {
     // The card, not the nav tab of the same name: only the card carries a heading.
     await page
       .getByRole("link")
@@ -144,6 +157,7 @@ test("the nav lists every app and marks the one you are in", async ({
       "Home",
       "CRM",
       "Space",
+      "Rolodex",
       "Groove",
     ]);
     await expect(primary(page).locator("[aria-current=page]")).toHaveText(
@@ -156,6 +170,7 @@ test("the nav reaches every app from every app", async ({ page }) => {
   await page.goto("/crm/");
   for (const [tab, title] of [
     ["Groove", "GROOVEBOX GX-4"],
+    ["Rolodex", "Rolodex"],
     ["Space", "Personal Space"],
     ["Home", "Bench"],
   ]) {
