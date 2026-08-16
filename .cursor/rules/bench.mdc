@@ -1,0 +1,9 @@
+---
+description: Bench project instructions and working documents
+alwaysApply: true
+---
+
+Follow the project instructions in @AGENTS.md.
+
+The process for implementing a change is @docs/PROCESS.md, and the checks and their enforcement
+are @docs/CONTROLS.md. Read docs/PROJECT.md and docs/STANDARDS.md on demand, as AGENTS.md directs.

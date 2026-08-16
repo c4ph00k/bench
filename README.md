@@ -12,7 +12,7 @@ your data lives in local SQLite files. Light and dark, one toggle for all four.
 
 ## Run it
 
-Requires [Node.js](https://nodejs.org) 20 or newer.
+Requires [Node.js](https://nodejs.org) 24 or newer.
 
 ```bash
 npm install
