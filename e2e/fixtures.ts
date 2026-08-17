@@ -32,7 +32,9 @@ export const test = base.extend<object, { appServer: string }>({
       const dataDir = path.join("e2e", ".tmp", `w${workerInfo.workerIndex}`);
       rmSync(path.join(root, dataDir), { recursive: true, force: true });
 
-      const server = spawn("npx", ["tsx", "server/src/index.ts"], {
+      // npx is a .cmd on Windows, which child_process cannot execute by its bare name.
+      const npx = process.platform === "win32" ? "npx.cmd" : "npx";
+      const server = spawn(npx, ["tsx", "server/src/index.ts"], {
         cwd: root,
         env: { ...process.env, PORT: String(port), DATA_DIR: dataDir },
         stdio: "ignore",

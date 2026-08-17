@@ -24,7 +24,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "knip": "knip",
-    "gitleaks": "command -v gitleaks >/dev/null || { echo 'gitleaks is required for this check: brew install gitleaks'; exit 1; }; gitleaks dir . --no-banner --redact",
+    "gitleaks": "node scripts/run-gitleaks.mjs",
     "check:secrets": "node scripts/check-secrets.mjs",
     "jscpd": "jscpd",
     "check": "npm run typecheck && npm run lint && npm run format:check && npm run gitleaks && npm run check:secrets && npm run knip && npm run coverage"

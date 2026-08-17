@@ -352,10 +352,18 @@ three that is server-side and can stop a secret before it leaves the machine.
 Run as `npm run gitleaks`, inside `npm run check`. Custom rules and allowlists go in
 `.gitleaks.toml`.
 
-It is a Go binary, not an npm package, so it does not arrive with `npm install` - `brew install
-gitleaks` locally, and the pinned release in CI. **If the binary is missing the check fails with an
-actionable message rather than skipping.** A control that silently passes when its tool is absent is
-worse than no control.
+It is a Go binary, not an npm package, so it does not arrive with `npm ci` - `brew install gitleaks`
+on macOS, `winget install -e --id Gitleaks.Gitleaks` on Windows, and the pinned release in CI.
+**If the binary is missing the check fails with an actionable message rather than skipping.** A
+control that silently passes when its tool is absent is worse than no control.
+
+The invocation lives in `scripts/run-gitleaks.mjs` rather than as a shell one-liner in
+`package.json`, because **npm runs scripts through `cmd.exe` on Windows**. The previous
+`command -v gitleaks >/dev/null || { ...; }` guard is POSIX shell, so on Windows `npm run check`
+failed at this step even with gitleaks installed. Anything in `scripts` that has to run on both
+platforms belongs in a `.mjs` file for the same reason; `e2e/fixtures.ts` spawns `npx.cmd` rather
+than `npx` on Windows on the same principle, since `child_process` cannot execute a `.cmd` by its
+bare name.
 
 A full history scan was run once when this was built; it was clean across all 27 commits.
 
