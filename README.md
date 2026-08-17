@@ -265,16 +265,27 @@ Do this in the browser.
 
 ## 3.5 What happens next
 
-GitHub Actions runs `npm run check` and `npm run e2e` on your pull request - the same commands you
-ran locally, on Linux. It takes about three minutes, and merging into `main` is blocked until it
-passes.
+Your pull request is raised - that part is done, and it needed nothing from anyone else.
 
-**Your run may say "waiting for approval".** That is expected: workflow runs from a first-time
-contributor's fork need a maintainer to release them. Nothing is wrong and there is nothing for you
-to do - it will start once approved.
+**On the pull request itself you will probably see "waiting for approval" rather than a green
+tick.** Nothing is wrong. GitHub does not run workflows from a first-time contributor's fork until
+a maintainer releases them, and with a room full of people raising pull requests at once they may
+never be released. That is fine: the checks that matter are the ones you already ran.
 
-If CI goes red, push another commit to the same branch. The pull request updates itself and the
-suite runs again.
+## 3.6 Watching the full CI run yourself
+
+If you want to see the whole suite run on GitHub rather than take your local run's word for it, run
+it in **your own fork**, where you need nobody's permission:
+
+1. Go to your fork and click the **Actions** tab.
+2. If it offers a button to enable workflows, click it. Forks arrive with workflows switched off.
+3. Push your branch again, or use **Run workflow** if the workflow offers it.
+
+The same `check` job then runs on your account: `npm run check` and `npm run e2e`, on Linux, about
+three minutes. That is the identical gate this repository uses to protect `main`, so a green run
+there means your change would pass.
+
+If it goes red, fix it and push again - the run repeats on each push.
 
 ---
 
