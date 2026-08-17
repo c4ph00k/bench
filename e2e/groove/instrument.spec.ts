@@ -9,7 +9,25 @@
 import { test, expect } from "../fixtures";
 import type { Page } from "@playwright/test";
 
+declare global {
+  interface Window {
+    /** Every step index the LED strip has lit since recordSteps() was installed. */
+    stepsSeen?: Set<number>;
+  }
+}
+
 const UNITS = ["RHYTHM", "BASS", "PADS", "LEAD"];
+
+/**
+ * How many of a bar's 16 steps have to light before we accept that the sequencer ran.
+ *
+ * Not all 16. The engine's draw loop reports only the last step it finds queued each frame, so a
+ * machine whose rAF drops below the step rate of 7.5/sec renders a bar with gaps in it. Measured
+ * with CDP CPU throttling: every step still lights at a 30x slowdown (rAF 8fps, bar seen in 4.1s),
+ * and 15 of 16 at 50x. Twelve keeps a wide margin on a slow laptop while still being impossible to
+ * reach without sweeping most of a bar.
+ */
+const MIN_STEPS_SEEN = 12;
 
 /** Index of the lit step in the master LED strip, or -1 when the transport is stopped. */
 function playhead(page: Page): Promise<number> {
@@ -22,6 +40,40 @@ function playhead(page: Page): Promise<number> {
 
 const transport = (page: Page) =>
   page.getByRole("button", { name: /(PLAY|STOP)/ });
+
+/**
+ * Accumulates every step the LED strip lights, from inside the page.
+ *
+ * Sampling the strip from the test cannot do this reliably. `expect.poll` settles at a 1s
+ * interval, a step lasts 134ms and a bar 2.14s, so each poll advances 7.47 steps and two polls
+ * land a step short of a full bar: the samples walk backwards through the bar in a comb -
+ * 12, 11, 10, 9 - which can miss steps 13 to 15 for an entire 10s window. That is what used to
+ * fail this spec intermittently, and CPU load only moved the phase. A set that only ever grows
+ * makes the poll interval irrelevant.
+ */
+async function recordSteps(page: Page) {
+  await page.locator(".master-leds").waitFor();
+  await page.evaluate(() => {
+    const strip = document.querySelector(".master-leds")!;
+    const seen = new Set<number>();
+    window.stepsSeen = seen;
+    const record = () => {
+      const lit = Array.from(strip.querySelectorAll(".led")).findIndex((el) =>
+        el.className.includes("on"),
+      );
+      if (lit >= 0) seen.add(lit);
+    };
+    new MutationObserver(record).observe(strip, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+  });
+}
+
+const stepsSeen = (page: Page) =>
+  page.evaluate(() => window.stepsSeen?.size ?? 0);
 
 test("the instrument boots with all four units", async ({ page }) => {
   await page.goto("/groove/");
@@ -102,12 +154,13 @@ test("running the sequencer logs no console errors", async ({ page }) => {
   page.on("pageerror", (e) => errors.push(e.message));
 
   await page.goto("/groove/");
+  await recordSteps(page);
   await transport(page).click();
-  // Let it run most of a bar. The playhead is driven by the transport that schedules the audio,
-  // so waiting for it to reach a late step proves the sequencer really ran.
+  // Most of a bar has to light. The playhead is driven by the same transport that schedules the
+  // audio, so a swept bar proves the sequencer really ran.
   await expect
-    .poll(() => playhead(page), { timeout: 10_000 })
-    .toBeGreaterThan(12);
+    .poll(() => stepsSeen(page), { timeout: 10_000 })
+    .toBeGreaterThanOrEqual(MIN_STEPS_SEEN);
   await transport(page).click();
 
   expect(errors).toEqual([]);

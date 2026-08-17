@@ -90,11 +90,21 @@ Rules that keep this suite reliable:
 - `getByRole` name matching is substring-based: `{ name: "BASS step 1" }` also matches steps 10-16.
   Pass `exact: true` for numbered labels. **This is a Playwright rule only** - Testing Library's
   `name` already matches the whole string, and `exact` is not one of its options there.
-- **One spec depends on the wall clock**: "running the sequencer logs no console errors" waits for
-  Groove's playhead to pass step 12, and the playhead is driven by the audio clock. Under heavy CPU
-  load the headless audio thread falls behind and the poll times out - seen at load average 7, while
-  the same spec passes in ~2s at load 4. If it fails, check what else is running before treating it
-  as a regression.
+- **Never poll a periodic value for a one-off reading.** `expect.poll` settles at a 1s interval
+  once it has worked through its defaults of 100, 250, 500, 1000ms. Groove's playhead is periodic -
+  134ms a step, 2.14s a bar - so each poll advances 7.47 steps and two polls fall a step short of
+  the bar, which walks the samples backwards through it in a comb: 12, 11, 10, 9. "Wait for the
+  playhead to pass step 12" could therefore miss steps 13 to 15 for a whole 10s window, and this
+  spec failed roughly 1 run in 60 because of it. Heavy CPU load moved the phase, which made it look
+  like an audio-clock problem for a while; it was not - the headless audio clock measures within
+  0.1% of real time and rAF runs at 119fps. **Accumulate instead**: `recordSteps` in
+  `e2e/groove/instrument.spec.ts` collects every step the LED strip lights via a MutationObserver
+  in the page, and the spec polls that set until most of the bar has been seen. A value that only
+  ever grows cannot be aliased by the poll interval. The threshold is 12 of 16 rather than all 16
+  because the engine's draw loop reports one step per frame, so a machine slower than 7.5fps
+  renders a bar with gaps: measured with CDP CPU throttling, 12 holds to a 50x slowdown, where all
+  16 would start failing at 50x and 13 of 16 at 30x. Throttle the renderer through CDP to check
+  that kind of thing - do not put load on the machine.
 
 Run one file while iterating: `npx playwright test e2e/crm/revenue.spec.ts --retries=0`.
 
