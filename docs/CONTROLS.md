@@ -94,6 +94,25 @@ reason next to it.
 | In `e2e/` and `scripts/`: `sonarjs/assertions-in-tests`, `no-os-command-from-path`                | Plugin limits, not findings: it does not recognise `await expect.poll(...)`, and its PATH rule is aimed at services, not a local run of this repo's own toolchain                                                          |
 | In `web/src/groove/audio/**`: `complexity`, `max-params`, `cognitive-complexity`, `pseudo-random` | Building a Web Audio graph is long and linear, a voice's parameters are its signal inputs, and EXPLORATORY.md records that none of it has automated coverage - a refactor to satisfy a metric could only be checked by ear |
 
+### The two inline suppressions
+
+`react-hooks/incompatible-library` is the only rule suppressed at a call site rather than in the
+config. It warns that React Compiler will skip memoizing a component that calls
+`useReactTable()`, because TanStack Table returns functions that cannot be memoized safely. Both
+of Bench's tables hit it - `web/src/crm/components/DataTable.tsx` and
+`web/src/rolodex/pages/People.tsx` - and neither can do anything about it: it is the library's only
+API, the check is keyed on the module name so no version of TanStack Table changes it, and Bench
+does not run React Compiler at all.
+
+Two `eslint-disable-next-line` comments rather than turning the rule off, for two reasons. The rule
+covers React Hook Form's `watch()` and TanStack Virtual's `useVirtualizer()` too, and should still
+report those. And `reportUnusedDisableDirectives` is `error`, so if the incompatibility is ever
+fixed, lint fails on the now-pointless directive and tells us to delete it. A rule switched off in
+the config would just sit there.
+
+Neither `"use no memo"` nor `"use no forget"` silences it - the compiler logs the diagnostic before
+it reads the directive, so the warning is reported either way. That was measured, not assumed.
+
 **`eslint-plugin-unicorn` is not installed.** Three of its rules fight this codebase directly.
 `prevent-abbreviations` would rename `db` (185 uses), `(req, res)` (39 Express handlers), `(e) =>`
 (73 handlers) and `Props` (32 files). `no-null` hits 301 `null`s, which is not a style habit: SQLite

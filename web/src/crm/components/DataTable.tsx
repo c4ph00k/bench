@@ -37,6 +37,11 @@ export default function DataTable<T>({
   noun = "record",
 }: Props<T>) {
   const [sorting, setSorting] = useState<SortingState>([]);
+  // React Compiler cannot memoize what useReactTable() returns, so the rule flags every call site.
+  // There is nothing to change here - it is the library's only API, and Bench does not run the
+  // compiler. Kept as a disable rather than switching the rule off, so it still reports a
+  // different incompatible library, and so lint tells us when TanStack fixes this.
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data,
     columns,

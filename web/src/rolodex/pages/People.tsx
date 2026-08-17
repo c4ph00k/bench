@@ -164,6 +164,10 @@ export default function People() {
     [],
   );
 
+  // React Compiler cannot memoize what useReactTable() returns; see the same disable in CRM's
+  // DataTable. Nothing to change here, and lint will report the directive as unused if TanStack
+  // ever makes the hook compatible.
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data: filtered,
     columns,
