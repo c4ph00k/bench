@@ -2,12 +2,17 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
+import { format, subDays } from "date-fns";
 import People from "./People";
 import { api } from "../api";
 import { StoreContext, ToastContext } from "../store";
 import { person } from "../test/helpers";
 
 vi.mock("../api");
+
+// The overdue label counts from the real clock, so the fixture's next_due has to move with it -
+// a fixed date here fails one day after it is written.
+const twelveDaysAgo = format(subDays(new Date(), 12), "yyyy-MM-dd");
 
 const people = [
   person({ id: 1, name: "Maya Chen", company: "Figma", tags: ["design"] }),
@@ -18,7 +23,7 @@ const people = [
     circle: "inner",
     tags: ["university"],
     status: "overdue",
-    next_due: "2026-04-28",
+    next_due: twelveDaysAgo,
     last_contacted: "2026-01-27",
   }),
 ];
@@ -58,7 +63,7 @@ describe("People", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("Figma")).toBeInTheDocument();
     expect(screen.getByText("Overdue")).toBeInTheDocument();
-    expect(screen.getByText("109d overdue")).toBeInTheDocument();
+    expect(screen.getByText("12d overdue")).toBeInTheDocument();
   });
 
   it("narrows the table as you search", async () => {
