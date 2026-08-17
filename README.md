@@ -15,12 +15,17 @@ your data lives in local SQLite files. Light and dark, one toggle for all four.
 Requires [Node.js](https://nodejs.org) 24 or newer.
 
 ```bash
-npm install
+npm ci
 npm start
 ```
 
 Then open **http://localhost:8100**. The first run builds the frontend and seeds all three
 databases with sample data.
+
+`npm ci` rather than `npm install`: npm skips optional platform packages often enough that a fresh
+`npm install` can leave the bundler without its native binding, and the build then fails with
+"Cannot find native binding" ([npm/cli#4828](https://github.com/npm/cli/issues/4828)). `npm ci`
+installs exactly what the lockfile names, which is also what CI runs.
 
 ## Development
 
@@ -37,7 +42,7 @@ databases with sample data.
 
 ## Layout
 
-One npm workspace root with two workspaces, so a single `npm install` and a single set of versions.
+One npm workspace root with two workspaces, so a single install and a single set of versions.
 
 - `web/` - one Vite project with an HTML entry point per app: `index.html` (launcher), `crm/`,
   `space/`, `rolodex/`, `groove/`. Sources live in `web/src/<app>/`, with the shared navigation

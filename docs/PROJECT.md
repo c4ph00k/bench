@@ -66,10 +66,18 @@ lefthook.yml          pre-commit: format the staged files, then lint the tree
 ## Run
 
 ```bash
-npm install     # once, at the root
+npm ci          # once, at the root
 npm run dev     # API :8100 + Vite :8101 -> open http://localhost:8101
 npm start       # build, then serve everything from :8100
 ```
+
+**`npm ci`, not `npm install`.** npm drops optional platform packages often enough that a fresh
+`npm install` here leaves `@rolldown/binding-darwin-arm64` uninstalled on Apple Silicon, and the
+build dies with "Cannot find native binding" - reproduced on two clean clones out of two, while
+`npm ci` succeeded. The lockfile names the binding correctly; `npm install`'s reconciliation is
+what skips it ([npm/cli#4828](https://github.com/npm/cli/issues/4828)). `npm ci` also matches what
+CI runs. Use `npm install <pkg>` only when adding a dependency, since `npm ci` will not update the
+lockfile - and see [CONTROLS.md](./CONTROLS.md) for the same bug biting mid-project.
 
 `npm run build` (typecheck + bundle), `npm test` (vitest, server + web), `npm run e2e` (Playwright),
 `npm run check` (everything: typecheck, lint, formatting, secrets, dead code, coverage).
