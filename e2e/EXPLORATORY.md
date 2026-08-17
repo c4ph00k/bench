@@ -22,6 +22,11 @@ With `agent-browser`: `agent-browser --session bench open http://localhost:8101/
 `snapshot -i` to list interactive elements. Two traps worth knowing - `fill @ref ""` does **not**
 clear a field (reload instead), and refs go stale after navigation, so re-snapshot before clicking.
 
+**Check both themes.** The toggle sits on the right of the nav strip and applies to all four apps.
+The specs assert that each app's background actually changes and that the choice survives a
+reload; whether the result is _legible_ - chart axes, chips on tinted backgrounds, Groove's lit
+steps against a pale panel - is a judgement only you can make.
+
 ## Groove - the big one
 
 **Nothing about how it sounds is tested.** The suite proves the transport runs, the playhead

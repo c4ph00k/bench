@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   api,
   type DatabaseData,
+  type Property,
   type PropertyOption,
   type PropertyType,
   type ViewConfig,
@@ -27,6 +28,15 @@ export interface DbActions {
   renameProperty: (id: string, name: string) => Promise<void>;
   deleteProperty: (id: string) => Promise<void>;
   createOption: (propertyId: string, name: string) => Promise<PropertyOption>;
+}
+
+/** The same property with its options in the given order; ids come from the board itself. */
+function reordered(property: Property, optionIds: string[]): Property {
+  const byId = new Map(property.options.map((o) => [o.id, o]));
+  return {
+    ...property,
+    options: optionIds.map((id) => byId.get(id)!),
+  };
 }
 
 export default function DatabaseView({ databaseId }: Props) {
@@ -90,6 +100,24 @@ export default function DatabaseView({ databaseId }: Props) {
       void api.reorderRows(databaseId, orderedIds);
     },
     [databaseId, setData],
+  );
+
+  /** Persist a new column order for the board, which is the order of the property's options. */
+  const reorderOptions = useCallback(
+    (propertyId: string, optionIds: string[]) => {
+      setData((d) =>
+        d
+          ? {
+              ...d,
+              properties: d.properties.map((p) =>
+                p.id === propertyId ? reordered(p, optionIds) : p,
+              ),
+            }
+          : d,
+      );
+      void api.reorderOptions(propertyId, optionIds);
+    },
+    [setData],
   );
 
   const actions: DbActions = {
@@ -225,6 +253,9 @@ export default function DatabaseView({ databaseId }: Props) {
             }
             allRows={data.rows}
             onReorder={reorderRows}
+            onReorderColumns={(optionIds) =>
+              reorderOptions(groupProperty.id, optionIds)
+            }
           />
         ) : (
           <div className="board-empty">

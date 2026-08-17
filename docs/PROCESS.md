@@ -20,9 +20,9 @@ which is what makes running the checks locally a requirement rather than a court
 
 ## 1. Understand before changing
 
-- Read the app's docs first: [crm/](./crm/), [space/](./space/), [groove/](./groove/). Each holds
-  an IMPLEMENTATION.md with the domain rules and the traps, and a REQUIREMENTS.md with the original
-  brief.
+- Read the app's docs first: [crm/](./crm/), [space/](./space/), [rolodex/](./rolodex/),
+  [groove/](./groove/). Each holds an IMPLEMENTATION.md with the domain rules and the traps, and a
+  REQUIREMENTS.md with the original brief.
 - For a bug, **prove the root cause before fixing it.** Reproduce it, measure it, show the evidence.
   Do not apply a workaround to a symptom you have not explained. If a fix depends on a guess, the
   guess is the thing to test first.
@@ -48,18 +48,18 @@ Three layers, each with a different job. Add to whichever ones the change touche
 
 ### Unit tests - `npm test`
 
-vitest, server and web. Server suites live in `server/test/{crm,space}/`; web suites sit beside the
-code they cover. Coverage is measured across every app at 80% statements and currently sits at 82%
-on the server and 90% on web, with `web/src/groove/audio/**` excluded because jsdom has no
-`AudioContext`.
+vitest, server and web. Server suites live in `server/test/{crm,space,rolodex}/`; web suites sit
+beside the code they cover. Coverage is measured across every app at 80% statements and currently
+sits at 87% on the server and 86% on web, with `web/src/groove/audio/**` excluded because jsdom has
+no `AudioContext`.
 
 Use these for logic with edges: calculations, filtering, sorting, migrations, data transforms. A
 new derived value or a new column default should get one.
 
-jsdom implements no layout, no pointer capture, no canvas and no audio, so any component that
-measures itself needs a stub before it will render at all. [CONTROLS.md](./CONTROLS.md) lists the
-six that have bitten so far and what each suite does about them - read it before concluding that a
-component is untestable.
+jsdom implements no layout, no pointer capture, no canvas, no audio and no `Blob.text()`, so any
+component that measures itself or reads a file needs a stub before it will render at all.
+[CONTROLS.md](./CONTROLS.md) lists the seven that have bitten so far and what each suite does
+about them - read it before concluding that a component is untestable.
 
 ### End-to-end tests - `npm run e2e`
 
@@ -83,15 +83,28 @@ Rules that keep this suite reliable:
   the viewport and dnd-kit drags never activate.
 - **Drag with the keyboard where the library supports it.** CRM's pipeline uses
   `@hello-pangea/dnd`: Space to lift, arrows to move, Space to drop - deterministic, no coordinates.
-  Space's board uses dnd-kit, which has no keyboard sensor here, so its drags stay mouse-driven.
+  Space's board and Rolodex's circles use dnd-kit; the board now has a keyboard sensor, but its
+  specs stay mouse-driven because a column drag starts from a grip that only appears on hover.
+  A dnd-kit drag needs the pointer to move past its 6px activation distance in several steps before
+  it starts, so `mouse.move(..., { steps })` is not optional.
 - `getByRole` name matching is substring-based: `{ name: "BASS step 1" }` also matches steps 10-16.
   Pass `exact: true` for numbered labels. **This is a Playwright rule only** - Testing Library's
   `name` already matches the whole string, and `exact` is not one of its options there.
-- **One spec depends on the wall clock**: "running the sequencer logs no console errors" waits for
-  Groove's playhead to pass step 12, and the playhead is driven by the audio clock. Under heavy CPU
-  load the headless audio thread falls behind and the poll times out - seen at load average 7, while
-  the same spec passes in ~2s at load 4. If it fails, check what else is running before treating it
-  as a regression.
+- **Never poll a periodic value for a one-off reading.** `expect.poll` settles at a 1s interval
+  once it has worked through its defaults of 100, 250, 500, 1000ms. Groove's playhead is periodic -
+  134ms a step, 2.14s a bar - so each poll advances 7.47 steps and two polls fall a step short of
+  the bar, which walks the samples backwards through it in a comb: 12, 11, 10, 9. "Wait for the
+  playhead to pass step 12" could therefore miss steps 13 to 15 for a whole 10s window, and this
+  spec failed roughly 1 run in 60 because of it. Heavy CPU load moved the phase, which made it look
+  like an audio-clock problem for a while; it was not - the headless audio clock measures within
+  0.1% of real time and rAF runs at 119fps. **Accumulate instead**: `recordSteps` in
+  `e2e/groove/instrument.spec.ts` collects every step the LED strip lights via a MutationObserver
+  in the page, and the spec polls that set until most of the bar has been seen. A value that only
+  ever grows cannot be aliased by the poll interval. The threshold is 12 of 16 rather than all 16
+  because the engine's draw loop reports one step per frame, so a machine slower than 7.5fps
+  renders a bar with gaps: measured with CDP CPU throttling, 12 holds to a 50x slowdown, where all
+  16 would start failing at 50x and 13 of 16 at 30x. Throttle the renderer through CDP to check
+  that kind of thing - do not put load on the machine.
 
 Run one file while iterating: `npx playwright test e2e/crm/revenue.spec.ts --retries=0`.
 

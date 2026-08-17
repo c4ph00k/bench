@@ -1,4 +1,5 @@
 :root {
+  color-scheme: dark;
   --bg: #08090b;
   --panel: #14161a;
   --panel-2: #1a1d22;
@@ -12,6 +13,23 @@
   --purple: #a066d8;
   --blue: #2ea6df;
   --accent: var(--amber);
+  --line-3: #3b424d;
+  --line-soft: #2b313a;
+  --line-soft-2: #232830;
+  --recess: #0d0f13;
+  --step-off: #2a2f37;
+  --knob-track: #272c34;
+  --knob-cap: #1e2229;
+  --knob-edge: #383f4a;
+  --fader-cap: #c9cfd8;
+  --amber-sunk: #201b0c;
+  --red: #c8402c;
+  --on-red: #ffffff;
+  --on-accent: #0b0d10;
+  --playing-edge: #8f98a5;
+  --note-name: #f4f7fa;
+  --note-chord: rgba(255, 255, 255, 0.62);
+  --tag-bg: rgba(8, 9, 11, 0.82);
 
   --gap: clamp(5px, 0.7vh, 10px);
   --knob: clamp(26px, 4.6vh, 62px);
@@ -20,6 +38,43 @@
   --f-sm: clamp(8px, 1.05vh, 12.5px);
   --f-md: clamp(11px, 1.5vh, 18px);
   --f-lg: clamp(15px, 2.3vh, 28px);
+}
+
+/**
+ * Light mode is the same instrument in a pale finish rather than a different design: the panel
+ * lightens, the wells stay recessed against it, and the lit colours (amber, green, purple, blue)
+ * keep their hue but darken enough to hold their own against white.
+ */
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #d4dae2;
+  --panel: #fbfcfd;
+  --panel-2: #edf1f5;
+  --sunk: #dfe4ea;
+  --line: #bcc4cf;
+  --line-2: #98a3b1;
+  --line-3: #7f8a99;
+  --line-soft: #c8ced8;
+  --line-soft-2: #d2d8e0;
+  --recess: #a7b0bd;
+  --text: #1c2128;
+  --dim: #6c7683;
+  --amber: #c98f04;
+  --green: #1d9c62;
+  --purple: #7a44b8;
+  --blue: #1b87bd;
+  --step-off: #c7cfd9;
+  --knob-track: #ccd3dc;
+  --knob-cap: #ffffff;
+  --knob-edge: #8c96a4;
+  --fader-cap: #3a424d;
+  --amber-sunk: #f6e9c4;
+  --on-red: #ffffff;
+  --on-accent: #ffffff;
+  --playing-edge: #4b5563;
+  --note-name: #14171c;
+  --note-chord: rgba(28, 33, 40, 0.6);
+  --tag-bg: rgba(247, 249, 251, 0.86);
 }
 
 * {
@@ -227,7 +282,7 @@ button {
 
 .patch-btn.active {
   border-color: var(--amber);
-  background: #201b0c;
+  background: var(--amber-sunk);
 }
 
 .patch-slot {
@@ -342,7 +397,7 @@ button {
   width: clamp(5px, 0.8vh, 9px);
   height: clamp(5px, 0.8vh, 9px);
   border-radius: 50%;
-  background: #2a2f37;
+  background: var(--step-off);
 }
 
 .sig-led.on {
@@ -400,9 +455,9 @@ button {
 }
 
 .mute-btn.active {
-  background: #c8402c;
-  border-color: #c8402c;
-  color: #fff;
+  background: var(--red);
+  border-color: var(--red);
+  color: var(--on-red);
 }
 
 .unit-controls {
@@ -464,7 +519,7 @@ button {
 
 .knob-track {
   fill: none;
-  stroke: #272c34;
+  stroke: var(--knob-track);
   stroke-width: 3.5;
   stroke-linecap: round;
 }
@@ -477,8 +532,8 @@ button {
 }
 
 .knob-cap {
-  fill: #1e2229;
-  stroke: #383f4a;
+  fill: var(--knob-cap);
+  stroke: var(--knob-edge);
   stroke-width: 1;
 }
 
@@ -537,8 +592,8 @@ button {
   left: -3px;
   right: -3px;
   height: 7px;
-  background: #c9cfd8;
-  border: 1px solid #0d0f13;
+  background: var(--fader-cap);
+  border: 1px solid var(--recess);
 }
 
 .fader-label {
@@ -568,11 +623,11 @@ button {
 
 .led {
   background: var(--sunk);
-  border: 1px solid #2b313a;
+  border: 1px solid var(--line-soft);
 }
 
 .led.beat {
-  border-color: #3b424d;
+  border-color: var(--line-3);
 }
 
 .led.on {
@@ -651,11 +706,11 @@ button {
 .vel-slot {
   position: relative;
   background: var(--sunk);
-  border: 1px solid #232830;
+  border: 1px solid var(--line-soft-2);
 }
 
 .vel-slot.beat {
-  border-color: #3b424d;
+  border-color: var(--line-3);
 }
 
 .vel-bar {
@@ -673,13 +728,13 @@ button {
 
 .pad {
   background: var(--sunk);
-  border: 1px solid #232830;
+  border: 1px solid var(--line-soft-2);
   min-width: 0;
   transition: background 60ms linear;
 }
 
 .pad.beat {
-  border-color: #3b424d;
+  border-color: var(--line-3);
 }
 
 .pad:hover {
@@ -698,7 +753,7 @@ button {
 }
 
 .pad.playing {
-  border-color: #8f98a5;
+  border-color: var(--playing-edge);
 }
 
 .pad.v1.playing,
@@ -728,7 +783,7 @@ button {
 }
 
 .note-chord {
-  color: rgba(255, 255, 255, 0.62);
+  color: var(--note-chord);
 }
 
 .note-pad:not(.on) .note-name {
@@ -736,13 +791,13 @@ button {
 }
 
 .pad.note-pad.on .note-name {
-  color: #f4f7fa;
+  color: var(--note-name);
   font-weight: 700;
 }
 
 .pad.note-pad.on.playing .note-name,
 .pad.note-pad.on.playing .note-chord {
-  color: #0b0d10;
+  color: var(--on-accent);
 }
 
 /* ---------- master panel ---------- */
@@ -820,7 +875,7 @@ button {
   position: relative;
   flex: 1;
   background: var(--sunk);
-  border: 1px solid #2b313a;
+  border: 1px solid var(--line-soft);
   overflow: hidden;
 }
 
@@ -869,7 +924,7 @@ button {
   top: 3px;
   left: 4px;
   padding: 1px 5px;
-  background: rgba(8, 9, 11, 0.82);
+  background: var(--tag-bg);
   font-size: var(--f-xs);
   color: var(--dim);
   letter-spacing: 0.14em;

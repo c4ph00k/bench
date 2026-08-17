@@ -7,6 +7,23 @@ import { afterEach, beforeEach, vi } from "vitest";
 // straight at the target, so a no-op loses nothing.
 Element.prototype.setPointerCapture = vi.fn();
 
+// jsdom's Blob has no text(), which is how Rolodex reads a file the moment you choose one. The
+// FileReader it does implement would only be a longer way of doing the same thing.
+// The cast is what makes the check legal: the DOM types say the method is always there.
+if (!(Blob.prototype.text as unknown))
+  Blob.prototype.text = function (this: Blob) {
+    return new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        resolve(reader.result as string);
+      };
+      reader.onerror = () => {
+        reject(reader.error ?? new Error("could not read the file"));
+      };
+      reader.readAsText(this);
+    });
+  };
+
 beforeEach(() => {
   // The editor flushes pending block edits with a raw keepalive fetch when it unmounts. Node's
   // fetch rejects relative URLs, so keep every test off the real one; suites that assert on

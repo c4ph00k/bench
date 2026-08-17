@@ -1,19 +1,27 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import {
   DndContext,
+  DragOverlay,
+  KeyboardSensor,
   PointerSensor,
-  closestCorners,
-  useDroppable,
+  closestCenter,
+  pointerWithin,
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragOverEvent,
+  type DragStartEvent,
 } from "@dnd-kit/core";
 import {
   SortableContext,
+  arrayMove,
+  horizontalListSortingStrategy,
+  sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { GripVertical } from "lucide-react";
 import { useNavigate } from "react-router";
 import type { DbRow, Property } from "../api";
 import { Chip } from "./cells";
@@ -27,12 +35,48 @@ interface Props {
   /** Every row in the database, in stored order - the basis for a reorder. */
   allRows: DbRow[];
   onReorder: (orderedIds: string[]) => void;
+  onReorderColumns: (optionIds: string[]) => void;
 }
+
+/** Columns are addressed as col:<id> so a drop on empty space still names its column. */
+const COLUMN_PREFIX = "col:";
+const columnId = (column: BoardColumn) =>
+  `${COLUMN_PREFIX}${column.option?.id ?? "none"}`;
+const optionIdOf = (id: string) => {
+  const key = id.slice(COLUMN_PREFIX.length);
+  return key === "none" ? null : key;
+};
+const isColumn = (id: string) => id.startsWith(COLUMN_PREFIX);
 
 /** A card's chips: multi-select stores an array of option ids, select stores a single one. */
 function toChips(value: unknown): string[] {
   if (Array.isArray(value)) return value as string[];
   return value ? [value as string] : [];
+}
+
+function CardBody({
+  row,
+  cardProperty,
+}: {
+  row: DbRow;
+  cardProperty?: Property;
+}) {
+  const chips = toChips(cardProperty ? row.values[cardProperty.id] : undefined);
+  return (
+    <>
+      <div className="board-card-title">{row.title || "Untitled"}</div>
+      {chips.length > 0 && cardProperty && (
+        <div className="board-card-chips">
+          {chips
+            .map((id) => cardProperty.options.find((o) => o.id === id))
+            .filter((o) => o !== undefined)
+            .map((o) => (
+              <Chip key={o.id} option={o} />
+            ))}
+        </div>
+      )}
+    </>
+  );
 }
 
 function Card({
@@ -53,7 +97,6 @@ function Card({
     transition,
     isDragging,
   } = useSortable({ id: row.id });
-  const chips = toChips(cardProperty ? row.values[cardProperty.id] : undefined);
   return (
     <div
       ref={setNodeRef}
@@ -73,17 +116,7 @@ function Card({
           void navigate(`/p/${row.id}`);
       }}
     >
-      <div className="board-card-title">{row.title || "Untitled"}</div>
-      {chips.length > 0 && cardProperty && (
-        <div className="board-card-chips">
-          {chips
-            .map((id) => cardProperty.options.find((o) => o.id === id))
-            .filter(Boolean)
-            .map((o) => (
-              <Chip key={o!.id} option={o!} />
-            ))}
-        </div>
-      )}
+      <CardBody row={row} cardProperty={cardProperty} />
     </div>
   );
 }
@@ -99,21 +132,49 @@ function Column({
   cardProperty?: Property;
   justDragged: React.RefObject<boolean>;
 }) {
-  const id = column.option ? `col:${column.option.id}` : "col:none";
-  const { setNodeRef, isOver } = useDroppable({ id });
+  const id = columnId(column);
+  // The whole column sorts horizontally, but only the handle starts that drag - dragging from
+  // anywhere else would fight the cards inside it.
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+    isOver,
+  } = useSortable({ id, data: { type: "column" } });
+
   return (
     <div
       ref={setNodeRef}
-      className={`board-col${isOver ? " over" : ""}`}
+      className={`board-col${isOver ? " over" : ""}${isDragging ? " dragging" : ""}`}
+      style={{ transform: CSS.Translate.toString(transform), transition }}
       data-column={column.option?.name ?? "none"}
     >
       <div className="board-col-head">
-        {column.option ? (
-          <Chip option={column.option} />
-        ) : (
-          <span className="board-col-none">No {groupProperty.name}</span>
-        )}
+        <span className="board-col-name">
+          {/* The dot borrows the option's chip colours and paints itself in the text one. */}
+          <span
+            className={`board-col-dot chip-${column.option?.color ?? "gray"}`}
+          />
+          {column.option ? (
+            column.option.name
+          ) : (
+            <span className="board-col-none">No {groupProperty.name}</span>
+          )}
+        </span>
         <span className="board-count">{column.rows.length}</span>
+        <button
+          className="board-col-grip"
+          ref={setActivatorNodeRef}
+          {...attributes}
+          {...listeners}
+          aria-label={`Reorder ${column.option?.name ?? "ungrouped"} column`}
+        >
+          <GripVertical size={14} />
+        </button>
       </div>
       <SortableContext
         items={column.rows.map((r) => r.id)}
@@ -128,6 +189,9 @@ function Column({
               justDragged={justDragged}
             />
           ))}
+          {column.rows.length === 0 && (
+            <p className="board-col-empty">Drop a row here</p>
+          )}
         </div>
       </SortableContext>
     </div>
@@ -141,70 +205,170 @@ export default function BoardView({
   onMove,
   allRows,
   onReorder,
+  onReorderColumns,
 }: Props) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
   );
-  const columns = groupRows(rows, groupProperty);
+  const [dragging, setDragging] = useState<string | null>(null);
+  // While a card is in flight the board shows where it would land, which is not what the rows
+  // say yet. The override holds that arrangement until the drop is committed upstream.
+  const [preview, setPreview] = useState<BoardColumn[] | null>(null);
+  // A drop fires a click on the card underneath it; this suppresses that one navigation.
   const justDragged = useRef(false);
 
-  const onDragEnd = (event: DragEndEvent) => {
-    justDragged.current = true;
-    setTimeout(() => {
-      justDragged.current = false;
-    }, 0);
+  const columns = preview ?? groupRows(rows, groupProperty);
+  const draggingRow =
+    dragging && !isColumn(dragging)
+      ? rows.find((r) => r.id === dragging)
+      : undefined;
+  const draggingColumn =
+    dragging && isColumn(dragging)
+      ? columns.find((c) => columnId(c) === dragging)
+      : undefined;
+
+  const columnOf = (id: string) =>
+    isColumn(id)
+      ? columns.find((c) => columnId(c) === id)
+      : columns.find((c) => c.rows.some((r) => r.id === id));
+
+  const onDragStart = (event: DragStartEvent) => {
+    setDragging(String(event.active.id));
+  };
+
+  /** Move the card between columns as it is dragged, so the gap opens where it will land. */
+  const onDragOver = (event: DragOverEvent) => {
     const { active, over } = event;
     if (!over) return;
     const activeId = String(active.id);
     const overId = String(over.id);
-    if (activeId === overId) return;
+    if (isColumn(activeId) || activeId === overId) return;
 
+    const from = columnOf(activeId);
+    const to = columnOf(overId);
+    if (!from || !to || from === to) return;
+
+    const row = from.rows.find((r) => r.id === activeId)!;
+    const index = isColumn(overId)
+      ? to.rows.length
+      : to.rows.findIndex((r) => r.id === overId);
+    setPreview(
+      columns.map((c) => {
+        if (c === from) return { ...c, rows: c.rows.filter((r) => r !== row) };
+        if (c !== to) return c;
+        const next = [...c.rows];
+        next.splice(index < 0 ? next.length : index, 0, row);
+        return { ...c, rows: next };
+      }),
+    );
+  };
+
+  const onDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setDragging(null);
+    justDragged.current = true;
+    setTimeout(() => {
+      justDragged.current = false;
+    }, 0);
+
+    if (!over) {
+      setPreview(null);
+      return;
+    }
+    const activeId = String(active.id);
+    const overId = String(over.id);
+
+    if (isColumn(activeId)) {
+      commitColumnMove(activeId, overId);
+      setPreview(null);
+      return;
+    }
+    commitCardMove(activeId, overId);
+    setPreview(null);
+  };
+
+  function commitColumnMove(activeId: string, overId: string) {
+    const ids = columns
+      .map((c) => c.option?.id)
+      .filter((id) => id !== undefined);
+    const from = ids.indexOf(optionIdOf(activeId) ?? "");
+    const to = ids.indexOf(optionIdOf(isColumn(overId) ? overId : "") ?? "");
+    if (from === -1 || to === -1 || from === to) return;
+    onReorderColumns(arrayMove(ids, from, to));
+  }
+
+  function commitCardMove(activeId: string, overId: string) {
+    const target = columnOf(overId);
+    if (!target) return;
     const row = rows.find((r) => r.id === activeId);
     if (!row) return;
 
-    // Dropping on a column targets that column; dropping on a card targets the card's column.
-    const overRow = rows.find((r) => r.id === overId);
-    let targetColumn: string | null;
-    if (overId.startsWith("col:")) {
-      targetColumn = overId === "col:none" ? null : overId.replace("col:", "");
-    } else {
-      targetColumn =
-        (overRow?.values[groupProperty.id] as string | undefined) ?? null;
-    }
-
-    if ((row.values[groupProperty.id] ?? null) !== targetColumn) {
-      onMove(activeId, targetColumn);
-    }
+    const targetOption = target.option?.id ?? null;
+    if ((row.values[groupProperty.id] ?? null) !== targetOption)
+      onMove(activeId, targetOption);
 
     // Reorder against the full row list, so positions stay meaningful outside the board.
-    if (overRow) {
+    if (!isColumn(overId) && activeId !== overId) {
       const ids = allRows.map((r) => r.id);
       const from = ids.indexOf(activeId);
       const to = ids.indexOf(overId);
-      if (from !== -1 && to !== -1 && from !== to) {
-        ids.splice(to, 0, ids.splice(from, 1)[0]);
-        onReorder(ids);
-      }
+      if (from !== -1 && to !== -1 && from !== to)
+        onReorder(arrayMove(ids, from, to));
     }
-  };
+  }
 
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCorners}
+      // Cards are found by the pointer; columns fall back to their centres, which is what makes
+      // a column slide out of the way while another one is dragged over it.
+      collisionDetection={
+        dragging && isColumn(dragging) ? closestCenter : pointerWithin
+      }
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
       onDragEnd={onDragEnd}
+      onDragCancel={() => {
+        setDragging(null);
+        setPreview(null);
+      }}
     >
-      <div className="board" data-testid="board">
-        {columns.map((column) => (
-          <Column
-            key={column.option?.id ?? "none"}
-            column={column}
-            groupProperty={groupProperty}
-            cardProperty={cardProperty}
-            justDragged={justDragged}
-          />
-        ))}
-      </div>
+      <SortableContext
+        items={columns.map(columnId)}
+        strategy={horizontalListSortingStrategy}
+      >
+        <div className="board" data-testid="board">
+          {columns.map((column) => (
+            <Column
+              key={columnId(column)}
+              column={column}
+              groupProperty={groupProperty}
+              cardProperty={cardProperty}
+              justDragged={justDragged}
+            />
+          ))}
+        </div>
+      </SortableContext>
+      <DragOverlay dropAnimation={{ duration: 180, easing: "ease" }}>
+        {draggingRow && (
+          <div className="board-card lifted">
+            <CardBody row={draggingRow} cardProperty={cardProperty} />
+          </div>
+        )}
+        {draggingColumn && (
+          <div className="board-col lifted">
+            <div className="board-col-head">
+              <span className="board-col-name">
+                {draggingColumn.option?.name ?? "No " + groupProperty.name}
+              </span>
+              <span className="board-count">{draggingColumn.rows.length}</span>
+            </div>
+          </div>
+        )}
+      </DragOverlay>
     </DndContext>
   );
 }

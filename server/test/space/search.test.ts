@@ -1,8 +1,7 @@
 import { describe, expect, it, beforeEach } from "vitest";
 import request from "supertest";
 import { openDb } from "../../src/space/db.js";
-import { openDb as openCrmDb } from "../../src/crm/db.js";
-import { createApp } from "../../src/app.js";
+import { appWithSpace } from "./app.js";
 import type Database from "better-sqlite3";
 import type express from "express";
 import type { Page, SearchHit } from "./responses.js";
@@ -15,7 +14,7 @@ const search = async (q: string) =>
 
 beforeEach(async () => {
   db = openDb(":memory:");
-  app = createApp({ crm: openCrmDb(":memory:"), space: db });
+  app = appWithSpace(db);
   const parent = (
     await request(app)
       .post("/api/space/pages")

@@ -1,6 +1,7 @@
 /* Personal Space — flat, bold design. Amber #ecad0a, blue #209dd7, purple #753991 over grays. */
 
 :root {
+  color-scheme: light;
   --amber: #ecad0a;
   --blue: #209dd7;
   --purple: #753991;
@@ -20,6 +21,7 @@
 }
 
 [data-theme="dark"] {
+  color-scheme: dark;
   --bg: #16181c;
   --bg-sidebar: #1d2026;
   --bg-raised: #22252c;
@@ -814,14 +816,6 @@ textarea {
   font-variant-numeric: tabular-nums;
 }
 
-.cell-date {
-  color-scheme: light;
-}
-
-[data-theme="dark"] .cell-date {
-  color-scheme: dark;
-}
-
 .cell-checkbox {
   margin: 0 0 0 8px;
 }
@@ -1343,8 +1337,8 @@ tr:hover .title-actions {
   /* Columns share the available width, so an ordinary board never needs a scrollbar. */
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: minmax(150px, 1fr);
-  gap: 14px;
+  grid-auto-columns: minmax(158px, 1fr);
+  gap: 12px;
   align-items: start;
   padding: 16px 2px 60px;
   overflow-x: auto;
@@ -1352,70 +1346,145 @@ tr:hover .title-actions {
 
 .board-col {
   min-width: 0;
+  display: flex;
+  flex-direction: column;
   background: var(--bg-sidebar);
+  border: 1px solid var(--border);
   border-radius: 12px;
-  padding: 10px;
-  min-height: 120px;
+  padding: 9px;
+  min-height: 140px;
 }
 
-.board-card {
-  cursor: grab;
-  touch-action: none;
-}
-
-.board-card:active {
-  cursor: grabbing;
-}
-
+/* Where the card will land: the column it is over lifts its border rather than flashing. */
 .board-col.over {
-  outline: 2.5px solid var(--blue);
-  outline-offset: -2px;
+  border-color: var(--blue);
+  background: var(--bg-hover);
+}
+
+.board-col.dragging {
+  opacity: 0.35;
 }
 
 .board-col-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 2px 4px 10px;
+  gap: 8px;
+  padding: 2px 2px 9px;
+}
+
+.board-col-name {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.board-col-head .board-col-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  background: currentColor;
 }
 
 .board-col-none {
   color: var(--text-faint);
-  font-size: 13px;
   font-weight: 600;
 }
 
 .board-count {
-  color: var(--text-faint);
-  font-size: 12.5px;
+  flex-shrink: 0;
+  min-width: 20px;
+  text-align: center;
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  background: var(--bg-raised);
+  color: var(--text-soft);
+  font-size: 11px;
   font-weight: 700;
+}
+
+.board-col-grip {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 2px;
+  border-radius: 5px;
+  color: var(--text-faint);
+  cursor: grab;
+  opacity: 0;
+}
+
+.board-col:hover .board-col-grip,
+.board-col-grip:focus-visible {
+  opacity: 1;
+}
+
+.board-col-grip:hover {
+  background: var(--bg-hover);
+  color: var(--text);
 }
 
 .board-cards {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  min-height: 40px;
+  min-height: 44px;
 }
 
+.board-col-empty {
+  margin: 0;
+  border: 1px dashed var(--border);
+  border-radius: 9px;
+  padding: 14px 8px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+/* A resting card is a sheet you can pick up, so it carries the shadow that says so; the copy
+   under the cursor carries more of one, and the original stays behind as a gap. */
 .board-card {
   background: var(--bg-raised);
   border: 1px solid var(--border);
   border-radius: 9px;
   padding: 10px 12px;
-  cursor: pointer;
   text-align: left;
+  cursor: grab;
+  touch-action: none;
+  box-shadow: 0 1px 2px rgba(20, 22, 26, 0.06);
 }
 
 .board-card:hover {
   border-color: var(--text-faint);
 }
 
+.board-card:active {
+  cursor: grabbing;
+}
+
 .board-card.dragging {
-  opacity: 0.9;
+  opacity: 0.4;
+  box-shadow: none;
+}
+
+.board-card.lifted {
+  cursor: grabbing;
   box-shadow: var(--shadow);
-  z-index: 30;
-  position: relative;
+  transform: rotate(1.5deg);
+}
+
+.board-col.lifted {
+  box-shadow: var(--shadow);
+  background: var(--bg-sidebar);
+  cursor: grabbing;
 }
 
 .board-card-title {

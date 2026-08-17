@@ -144,6 +144,12 @@ export const api = {
       `/api/space/properties/${propertyId}/options`,
       data,
     ),
+  reorderOptions: (propertyId: string, ids: string[]) =>
+    req<{ ok: boolean }>(
+      "PUT",
+      `/api/space/properties/${propertyId}/options/order`,
+      { ids },
+    ),
   addRow: (
     dbId: string,
     data: { title?: string; values?: Record<string, unknown> } = {},

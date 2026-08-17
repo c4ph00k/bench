@@ -1,8 +1,7 @@
 import { describe, expect, it, beforeEach } from "vitest";
 import request from "supertest";
 import { openDb } from "../../src/space/db.js";
-import { openDb as openCrmDb } from "../../src/crm/db.js";
-import { createApp } from "../../src/app.js";
+import { appWithSpace } from "./app.js";
 import type Database from "better-sqlite3";
 import type express from "express";
 import type {
@@ -23,7 +22,7 @@ let dbId: string;
 
 beforeEach(async () => {
   db = openDb(":memory:");
-  app = createApp({ crm: openCrmDb(":memory:"), space: db });
+  app = appWithSpace(db);
   dbId = (
     (
       await request(app)

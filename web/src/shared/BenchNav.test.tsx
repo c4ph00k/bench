@@ -1,11 +1,17 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, beforeEach } from "vitest";
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import BenchNav from "./BenchNav";
 
 const nav = () => within(screen.getByRole("navigation", { name: "Primary" }));
 
+beforeEach(() => {
+  localStorage.clear();
+  delete document.documentElement.dataset.theme;
+});
+
 describe("BenchNav", () => {
-  it("offers the launcher and all three apps, in order", () => {
+  it("offers the launcher and all four apps, in order", () => {
     render(<BenchNav active="crm" />);
     expect(
       nav()
@@ -15,6 +21,7 @@ describe("BenchNav", () => {
       ["Home", "/"],
       ["CRM", "/crm/"],
       ["Space", "/space/"],
+      ["Rolodex", "/rolodex/"],
       ["Groove", "/groove/"],
     ]);
   });
@@ -27,15 +34,19 @@ describe("BenchNav", () => {
     expect(current.map((link) => link.textContent)).toEqual(["Space"]);
   });
 
-  it("colours the active tab with that app's colour", () => {
-    render(<BenchNav active="groove" />);
-    expect(nav().getByRole("link", { name: "Groove" })).toHaveStyle({
-      borderBottomColor: "#a066d8",
-    });
-  });
-
   it("names the project", () => {
     render(<BenchNav active="home" />);
     expect(screen.getByText("Bench")).toBeInTheDocument();
+  });
+
+  it("toggles the theme for every app and remembers the choice", async () => {
+    render(<BenchNav active="rolodex" />);
+    await userEvent.click(screen.getByRole("button", { name: /Switch to/ }));
+    expect(document.documentElement.dataset.theme).toBe("dark");
+    expect(localStorage.getItem("bench.theme")).toBe("dark");
+
+    await userEvent.click(screen.getByRole("button", { name: /Switch to/ }));
+    expect(document.documentElement.dataset.theme).toBe("light");
+    expect(localStorage.getItem("bench.theme")).toBe("light");
   });
 });

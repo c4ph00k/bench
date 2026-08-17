@@ -3,6 +3,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { openDb as openCrmDb } from "./crm/db.js";
 import { isSeeded, seed } from "./crm/seed.js";
+import { openDb as openRolodexDb } from "./rolodex/db/index.js";
+import { seedIfEmpty as seedRolodex } from "./rolodex/seed.js";
 import { openDb as openSpaceDb } from "./space/db.js";
 import { seedIfEmpty } from "./space/seed.js";
 import { createApp } from "./app.js";
@@ -25,6 +27,9 @@ if (!isSeeded(crm)) {
 const space = openSpaceDb(path.join(dataDir, "personal-space.db"));
 seedIfEmpty(space);
 
-createApp({ crm, space }).listen(port, () => {
+const rolodex = openRolodexDb(path.join(dataDir, "rolodex.sqlite"));
+seedRolodex(rolodex);
+
+createApp({ crm, space, rolodex }).listen(port, () => {
   console.log(`Bench running at http://localhost:${port}`);
 });

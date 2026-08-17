@@ -42,7 +42,9 @@ tempo, a unit mutes, and nothing logs a console error.
 
 - **The playhead LED is the proxy for "the clock is running"**: `.master-leds .led.on`, its index
   being `-1` when stopped. It is driven by the same transport that schedules the audio, so it proves
-  the sequencer runs without reaching into the audio graph.
+  the sequencer runs without reaching into the audio graph. **Read it by accumulating, not by
+  sampling** - it is periodic at 134ms a step, and `expect.poll`'s 1s settled interval aliases
+  against that badly enough to miss whole regions of the bar. See PROCESS.md.
 - **Headless runs open no audio device**, so no test can hear a regression. Whether the kick punches,
   the filter sweep is musical, the sidechain pumps in time, or a patch has character is a manual
   check - see [../../e2e/EXPLORATORY.md](../../e2e/EXPLORATORY.md).

@@ -47,25 +47,3 @@ test("keyboard-only quick-find: arrows plus Enter jump to the selection", async 
   await expect(page.getByRole("dialog", { name: "Quick find" })).toHaveCount(0);
   await expect(page).toHaveURL(/\/p\//);
 });
-
-test("theme toggle switches the whole app and survives a reload", async ({
-  page,
-}) => {
-  await page.goto("/space/");
-  const html = page.locator("html");
-  await expect(html).not.toHaveAttribute("data-theme", "dark");
-
-  await page.getByRole("button", { name: "Switch to dark mode" }).click();
-  await expect(html).toHaveAttribute("data-theme", "dark");
-
-  await page.reload();
-  await expect(html).toHaveAttribute("data-theme", "dark");
-  await expect(
-    page.getByRole("button", { name: "Switch to light mode" }),
-  ).toBeVisible();
-
-  await page.getByRole("button", { name: "Switch to light mode" }).click();
-  await expect(html).not.toHaveAttribute("data-theme", "dark");
-  await page.reload();
-  await expect(html).not.toHaveAttribute("data-theme", "dark");
-});

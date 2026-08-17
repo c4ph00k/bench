@@ -257,6 +257,31 @@ function registerPropertyRoutes(router: Router, q: Queries) {
       .run(id, req.params.id, name, chosen, pos);
     res.status(201).json({ id, name, color: chosen, position: pos });
   });
+
+  /** Reorder a property's options; this is the order the board's columns are shown in. */
+  router.put("/properties/:id/options/order", (req, res) => {
+    const { ids } = (req.body ?? {}) as { ids?: string[] };
+    const existing = q.optionsOf(req.params.id).map((o) => o.id);
+    const existingSet = new Set(existing);
+    if (
+      !Array.isArray(ids) ||
+      ids.length !== existing.length ||
+      new Set(ids).size !== ids.length ||
+      !ids.every((id) => existingSet.has(id))
+    ) {
+      res
+        .status(400)
+        .json({ error: "ids must be a permutation of the property's options" });
+      return;
+    }
+    const update = q.db.prepare(
+      "UPDATE property_options SET position = ? WHERE id = ?",
+    );
+    q.db.transaction(() => {
+      ids.forEach((id, i) => update.run(i, id));
+    })();
+    res.json({ ok: true });
+  });
 }
 
 function registerRowRoutes(router: Router, q: Queries) {

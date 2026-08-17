@@ -1,4 +1,11 @@
+/**
+ * The gray scale here is a set of roles rather than literal shades: --white is a raised surface,
+ * --gray-100 the page behind it, --gray-200/300 borders, --gray-500/700/900 text getting stronger.
+ * Dark mode swaps the scale end for end, which is why --white is not white there. The two places
+ * that genuinely mean "light text on a dark block" use --on-dark, which never moves.
+ */
 :root {
+  color-scheme: light;
   --amber: #ecad0a;
   --blue: #209dd7;
   --purple: #753991;
@@ -12,11 +19,52 @@
   --white: #ffffff;
   --green: #2f9e5f;
   --red: #c94f42;
+  --on-dark: #ffffff;
+  --sidebar-bg: #23272f;
+  --sidebar-hover: #333945;
+  --tint-blue: var(--tint-blue);
+  --tint-blue-fg: var(--tint-blue-fg);
+  --tint-amber: var(--tint-amber);
+  --tint-amber-fg: var(--tint-amber-fg);
+  --tint-purple: var(--tint-purple);
+  --tint-purple-fg: #753991;
+  --tint-green: var(--tint-green);
+  --tint-green-fg: var(--tint-green-fg);
+  --tint-red: var(--tint-red);
+  --tint-red-fg: var(--tint-red-fg);
+  --row-hover: var(--row-hover);
   --radius: 6px;
   font-family:
     -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
     Arial, sans-serif;
   color: var(--ink);
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --ink: #e9edf2;
+  --gray-900: #e9edf2;
+  --gray-700: #c3cad3;
+  --gray-500: #949da9;
+  --gray-300: #39414c;
+  --gray-200: #2b323b;
+  --gray-100: #14171c;
+  --white: #1c2128;
+  --green: #46b877;
+  --red: #e0685b;
+  --sidebar-bg: #101317;
+  --sidebar-hover: #232932;
+  --tint-blue: #123243;
+  --tint-blue-fg: #7cc7e8;
+  --tint-amber: #3a2e0d;
+  --tint-amber-fg: #e2b842;
+  --tint-purple: #2d1c37;
+  --tint-purple-fg: #c79ade;
+  --tint-green: #163021;
+  --tint-green-fg: #6fc994;
+  --tint-red: #3b1f1b;
+  --tint-red-fg: #e89086;
+  --row-hover: #232932;
 }
 
 * {
@@ -26,6 +74,7 @@
 body {
   margin: 0;
   background: var(--gray-100);
+  color: var(--ink);
   font-size: 14px;
   line-height: 1.5;
 }
@@ -47,8 +96,8 @@ body {
 .sidebar {
   width: 216px;
   flex-shrink: 0;
-  background: var(--gray-900);
-  color: var(--white);
+  background: var(--sidebar-bg);
+  color: var(--on-dark);
   padding: 20px 12px;
 }
 
@@ -94,8 +143,8 @@ body {
 }
 
 .nav-link:hover {
-  background: #333945;
-  color: var(--white);
+  background: var(--sidebar-hover);
+  color: var(--on-dark);
 }
 
 .nav-link.active {
@@ -128,7 +177,7 @@ body {
   height: 38px;
   flex-shrink: 0;
   border-radius: var(--radius);
-  background: #e2f2fa;
+  background: var(--tint-blue);
   color: var(--blue);
 }
 
@@ -206,7 +255,7 @@ button {
 
 .btn-primary {
   background: var(--blue);
-  color: var(--white);
+  color: var(--on-dark);
 }
 
 .btn-primary:hover {
@@ -229,7 +278,7 @@ button {
 }
 
 .btn-danger:hover {
-  background: #faf0ee;
+  background: var(--tint-red);
   border-color: var(--red);
 }
 
@@ -311,7 +360,7 @@ tbody tr.clickable {
 }
 
 tbody tr.clickable:hover {
-  background: #f7fbfd;
+  background: var(--row-hover);
 }
 
 .empty-state {
@@ -332,18 +381,18 @@ tbody tr.clickable:hover {
 }
 
 .chip-lead {
-  background: #fdf3d7;
-  color: #8a6503;
+  background: var(--tint-amber);
+  color: var(--tint-amber-fg);
 }
 
 .chip-qualified {
-  background: #e2f2fa;
-  color: #14668c;
+  background: var(--tint-blue);
+  color: var(--tint-blue-fg);
 }
 
 .chip-customer {
-  background: #f0e4f5;
-  color: var(--purple);
+  background: var(--tint-purple);
+  color: var(--tint-purple-fg);
 }
 
 .stage-New {
@@ -352,28 +401,28 @@ tbody tr.clickable:hover {
 }
 
 .stage-Qualified {
-  background: #e2f2fa;
-  color: #14668c;
+  background: var(--tint-blue);
+  color: var(--tint-blue-fg);
 }
 
 .stage-Proposal {
-  background: #fdf3d7;
-  color: #8a6503;
+  background: var(--tint-amber);
+  color: var(--tint-amber-fg);
 }
 
 .stage-Negotiation {
-  background: #f0e4f5;
-  color: var(--purple);
+  background: var(--tint-purple);
+  color: var(--tint-purple-fg);
 }
 
 .stage-Won {
-  background: #e2f3e9;
-  color: #1e7043;
+  background: var(--tint-green);
+  color: var(--tint-green-fg);
 }
 
 .stage-Lost {
-  background: #f9e9e7;
-  color: #a13b30;
+  background: var(--tint-red);
+  color: var(--tint-red-fg);
 }
 
 /* --- Modal --- */
@@ -527,18 +576,18 @@ a.entity-link:hover {
 }
 
 .activity-icon.note {
-  background: #fdf3d7;
-  color: #8a6503;
+  background: var(--tint-amber);
+  color: var(--tint-amber-fg);
 }
 
 .activity-icon.call {
-  background: #e2f2fa;
-  color: #14668c;
+  background: var(--tint-blue);
+  color: var(--tint-blue-fg);
 }
 
 .activity-icon.email {
-  background: #f0e4f5;
-  color: var(--purple);
+  background: var(--tint-purple);
+  color: var(--tint-purple-fg);
 }
 
 .timeline-body {
@@ -560,13 +609,13 @@ a.entity-link:hover {
   font-weight: 600;
   padding: 1px 8px;
   border-radius: 99px;
-  background: #fdf3d7;
-  color: #8a6503;
+  background: var(--tint-amber);
+  color: var(--tint-amber-fg);
 }
 
 .due-chip.overdue {
-  background: #f9e9e7;
-  color: #a13b30;
+  background: var(--tint-red);
+  color: var(--tint-red-fg);
 }
 
 /* --- Pipeline board --- */
@@ -702,7 +751,7 @@ a.entity-link:hover {
 .deal-prob {
   font-size: 11px;
   font-weight: 700;
-  color: var(--white);
+  color: var(--on-dark);
   background: var(--stage);
   border-radius: 99px;
   padding: 1px 7px;
@@ -787,23 +836,23 @@ a.entity-link:hover {
 }
 
 .stat-tile.tone-count {
-  --tint: #f0e4f5;
+  --tint: var(--tint-purple);
   --tone: #753991;
 }
 
 .stat-tile.tone-open {
-  --tint: #e2f2fa;
-  --tone: #14668c;
+  --tint: var(--tint-blue);
+  --tone: var(--tint-blue-fg);
 }
 
 .stat-tile.tone-forecast {
-  --tint: #fdf3d7;
-  --tone: #8a6503;
+  --tint: var(--tint-amber);
+  --tone: var(--tint-amber-fg);
 }
 
 .stat-tile.tone-won {
-  --tint: #e2f3e9;
-  --tone: #1e7043;
+  --tint: var(--tint-green);
+  --tone: var(--tint-green-fg);
 }
 
 .stat-top {
@@ -906,9 +955,9 @@ a.entity-link:hover {
 }
 
 .error-banner {
-  background: #f9e9e7;
-  color: #a13b30;
-  border: 1px solid #eecfcb;
+  background: var(--tint-red);
+  color: var(--tint-red-fg);
+  border: 1px solid var(--tint-red-fg);
   border-radius: var(--radius);
   padding: 10px 14px;
   margin-bottom: 14px;

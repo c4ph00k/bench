@@ -80,3 +80,43 @@ test("dragging a card to another column still changes its value", async ({
     .poll(() => titles(page, "Planning"), { timeout: 5000 })
     .toContain(moving);
 });
+
+test("a column can be dragged to a new position and the order persists", async ({
+  page,
+}) => {
+  await openBoard(page);
+  const columns = () =>
+    page
+      .getByTestId("board")
+      .locator(".board-col")
+      .evaluateAll((els) =>
+        els.map((el) => (el as HTMLElement).dataset.column ?? ""),
+      );
+
+  const before = await columns();
+  expect(before.length).toBeGreaterThan(2);
+  // Drag the last column onto the second, which is the first one holding rows.
+  const grip = page
+    .getByTestId("board")
+    .locator(`.board-col[data-column="${before.at(-1)!}"] .board-col-grip`);
+  const target = page
+    .getByTestId("board")
+    .locator(`.board-col[data-column="${before[1]}"]`);
+
+  await grip.hover();
+  await page.mouse.down();
+  const box = (await target.boundingBox())!;
+  // dnd-kit needs the pointer to move past its activation distance before it starts a drag.
+  await page.mouse.move(box.x + box.width / 2, box.y + 20, { steps: 12 });
+  await page.mouse.up();
+
+  const after = await columns();
+  expect(after).not.toEqual(before);
+  const sorted = (names: string[]) =>
+    [...names].sort((a, b) => a.localeCompare(b));
+  expect(sorted(after)).toEqual(sorted(before));
+
+  await page.reload();
+  await page.getByTestId("board").waitFor();
+  expect(await columns()).toEqual(after);
+});
