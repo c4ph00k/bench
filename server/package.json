@@ -10,7 +10,7 @@
     "coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "better-sqlite3": "^12.11.1",
+    "better-sqlite3": "^13.0.3",
     "date-fns": "^4.4.0",
     "express": "^5.2.1",
     "papaparse": "^5.6.0",

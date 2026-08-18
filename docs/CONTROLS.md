@@ -317,6 +317,15 @@ minutes.
 It triggers on both push and pull request, so a PR from a same-repo branch runs the suite twice per
 commit. That is accepted.
 
+**A second job, `check-node-22`, repeats the same steps on Node 22.** The README promises the repo
+works on Node 22.22 or newer - the floor set by react-router 8 - and this job is what tests that
+promise. It is a separate job, not a matrix on `check`, because branch protection requires the
+status named `check` and a matrix would rename it (see below); only `check` is in the required set.
+The root package.json declares the same range in `engines` (`^22.22.0 || >=24.0.0`, Node 23 being
+excluded by vitest), and `.npmrc` sets `engine-strict=true` so an unsupported Node fails `npm ci`
+with an error naming the required range, rather than a warning scrolled past and a confusing
+failure at runtime.
+
 **It installs the gitleaks release rather than using `gitleaks/gitleaks-action`.** `npm run check`
 shells out to the `gitleaks` binary and fails when it is missing, on purpose; the action runs its own
 scan inside a container and does not leave the binary on `PATH`, so `check` would still fail. The

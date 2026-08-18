@@ -19,13 +19,14 @@ request. Work through it in order.
 
 ## 1.1 Install Node.js
 
-You need **Node.js 24 or newer**. Check what you have:
+You need **Node.js 24 or newer**. The Node 22 LTS line also works from **22.22** up - both are
+tested in CI - but if you are installing fresh, install 24. Check what you have:
 
 ```bash
 node -v
 ```
 
-If that prints nothing, or a version below 24:
+If that prints nothing, or a version below 22.22:
 
 **macOS** - with [Homebrew](https://brew.sh):
 
@@ -52,6 +53,17 @@ end, and that only works from your own copy.
 2. Click **Fork** (top right), then **Create fork**
 
 You now have `https://github.com/<your-username>/bench`.
+
+**If you cannot fork** - no Fork button, or your account is not allowed to - clone this repository
+directly instead and carry on from 1.4:
+
+```bash
+git clone https://github.com/ed-donner/bench.git
+cd bench
+```
+
+Everything up to and including the tests works the same; only pushing and opening the pull request
+(3.3 onwards) needs a fork.
 
 ## 1.3 Clone your fork
 
@@ -281,9 +293,9 @@ it in **your own fork**, where you need nobody's permission:
 2. If it offers a button to enable workflows, click it. Forks arrive with workflows switched off.
 3. Push your branch again, or use **Run workflow** if the workflow offers it.
 
-The same `check` job then runs on your account: `npm run check` and `npm run e2e`, on Linux, about
-three minutes. That is the identical gate this repository uses to protect `main`, so a green run
-there means your change would pass.
+The same workflow then runs on your account: `npm run check` and `npm run e2e`, on Linux, on Node
+24 and again on Node 22, about three minutes. That is the identical gate this repository uses to
+protect `main`, so a green run there means your change would pass.
 
 If it goes red, fix it and push again - the run repeats on each push.
 
