@@ -140,6 +140,15 @@ These are settled. Changing one is a project-level decision, not an implementati
   typescript-eslint's supported range. The cost is roughly three seconds a typecheck against 7.
   **Revisit when typescript-eslint supports the native compiler.** See
   [CONTROLS.md](./CONTROLS.md).
+- **better-sqlite3 stays on 12.** `npm ci` prints one deprecation warning for its
+  `prebuild-install` dependency; that is accepted, not an oversight. v13 ships `binding.gyp`
+  inside the tarball next to its prebuilt binaries and relies on `gypfile: false` to stop npm
+  compiling - but the lockfile and the registry's install metadata do not carry that field, so
+  `npm ci` injects `node-gyp rebuild` and every install compiles from source. That succeeds
+  silently on machines with Python and a C++ toolchain and fails hard on a stock Windows machine;
+  the prebuilds inside the tarball are only read at require time, never at install. v12 downloads
+  a prebuilt binary instead, which needs no toolchain. Revisit if npm starts carrying `gypfile`
+  through the lockfile, or upstream stops shipping `binding.gyp` in the tarball.
 
 ## Adding a fifth app
 

@@ -86,6 +86,9 @@ npm ci
 installs exactly what the lockfile names, which is also what CI runs. Use `npm install <package>`
 only when you are deliberately adding a dependency.
 
+`npm ci` prints one deprecation warning, about `prebuild-install`. It is expected and harmless -
+the reason it stays is documented in [docs/PROJECT.md](./docs/PROJECT.md).
+
 ## 1.5 Run it
 
 ```bash
