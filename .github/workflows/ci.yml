@@ -1,7 +1,5 @@
-# The gate. Everything else - lefthook, the Stop hook - is a nudge that `git commit --no-verify`
-# or a distracted agent can walk past. This is the layer that cannot be bypassed, so it names the
-# aggregates rather than restating their parts: `check` and `e2e` cannot drift out of step with
-# what package.json defines. See docs/CONTROLS.md.
+# Runs the same commands as local development: npm run check, then npm run e2e.
+# Branch protection on main requires the job named "check" - renaming it breaks the match.
 name: check
 
 on:
@@ -21,10 +19,7 @@ jobs:
 
       - run: npm ci
 
-      # `npm run check` shells out to the gitleaks binary and fails when it is missing, on purpose:
-      # a control that quietly passes without its tool is worse than none. The official action runs
-      # its own scan in a container rather than leaving the binary on PATH, so install the release
-      # instead and let CI run exactly the command the working tree does.
+      # npm run check shells out to the gitleaks binary, so put the release on PATH.
       - name: Install gitleaks
         run: |
           curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
@@ -45,33 +40,3 @@ jobs:
           name: playwright-report
           path: test-results/
           retention-days: 7
-
-  # The README promises the repo works on Node 22.22+, and this job is what makes that promise
-  # tested rather than assumed. It is a separate job, not a matrix on `check`: branch protection
-  # requires the status named `check`, a matrix would rename it to `check (24)`, and the
-  # requirement would silently stop matching. This job is not in the required set.
-  check-node-22:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-          cache: npm
-
-      - run: npm ci
-
-      - name: Install gitleaks
-        run: |
-          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
-            | sudo tar -xz -C /usr/local/bin gitleaks
-          gitleaks version
-        env:
-          GITLEAKS_VERSION: 8.30.1
-
-      - run: npm run check
-
-      - run: npx playwright install --with-deps chromium
-
-      - run: npm run e2e

@@ -19,8 +19,8 @@ request. Work through it in order.
 
 ## 1.1 Installing Node.js if required
 
-Best is **Node.js 24 or newer**. The Node 22 LTS line also works from **22.22** up - both are
-tested in CI - but if you are installing fresh, install 24. Check what you have:
+Best is **Node.js 24 or newer**. The Node 22 LTS line also works from **22.22** up, but if you
+are installing fresh, install 24. Check what you have:
 
 ```bash
 node -v
@@ -291,8 +291,8 @@ it in **your own fork**, where you need nobody's permission:
 2. If it offers a button to enable workflows, click it. Forks arrive with workflows switched off.
 3. Push your branch again, or use **Run workflow** if the workflow offers it.
 
-The same workflow then runs on your account: `npm run check` and `npm run e2e`, on Linux, on Node
-24 and again on Node 22, about three minutes. That is the identical gate this repository uses to
-protect `main`, so a green run there means your change would pass.
+The same workflow then runs on your account: `npm run check` and `npm run e2e`, on Linux on
+Node 24, about three minutes. That is the identical gate this repository uses to protect `main`,
+so a green run there means your change would pass.
 
 If it goes red, fix it and push again - the run repeats on each push.
