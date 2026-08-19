@@ -17,10 +17,10 @@ request. Work through it in order.
 
 # 1. Installation
 
-## 1.1 Install Node.js
+## 1.1 Installing Node.js if required
 
-You need **Node.js 24 or newer**. The Node 22 LTS line also works from **22.22** up - both are
-tested in CI - but if you are installing fresh, install 24. Check what you have:
+Best is **Node.js 24 or newer**. The Node 22 LTS line also works from **22.22** up, but if you
+are installing fresh, install 24. Check what you have:
 
 ```bash
 node -v
@@ -218,12 +218,12 @@ Never work on `main` - your pull request needs a branch of its own.
 git checkout -b my-change
 ```
 
-Pick a name that says what you are doing, like `add-contact-filter`.
+Pick a name that says what you are doing, like `internationalize`.
 
-## 3.2 Let your coding agent do the work
+## 3.2 Let your coding agent do the plan
 
 Open the repository in your coding agent - Claude Code, Cursor, or whatever you use - and describe
-the change you were given.
+the change you were given, and ask for a plan with success critiera.
 
 The repository is set up to brief the agent for you. `CLAUDE.md` and `AGENTS.md` at the root pull in
 the house rules, so your agent already knows the architecture, the coding standards and the process
@@ -233,19 +233,14 @@ it is expected to follow. You should not need to explain any of that.
 `npm run check` before handing work back, and a lint hook holds the turn open if anything is still
 red. Expect it to write the code, run the checks, and fix what it broke without being asked.
 
-Two things worth doing yourself when it says it is finished:
+Here is the suggested change to add internationalization:
 
-1. **Read the diff.** `git diff` - you are responsible for what you submit.
-2. **Look at it in a browser.** `npm run dev`, then http://localhost:8101. Automated tests confirm
-   what someone already thought to assert; driving the app finds what they did not.
+> Please plan the following feature:
+> Add a toggle to the UI next to the Light mode / dark mode toggle that switches all 4 products between English & Spanish. First write a detailed plan with success criteria.
 
-If the agent did not run them, run them yourself:
+Your Agent may ask questions, then will plan the work.
 
-```bash
-npm run format && npm run check && npm run e2e
-```
-
-**Do not commit red.** If the checks do not pass, the work is not finished.
+If you are satisfied with the plan, then tell it to go ahead and build.
 
 ## 3.3 Commit and push to your fork
 
@@ -296,32 +291,8 @@ it in **your own fork**, where you need nobody's permission:
 2. If it offers a button to enable workflows, click it. Forks arrive with workflows switched off.
 3. Push your branch again, or use **Run workflow** if the workflow offers it.
 
-The same workflow then runs on your account: `npm run check` and `npm run e2e`, on Linux, on Node
-24 and again on Node 22, about three minutes. That is the identical gate this repository uses to
-protect `main`, so a green run there means your change would pass.
+The same workflow then runs on your account: `npm run check` and `npm run e2e`, on Linux on
+Node 24, about three minutes. That is the identical gate this repository uses to protect `main`,
+so a green run there means your change would pass.
 
 If it goes red, fix it and push again - the run repeats on each push.
-
----
-
-## Layout
-
-One npm workspace root with two workspaces, so a single install and a single set of versions.
-
-- `web/` - one Vite project with an HTML entry point per app: `index.html` (launcher), `crm/`,
-  `space/`, `rolodex/`, `groove/`. Sources live in `web/src/<app>/`, with the shared navigation
-  strip and theme in `web/src/shared/`. Separate documents mean each app keeps its own global
-  stylesheet without collisions.
-- `server/` - one Express app. `/api/crm/*`, `/api/space/*` and `/api/rolodex/*`, plus the built
-  frontend with deep-link fallback. Groove has no backend.
-- `data/` - `crm.sqlite`, `personal-space.db` and `rolodex.sqlite`, created and seeded on first run.
-- `e2e/` - Playwright specs.
-- `scripts/` - the secrets check and the gitleaks runner.
-- `docs/` - working documentation: [PROJECT.md](./docs/PROJECT.md) (purpose and architecture),
-  [PROCESS.md](./docs/PROCESS.md) (implementing and testing a change),
-  [STANDARDS.md](./docs/STANDARDS.md) (coding standards),
-  [CONTROLS.md](./docs/CONTROLS.md) (lint, static analysis, coverage and how each is enforced),
-  plus a directory per app - `docs/crm/`, `docs/space/`, `docs/rolodex/`, `docs/groove/` - each with
-  its implementation notes and its original requirements.
-- [e2e/EXPLORATORY.md](./e2e/EXPLORATORY.md) - the manual checks automation cannot make, Groove's
-  audio above all.
