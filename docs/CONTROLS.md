@@ -65,12 +65,11 @@ per workspace: type-aware linting reaches both tsconfigs through typescript-esli
 Two things need no package, only configuration:
 
 - The built-in size rules, which enforce "short functions, short modules": `max-lines` 500,
-  `max-lines-per-function` 200, `complexity` 15, `max-depth` 4, `max-params` 5. Seed and patch
+  `max-lines-per-function` 200, `complexity` 15, `max-depth` 4, `max-params` 5. Seed
   modules are literal data and exempt from the line counts, and `max-lines-per-function` is off for
   `.tsx`, whose bodies are mostly a JSX tree the rule counts as logic. `complexity` and
-  `cognitive-complexity` measure whether a function is actually hard to follow, and stay strict
-  everywhere outside Groove's audio. The numbers were calibrated against this codebase rather than
-  picked round, and they bite.
+  `cognitive-complexity` measure whether a function is actually hard to follow. The numbers were
+  calibrated against this codebase rather than picked round, and they bite.
 - **`no-restricted-imports`**, stopping the three apps importing from each other. It is a denylist of
   the sibling apps rather than an allowlist of permitted paths, so a future `web/src/shared/` is
   allowed by default. Note what it does **not** cover: the collision
@@ -82,17 +81,16 @@ Two things need no package, only configuration:
 Each was measured before it was switched off, and each sits in `eslint.config.js` with the same
 reason next to it.
 
-| Rule                                                                                              | Why not                                                                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `sonarjs/prefer-read-only-props`                                                                  | `Readonly<Props>` on 61 component signatures, for a mutation this codebase never makes and which `Readonly` is too shallow to prevent                                                                                      |
-| `@typescript-eslint/no-non-null-assertion`                                                        | Contradicts `non-nullable-type-assertion-style`, also on, which asks for `x!` over `x as T`. Every site is one TypeScript's narrowing cannot follow                                                                        |
-| `@typescript-eslint/no-unnecessary-type-parameters`                                               | Flags `useFetch<Deal[]>(url)`, which is the JSON boundary. Moving the cast to each call site would not make it any more checked                                                                                            |
-| `sonarjs/function-return-type`                                                                    | A sort key is a number for a numeric column and a string otherwise; collapsing it would sort 10 before 9                                                                                                                   |
-| `prefer-nullish-coalescing` (strings only)                                                        | `job_title \|\| "—"` is deliberate - `??` would render the empty string                                                                                                                                                    |
-| `restrict-template-expressions` (numbers only)                                                    | Interpolating a number is unambiguous; `string \| undefined` printing "undefined" still errors                                                                                                                             |
-| `no-confusing-void-expression` (arrow shorthand)                                                  | The braced form it wants at ~190 React handlers reads worse                                                                                                                                                                |
-| In `e2e/` and `scripts/`: `sonarjs/assertions-in-tests`, `no-os-command-from-path`                | Plugin limits, not findings: it does not recognise `await expect.poll(...)`, and its PATH rule is aimed at services, not a local run of this repo's own toolchain                                                          |
-| In `web/src/groove/audio/**`: `complexity`, `max-params`, `cognitive-complexity`, `pseudo-random` | Building a Web Audio graph is long and linear, a voice's parameters are its signal inputs, and EXPLORATORY.md records that none of it has automated coverage - a refactor to satisfy a metric could only be checked by ear |
+| Rule                                                                               | Why not                                                                                                                                                           |
+| ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sonarjs/prefer-read-only-props`                                                   | `Readonly<Props>` on 61 component signatures, for a mutation this codebase never makes and which `Readonly` is too shallow to prevent                             |
+| `@typescript-eslint/no-non-null-assertion`                                         | Contradicts `non-nullable-type-assertion-style`, also on, which asks for `x!` over `x as T`. Every site is one TypeScript's narrowing cannot follow               |
+| `@typescript-eslint/no-unnecessary-type-parameters`                                | Flags `useFetch<Deal[]>(url)`, which is the JSON boundary. Moving the cast to each call site would not make it any more checked                                   |
+| `sonarjs/function-return-type`                                                     | A sort key is a number for a numeric column and a string otherwise; collapsing it would sort 10 before 9                                                          |
+| `prefer-nullish-coalescing` (strings only)                                         | `job_title \|\| "—"` is deliberate - `??` would render the empty string                                                                                           |
+| `restrict-template-expressions` (numbers only)                                     | Interpolating a number is unambiguous; `string \| undefined` printing "undefined" still errors                                                                    |
+| `no-confusing-void-expression` (arrow shorthand)                                   | The braced form it wants at ~190 React handlers reads worse                                                                                                       |
+| In `e2e/` and `scripts/`: `sonarjs/assertions-in-tests`, `no-os-command-from-path` | Plugin limits, not findings: it does not recognise `await expect.poll(...)`, and its PATH rule is aimed at services, not a local run of this repo's own toolchain |
 
 ### The two inline suppressions
 
@@ -193,23 +191,21 @@ Formatting is applied in four places, and the split between which ones **write**
 
 vitest's built-in `coverage.thresholds`, **80% statements**, configured per workspace and measured
 across every app: `server/vitest.config.ts` includes `src/**` and excludes `src/index.ts`;
-`web/vite.config.ts` includes `src/**` and excludes `main.tsx`, the test files and Groove's audio.
+`web/vite.config.ts` includes `src/**` and excludes `main.tsx` and the test files.
 
 Where it stands, from `npm run coverage`:
 
-| Scope                       | Statements |
-| --------------------------- | ---------- |
-| `server/src`                | 87%        |
-| `web/src/crm`               | 100%       |
-| `web/src/crm/components`    | 95%        |
-| `web/src/crm/pages`         | 96%        |
-| `web/src/space`             | 92%        |
-| `web/src/rolodex`           | 82%        |
-| `web/src/rolodex/pages`     | 80%        |
-| `web/src/groove`            | 88%        |
-| `web/src/groove/components` | 97%        |
-| `web/src/home`              | 100%       |
-| **web overall**             | **86%**    |
+| Scope                    | Statements |
+| ------------------------ | ---------- |
+| `server/src`             | 87%        |
+| `web/src/crm`            | 100%       |
+| `web/src/crm/components` | 95%        |
+| `web/src/crm/pages`      | 96%        |
+| `web/src/space`          | 92%        |
+| `web/src/rolodex`        | 82%        |
+| `web/src/rolodex/pages`  | 80%        |
+| `web/src/home`           | 100%       |
+| **web overall**          | **86%**    |
 
 **Do not lower the bar to make a red run green.**
 
@@ -224,12 +220,6 @@ from the measure; the test is worth more, because the seed is the first thing an
 `server/src/crm/seed.ts` has no such test and is the largest uncovered file left.
 
 ### What is not covered, and why
-
-**`web/src/groove/audio/**` is excluded outright** - 1,053 lines across four files. jsdom has no
-`AudioContext`, so they cannot be unit tested without a mock that would assert nothing about how
-anything sounds. [EXPLORATORY.md](../e2e/EXPLORATORY.md) records that gap, and a coverage threshold
-must not be allowed to imply otherwise. Groove's pure modules (`music.ts`, `params.ts`,
-`patches.ts`, `filter.ts`) stay in, and are ordinary logic to test.
 
 The largest remaining hole is Space's `BoardView` at 31%.
 
@@ -338,7 +328,7 @@ your machine.
 
 ### Branch protection
 
-A ruleset named `main` on `ed-donner/bench`, enforcement **active**, targeting the default branch,
+A ruleset named `main` on `c4ph00k/bench`, enforcement **active**, targeting the default branch,
 with an **empty bypass list** so it binds the repository owner too:
 
 - Restrict deletions, block force pushes
@@ -416,7 +406,7 @@ unexplained standing exception is worse than a red run.
 
 ## Branching
 
-Ed creates a branch before work starts. The agent commits to it and **never pushes**; Ed pushes and
+Marco creates a branch before work starts. The agent commits to it and **never pushes**; Marco pushes and
 opens the pull request, CI runs there, and the required check gates the merge into `main`.
 
 There is no conflict between committing and branch protection: protection governs `main` only, a
@@ -425,7 +415,7 @@ feature branch is unprotected, and the agent never pushes anything anywhere.
 **If a session begins on `main`, branch before committing** rather than committing onto `main`, and
 say so in the reply.
 
-Because the agent never pushes, CI does not see the work until Ed pushes the branch. That is what
+Because the agent never pushes, CI does not see the work until Marco pushes the branch. That is what
 makes running `npm run check` locally a requirement rather than a courtesy.
 
 ## Related documents

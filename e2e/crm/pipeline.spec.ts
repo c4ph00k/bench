@@ -3,9 +3,13 @@
  * natively: focus a card, Space to lift, arrows to move, Space to drop. That avoids the
  * coordinate and viewport fragility that mouse-simulated drags suffer from.
  */
-import { test, expect } from "../fixtures";
+import { test, expect, login } from "../fixtures";
 import { json, type Deal } from "../api";
 import type { Page } from "@playwright/test";
+
+test.beforeEach(async ({ page }) => {
+  await login(page);
+});
 
 const STAGES = ["New", "Qualified", "Proposal", "Negotiation", "Won", "Lost"];
 

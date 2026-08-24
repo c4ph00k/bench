@@ -1,4 +1,8 @@
-import { test, expect } from "../fixtures";
+import { test, expect, login } from "../fixtures";
+
+test.beforeEach(async ({ page }) => {
+  await login(page);
+});
 
 test("quick-find opens by shortcut and control, narrows live, and jumps to a result", async ({
   page,

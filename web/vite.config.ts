@@ -6,9 +6,12 @@ import { fileURLToPath } from "node:url";
 /** Multi-page build: one HTML entry per app, so their global styles never collide. */
 const entry = (name: string) => fileURLToPath(new URL(name, import.meta.url));
 
-const APPS = ["crm", "space", "rolodex", "groove"];
+/** The apps with their own HTML entry point in web/dist, for deep-link fallback. */
+const APPS = ["login", "crm", "space", "rolodex"];
 
-/** Dev only: send a deep link like /crm/contacts to that app's HTML, not the launcher. */
+/** Dev only: send a deep link like /crm/contacts to that app's HTML, not the launcher. The login
+    document is in the list so /login resolves in dev too - in production the gate redirects there
+    before any page is served. */
 function appFallback(): PluginOption {
   return {
     name: "bench-app-fallback",
@@ -32,10 +35,10 @@ export default defineConfig({
     rollupOptions: {
       input: {
         home: entry("index.html"),
+        login: entry("login/index.html"),
         crm: entry("crm/index.html"),
         space: entry("space/index.html"),
         rolodex: entry("rolodex/index.html"),
-        groove: entry("groove/index.html"),
       },
     },
   },
@@ -52,15 +55,7 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       include: ["src/**"],
-      // jsdom has no AudioContext, so Groove's audio graph cannot be unit tested without a mock
-      // that would assert nothing about how it sounds. EXPLORATORY.md records that gap; excluding
-      // it here keeps this threshold from implying coverage it does not have.
-      exclude: [
-        "src/**/main.tsx",
-        "src/**/test/**",
-        "src/**/*.test.*",
-        "src/groove/audio/**",
-      ],
+      exclude: ["src/**/main.tsx", "src/**/test/**", "src/**/*.test.*"],
       thresholds: { statements: 80 },
     },
   },

@@ -2,7 +2,7 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
 import { afterEach, beforeEach, vi } from "vitest";
 
-// jsdom implements no pointer capture, so Groove's knobs and faders throw on pointerdown without
+// jsdom implements no pointer capture, so components that drag throw on pointerdown without
 // this. Capture only decides which element receives the rest of a drag, and these tests dispatch
 // straight at the target, so a no-op loses nothing.
 Element.prototype.setPointerCapture = vi.fn();

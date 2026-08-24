@@ -48,7 +48,7 @@ const dbData = (): DatabaseData => ({
       title: "Alpha",
       icon: null,
       position: 0,
-      values: { who: "Ed", status: "todo" },
+      values: { who: "Marco", status: "todo" },
     },
     {
       id: "r2",
@@ -250,7 +250,7 @@ describe("ListView", () => {
       </MemoryRouter>,
     );
     expect(screen.getByText("Alpha")).toBeInTheDocument();
-    expect(screen.getByText("Ed")).toBeInTheDocument();
+    expect(screen.getByText("Marco")).toBeInTheDocument();
     expect(screen.getByText("Todo")).toBeInTheDocument();
   });
 

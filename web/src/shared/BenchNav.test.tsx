@@ -1,7 +1,10 @@
-import { describe, expect, it, beforeEach } from "vitest";
+import { describe, expect, it, beforeEach, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import BenchNav from "./BenchNav";
+import { signOut } from "./auth";
+
+vi.mock("./auth", () => ({ signOut: vi.fn() }));
 
 const nav = () => within(screen.getByRole("navigation", { name: "Primary" }));
 
@@ -11,7 +14,7 @@ beforeEach(() => {
 });
 
 describe("BenchNav", () => {
-  it("offers the launcher and all four apps, in order", () => {
+  it("offers the launcher and all three apps, in order", () => {
     render(<BenchNav active="crm" />);
     expect(
       nav()
@@ -22,7 +25,6 @@ describe("BenchNav", () => {
       ["CRM", "/crm/"],
       ["Space", "/space/"],
       ["Rolodex", "/rolodex/"],
-      ["Groove", "/groove/"],
     ]);
   });
 
@@ -34,9 +36,9 @@ describe("BenchNav", () => {
     expect(current.map((link) => link.textContent)).toEqual(["Space"]);
   });
 
-  it("names the project", () => {
+  it("carries the company brand", () => {
     render(<BenchNav active="home" />);
-    expect(screen.getByText("Bench")).toBeInTheDocument();
+    expect(screen.getByText("Novhora")).toBeInTheDocument();
   });
 
   it("toggles the theme for every app and remembers the choice", async () => {
@@ -48,5 +50,11 @@ describe("BenchNav", () => {
     await userEvent.click(screen.getByRole("button", { name: /Switch to/ }));
     expect(document.documentElement.dataset.theme).toBe("light");
     expect(localStorage.getItem("bench.theme")).toBe("light");
+  });
+
+  it("signs out from the strip", async () => {
+    render(<BenchNav active="crm" />);
+    await userEvent.click(screen.getByRole("button", { name: "Sign out" }));
+    expect(signOut).toHaveBeenCalled();
   });
 });

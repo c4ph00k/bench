@@ -1,5 +1,9 @@
-import { test, expect } from "../fixtures";
+import { test, expect, login } from "../fixtures";
 import type { Page } from "@playwright/test";
+
+test.beforeEach(async ({ page }) => {
+  await login(page);
+});
 
 /** Create a page (root or nested), waiting out the navigation race, and title it. */
 async function createPage(page: Page, title: string, parentLabel?: string) {

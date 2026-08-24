@@ -109,26 +109,11 @@ export default tseslint.config(
     rules: { "max-lines-per-function": "off" },
   },
 
-  // Seed and patch modules are literal data - rows to insert, synth presets. Counting their lines
-  // measures the size of the fixture, not the difficulty of the code.
+  // Seed modules are literal data - rows to insert. Counting their lines measures the size of
+  // the fixture, not the difficulty of the code.
   {
-    files: ["server/src/**/seed.ts", "web/src/groove/patches.ts"],
+    files: ["server/src/**/seed.ts"],
     rules: { "max-lines": "off", "max-lines-per-function": "off" },
-  },
-
-  // Building a Web Audio graph is long and linear: a voice's parameters are its signal inputs, and
-  // the branches are "does this patch use vibrato". EXPLORATORY.md records that none of this has
-  // automated coverage, so a refactor driven by these metrics could only be checked by ear -
-  // which is a worse trade than the metric is worth. Math.random shapes noise buffers and sample
-  // offsets here; nothing in Groove is security-sensitive.
-  {
-    files: ["web/src/groove/audio/**"],
-    rules: {
-      complexity: "off",
-      "max-params": "off",
-      "sonarjs/cognitive-complexity": "off",
-      "sonarjs/pseudo-random": "off",
-    },
   },
 
   // Config files and plain scripts sit outside any tsconfig, so type-aware rules cannot run.
@@ -148,16 +133,16 @@ export default tseslint.config(
     languageOptions: { globals: globals.browser },
   },
 
-  // The four apps stay separate. A denylist of the siblings rather than an allowlist of what is
+  // The apps stay separate. A denylist of the siblings rather than an allowlist of what is
   // permitted, so the shared module needs no rule change. This guards the module graph only: the
-  // collision PROJECT.md warns about is the four global stylesheets, which no lint rule sees.
-  ...["crm", "space", "rolodex", "groove"].map((app) => ({
+  // collision PROJECT.md warns about is the global stylesheets, which no lint rule sees.
+  ...["crm", "space", "rolodex"].map((app) => ({
     files: [`web/src/${app}/**`],
     rules: {
       "no-restricted-imports": [
         "error",
         {
-          patterns: ["crm", "space", "rolodex", "groove"]
+          patterns: ["crm", "space", "rolodex"]
             .filter((other) => other !== app)
             .flatMap((other) => [`**/${other}/**`, `../${other}/*`]),
         },

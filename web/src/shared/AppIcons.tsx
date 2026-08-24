@@ -1,10 +1,10 @@
 /**
- * The Bench mark and one icon per app, shared by the navigation strip and by each app's own
- * brand block so the same glyph identifies an app wherever you are.
+ * One icon per app, shared by the navigation strip and by each app's own brand block so the same
+ * glyph identifies an app wherever you are.
  *
  * Stroke icons sit on the same 24 grid as CRM's Icons.tsx and take their colour from the text
- * around them. The Bench mark is filled and carries the palette itself: a bench whose seat is
- * one segment per app, on legs that follow the text colour.
+ * around them. The Novhora mark is the company's plaque logo reduced to strokes: a tall panel
+ * with a divider, an N in the upper chamber and a dot in the lower one.
  */
 
 interface IconProps {
@@ -33,20 +33,14 @@ function Stroke({
   );
 }
 
-export const BenchMark = ({ size = 20 }: IconProps) => (
-  <svg
-    width={size}
-    height={size}
-    viewBox="0 0 24 24"
-    aria-hidden="true"
-    focusable="false"
-  >
-    <rect x="2" y="6.5" width="6.67" height="4.8" fill="#ecad0a" />
-    <rect x="8.67" y="6.5" width="6.66" height="4.8" fill="#209dd7" />
-    <rect x="15.33" y="6.5" width="6.67" height="4.8" fill="#a066d8" />
-    <rect x="4" y="11.3" width="2.7" height="7.2" fill="currentColor" />
-    <rect x="17.3" y="11.3" width="2.7" height="7.2" fill="currentColor" />
-  </svg>
+/** The plaque: panel, divider, N above, dot below - the company logo as strokes. */
+export const NovhoraMark = (p: IconProps) => (
+  <Stroke {...p}>
+    <rect x="7" y="2.75" width="10" height="18.5" rx="1.75" />
+    <path d="M7 12.25h10" />
+    <path d="M10 9.75v-4l4 4v-4" />
+    <circle cx="12" cy="16.25" r="0.9" fill="currentColor" stroke="none" />
+  </Stroke>
 );
 
 export const IconHome = (p: IconProps) => (
@@ -75,12 +69,6 @@ export const IconSpace = (p: IconProps) => (
   </Stroke>
 );
 
-export const IconGroove = (p: IconProps) => (
-  <Stroke {...p}>
-    <path d="M2.5 12h3L8 5l3.5 15L15 8l2 4h4" />
-  </Stroke>
-);
-
 /** A rolodex card, notched where the spindle passes through it - the thing itself, rather
     than another address book that would look like the CRM's contact card. */
 export const IconRolodex = (p: IconProps) => (
@@ -101,5 +89,13 @@ export const IconSun = (p: IconProps) => (
 export const IconMoon = (p: IconProps) => (
   <Stroke {...p}>
     <path d="M20 14.2A8.2 8.2 0 0 1 9.8 4a8.2 8.2 0 1 0 10.2 10.2Z" />
+  </Stroke>
+);
+
+/** A door with an arrow out of it - leaving, not arriving. */
+export const IconLogout = (p: IconProps) => (
+  <Stroke {...p}>
+    <path d="M14 4.5H6A1.5 1.5 0 0 0 4.5 6v12A1.5 1.5 0 0 0 6 19.5h8" />
+    <path d="M10 12h10M16.5 8.5 20 12l-3.5 3.5" />
   </Stroke>
 );

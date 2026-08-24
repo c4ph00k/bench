@@ -118,7 +118,7 @@ export function seedIfEmpty(db: Database.Database): void {
 
   const home = s.page({ title: "Home", icon: "🏠" });
   s.blocks(home, [
-    { type: "heading1", text: "Welcome back, Ed" },
+    { type: "heading1", text: "Welcome back, Marco" },
     {
       type: "paragraph",
       text: "This is your personal space: notes, plans and lists, all in one quiet place.",
@@ -1345,7 +1345,7 @@ function seedProjectTracker(s: Seeder, projectsId: string): void {
 
   const migrate = s.row(dbId, "Migrate home lab services", {
     [status]: st["In progress"],
-    [owner]: "Ed",
+    [owner]: "Marco",
     [tags]: [tg.hardware, tg.software],
     [effort]: 6,
     [due]: "2026-08-30",
@@ -1360,7 +1360,7 @@ function seedProjectTracker(s: Seeder, projectsId: string): void {
   ]);
   s.row(dbId, "Drip irrigation for the balcony", {
     [status]: st.Shipped,
-    [owner]: "Ed",
+    [owner]: "Marco",
     [tags]: [tg.home],
     [effort]: 2,
     [due]: "2026-05-15",
@@ -1368,7 +1368,7 @@ function seedProjectTracker(s: Seeder, projectsId: string): void {
   });
   s.row(dbId, "Slow tools essay", {
     [status]: st["In progress"],
-    [owner]: "Ed",
+    [owner]: "Marco",
     [tags]: [tg.writing],
     [effort]: 3,
     [due]: "2026-07-31",
@@ -1376,7 +1376,7 @@ function seedProjectTracker(s: Seeder, projectsId: string): void {
   });
   s.row(dbId, "E-ink hallway dashboard", {
     [status]: st.Backlog,
-    [owner]: "Ed",
+    [owner]: "Marco",
     [tags]: [tg.hardware, tg.software],
     [effort]: 5,
     [funded]: false,
@@ -1390,7 +1390,7 @@ function seedProjectTracker(s: Seeder, projectsId: string): void {
   });
   const restore = s.row(dbId, "Bike restoration", {
     [status]: st["In progress"],
-    [owner]: "Ed",
+    [owner]: "Marco",
     [tags]: [tg.hardware, tg.home],
     [effort]: 8,
     [due]: "2026-10-04",
@@ -1404,7 +1404,7 @@ function seedProjectTracker(s: Seeder, projectsId: string): void {
   ]);
   s.row(dbId, "Sourdough schedule that survives a work week", {
     [status]: st.Shipped,
-    [owner]: "Ed",
+    [owner]: "Marco",
     [tags]: [tg.home, tg.writing],
     [effort]: 2,
     [due]: "2026-06-20",
@@ -1412,14 +1412,14 @@ function seedProjectTracker(s: Seeder, projectsId: string): void {
   });
   s.row(dbId, "Photo backup, offsite copy", {
     [status]: st.Backlog,
-    [owner]: "Ed",
+    [owner]: "Marco",
     [tags]: [tg.software],
     [effort]: 3,
     [funded]: false,
   });
   s.row(dbId, "Replace the hallway light switch", {
     [status]: st.Blocked,
-    [owner]: "Ed",
+    [owner]: "Marco",
     [tags]: [tg.home],
     [effort]: 1,
     [due]: "2026-09-06",

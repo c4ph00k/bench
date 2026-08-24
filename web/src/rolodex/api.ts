@@ -1,3 +1,4 @@
+import { redirectTo } from "../shared/auth";
 import type {
   Circle,
   ConnectionKind,
@@ -23,6 +24,11 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     headers: { "Content-Type": "application/json" },
     ...options,
   });
+  // A 401 means the session is gone; the login page is where that is put right.
+  if (res.status === 401) {
+    redirectTo("/login");
+    throw new Error(`401 ${path}`);
+  }
   if (!res.ok) {
     // The API answers a bad request with { error }, and that message is what the toast shows.
     // Anything else - an empty body, HTML from a proxy - has to still name the status, or the

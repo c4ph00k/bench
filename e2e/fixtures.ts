@@ -3,22 +3,40 @@ import { spawn } from "node:child_process";
 import { rmSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import type { Page } from "@playwright/test";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-/** Poll the API until the server answers, so tests never race the boot. */
+/** The seeded login - see server/src/index.ts, which prints it on first run. */
+const LOGIN = { username: "marco", password: "bench" };
+
+/** Poll the API until the server answers, so tests never race the boot. Any HTTP reply proves it
+    is listening; the gate turns everything into a 401 until a spec signs in, which is still an answer. */
 async function waitForServer(url: string, timeoutMs = 60_000) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     try {
       const res = await fetch(url);
-      if (res.ok) return;
+      if (res.status < 500) return;
     } catch {
       // not listening yet
     }
     await new Promise((r) => setTimeout(r, 200));
   }
   throw new Error(`server at ${url} did not start within ${timeoutMs}ms`);
+}
+
+/**
+ * Sign in through the real form, as a person does. Every spec needs this - the gate sits in front
+ * of every page and every API route - and each test gets a fresh browser context, so it is a
+ * beforeEach in each spec rather than a fixture: visible in the file, next to what it sets up.
+ */
+export async function login(page: Page): Promise<void> {
+  await page.goto("/login");
+  await page.getByLabel("Username").fill(LOGIN.username);
+  await page.getByLabel("Password").fill(LOGIN.password);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByRole("navigation", { name: "Primary" }).waitFor();
 }
 
 /**

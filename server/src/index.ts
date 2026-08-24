@@ -8,6 +8,7 @@ import { seedIfEmpty as seedRolodex } from "./rolodex/seed.js";
 import { openDb as openSpaceDb } from "./space/db.js";
 import { seedIfEmpty } from "./space/seed.js";
 import { createApp } from "./app.js";
+import { openDb as openAuthDb, seedIfEmpty as seedAuth } from "./auth/db.js";
 
 const root = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -30,6 +31,10 @@ seedIfEmpty(space);
 const rolodex = openRolodexDb(path.join(dataDir, "rolodex.sqlite"));
 seedRolodex(rolodex);
 
-createApp({ crm, space, rolodex }).listen(port, () => {
-  console.log(`Bench running at http://localhost:${port}`);
+const authDb = openAuthDb(path.join(dataDir, "auth.sqlite"));
+if (seedAuth(authDb, "marco", "bench"))
+  console.log("Seeded the login user: marco (password bench)");
+
+createApp({ crm, space, rolodex, auth: authDb }).listen(port, () => {
+  console.log(`Novhora running at http://localhost:${port}`);
 });

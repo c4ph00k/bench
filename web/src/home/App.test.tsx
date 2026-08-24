@@ -6,7 +6,6 @@ const APPS = [
   ["CRM", "/crm/", "Deals, and the people behind them"],
   ["Space", "/space/", "Everything you know, in one place"],
   ["Rolodex", "/rolodex/", "The people in your life, kept close"],
-  ["Groove", "/groove/", "A groovebox in the browser"],
 ];
 
 describe("launcher", () => {
@@ -17,6 +16,13 @@ describe("launcher", () => {
         screen.getByRole("heading", { name }).closest("a")!,
       ).toHaveAttribute("href", href);
     }
+  });
+
+  it("carries the company brand as its title", () => {
+    render(<App />);
+    expect(
+      screen.getByRole("heading", { name: "Novhora" }),
+    ).toBeInTheDocument();
   });
 
   it("marks itself as the current page in the nav", () => {
