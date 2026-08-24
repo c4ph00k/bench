@@ -7,11 +7,11 @@
  * transport that schedules the audio, without reaching into the audio graph.
  */
 import { test, expect, login } from "../fixtures";
+import type { Page } from "@playwright/test";
 
 test.beforeEach(async ({ page }) => {
   await login(page);
 });
-import type { Page } from "@playwright/test";
 
 declare global {
   interface Window {

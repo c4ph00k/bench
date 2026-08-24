@@ -1,10 +1,10 @@
 import { test, expect, login } from "../fixtures";
+import { json, type SpaceDatabase, type TreeNode } from "../api";
+import type { Page } from "@playwright/test";
 
 test.beforeEach(async ({ page }) => {
   await login(page);
 });
-import { json, type SpaceDatabase, type TreeNode } from "../api";
-import type { Page } from "@playwright/test";
 
 async function openTripPlanner(page: Page) {
   await page.goto("/space/");

@@ -1,10 +1,10 @@
 /** The rolodex end to end: finding someone, logging a call, and the check-in clock that follows. */
 import { test, expect, login } from "../fixtures";
+import type { Page } from "@playwright/test";
 
 test.beforeEach(async ({ page }) => {
   await login(page);
 });
-import type { Page } from "@playwright/test";
 
 const openPerson = async (page: Page, name: string) => {
   await page.goto("/rolodex/people");

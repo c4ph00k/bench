@@ -3,11 +3,11 @@
  * each app is its own document and the theme has to survive the navigation between them.
  */
 import { test, expect, login } from "./fixtures";
+import type { Page } from "@playwright/test";
 
 test.beforeEach(async ({ page }) => {
   await login(page);
 });
-import type { Page } from "@playwright/test";
 
 const APPS = ["/", "/crm/", "/space/", "/rolodex/", "/groove/"];
 

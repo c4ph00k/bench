@@ -1,10 +1,10 @@
 /** Per-row edit and delete icons, and the richer table chrome around them. */
 import { test, expect, login } from "../fixtures";
+import { json, type Contact, type Organization } from "../api";
 
 test.beforeEach(async ({ page }) => {
   await login(page);
 });
-import { json, type Contact, type Organization } from "../api";
 
 test("the edit icon on a row opens that record's form", async ({ page }) => {
   await page.goto("/crm/organizations");

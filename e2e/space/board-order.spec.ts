@@ -1,10 +1,10 @@
 /** Cards can be reordered inside a kanban column, and the order sticks. */
 import { test, expect, login } from "../fixtures";
+import type { Page } from "@playwright/test";
 
 test.beforeEach(async ({ page }) => {
   await login(page);
 });
-import type { Page } from "@playwright/test";
 
 async function openBoard(page: Page) {
   await page.goto("/space/");

@@ -4,12 +4,12 @@
  * coordinate and viewport fragility that mouse-simulated drags suffer from.
  */
 import { test, expect, login } from "../fixtures";
+import { json, type Deal } from "../api";
+import type { Page } from "@playwright/test";
 
 test.beforeEach(async ({ page }) => {
   await login(page);
 });
-import { json, type Deal } from "../api";
-import type { Page } from "@playwright/test";
 
 const STAGES = ["New", "Qualified", "Proposal", "Negotiation", "Won", "Lost"];
 

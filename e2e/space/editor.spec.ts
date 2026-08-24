@@ -1,10 +1,10 @@
 import { test, expect, login } from "../fixtures";
+import { savedBlockTexts } from "../api";
+import type { Page } from "@playwright/test";
 
 test.beforeEach(async ({ page }) => {
   await login(page);
 });
-import { savedBlockTexts } from "../api";
-import type { Page } from "@playwright/test";
 
 /** The editor autosaves on a debounce, so specs wait for the write rather than for a duration. */
 const blockSaved = (page: Page) =>

@@ -3,12 +3,12 @@
  * deep-link fallback. These are what the merge introduced, so they are what regresses.
  */
 import { test, expect, login } from "./fixtures";
+import { json, type Organization, type TreeNode } from "./api";
+import type { Locator, Page } from "@playwright/test";
 
 test.beforeEach(async ({ page }) => {
   await login(page);
 });
-import { json, type Organization, type TreeNode } from "./api";
-import type { Locator, Page } from "@playwright/test";
 
 /**
  * `ready` is something each app only renders once it has actually mounted and fetched, which is

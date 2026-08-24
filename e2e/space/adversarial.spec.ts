@@ -1,10 +1,10 @@
 import { test, expect, login } from "../fixtures";
+import { savedBlockTexts } from "../api";
+import type { Page } from "@playwright/test";
 
 test.beforeEach(async ({ page }) => {
   await login(page);
 });
-import { savedBlockTexts } from "../api";
-import type { Page } from "@playwright/test";
 
 async function freshPage(page: Page, title: string) {
   await page.goto("/space/");

@@ -3,12 +3,12 @@
  * revenue must move with it - on the pipeline itself and on the dashboard.
  */
 import { test, expect, login } from "../fixtures";
+import { json, type Deal } from "../api";
+import type { Page } from "@playwright/test";
 
 test.beforeEach(async ({ page }) => {
   await login(page);
 });
-import { json, type Deal } from "../api";
-import type { Page } from "@playwright/test";
 
 /** Parse "$119,450" into 119450 so figures can be compared as numbers. */
 async function money(page: Page, testId: string): Promise<number> {
