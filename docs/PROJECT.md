@@ -1,8 +1,8 @@
 # Bench - project overview
 
 Four local-first apps, merged from four separate repos into one project with **one frontend
-server and one backend server**. Everything runs on your own machine: no login, no cloud, no
-external services, no secrets. Data lives in local SQLite files.
+server and one backend server**. Everything runs on your own machine: one login at the door, no
+cloud, no external services, no secrets. Data lives in local SQLite files.
 
 | App         | Path       | What it is                                                                                                                      | Backend                        |
 | ----------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
@@ -13,7 +13,13 @@ external services, no secrets. Data lives in local SQLite files.
 
 A launcher at `/` links to all four, and every page carries the same navigation strip: the Bench
 mark, then Home, CRM, Space, Rolodex and Groove, each with the icon that identifies it inside its
-own app too, and one theme toggle on the right.
+own app too, one theme toggle and one sign-out button on the right.
+
+A login gate sits in front of all of it: one seeded user (`marco` / `bench`, printed on first
+run), scrypt-hashed in `data/auth.sqlite` with server-side sessions in the same file. Every page
+without a session redirects to the login document at `/login`, every `/api` route except
+`/api/auth` answers 401, and the three app api helpers in `web/src/*/api.ts` send the browser to
+`/login` when they see that 401. Sign out from the strip ends the session server-side.
 
 ## Detailed app documentation
 
@@ -38,21 +44,26 @@ worth understanding before you close it.
 package.json        npm workspaces: web, server. All commands run from the root.
 web/                ONE Vite project, multi-page (MPA)
   index.html          launcher            -> src/home/
+  login/index.html    the login document  -> src/login/main.tsx
   crm/index.html      -> src/crm/main.tsx
   space/index.html    -> src/space/main.tsx
   rolodex/index.html  -> src/rolodex/main.tsx
   groove/index.html   -> src/groove/main.tsx
-  src/shared/         the navigation strip and the theme - the only code all five documents share
+  src/shared/         the navigation strip, the theme and the session sign-out - the code all six
+                      documents share
 server/             ONE Express app
-  src/index.ts        opens the three DBs, listens on :8100
-  src/app.ts          mounts routers, serves web/dist with per-prefix SPA fallback
+  src/index.ts        opens the four DBs, listens on :8100
+  src/app.ts          mounts routers, gates pages and API behind the session, serves web/dist
+                      with per-prefix SPA fallback
+  src/auth/           login/logout/whoami routes + users and sessions db
   src/crm/            crm routes + db + seed
   src/space/          space routes + db + seed
   src/rolodex/        rolodex routes + db + seed
-  test/{crm,space,rolodex}/   vitest suites
-data/                 crm.sqlite, personal-space.db, rolodex.sqlite (gitignored, seeded on first run)
+  test/{auth,crm,space,rolodex}/   vitest suites
+data/                 auth.sqlite, crm.sqlite, personal-space.db, rolodex.sqlite (gitignored,
+                      seeded on first run)
 docs/                 this documentation; docs/<app>/ per app
-e2e/                  Playwright specs
+e2e/                  Playwright specs; auth.spec.ts is the only one that never signs in
 scripts/              check-secrets.mjs, the repo-specific half of the secrets check
                       stop-lint.mjs, the Claude Code Stop hook
 eslint.config.js      one flat config covering web, server and e2e
@@ -103,18 +114,31 @@ These are settled. Changing one is a project-level decision, not an implementati
   browser that revalidates one gets **304 with an empty body** - which the client then parses as
   JSON and fails on, with a message that names neither the request nor the status. Nothing is
   saved by caching a list that changes whenever you touch it, on a machine talking to itself.
-- **Three SQLite files, one process.** The schemas are unrelated - do not merge them. Each is
-  opened separately and seeded if empty. They run in WAL mode, so recent writes live in the `-wal` sidecar
-  rather than the main file: copy or move the whole set together, or checkpoint first
-  (`sqlite3 f.sqlite "PRAGMA wal_checkpoint(TRUNCATE);"`). Deleting a `-wal` as a stray artifact
-  discards data - a 4KB `.sqlite` beside a 3MB `-wal` is a full database, not an empty one.
+- **Three app SQLite files plus one auth file, one process.** The app schemas are unrelated - do
+  not merge them. Each is opened separately and seeded if empty; `auth.sqlite` holds the one user
+  and the sessions, and belongs to Bench rather than to any app. They run in WAL mode, so recent
+  writes live in the `-wal` sidecar rather than the main file: copy or move the whole set
+  together, or checkpoint first (`sqlite3 f.sqlite "PRAGMA wal_checkpoint(TRUNCATE);"`). Deleting
+  a `-wal` as a stray artifact discards data - a 4KB `.sqlite` beside a 3MB `-wal` is a full
+  database, not an empty one.
+- **The login gate is server-side and total.** Pages redirect to `/login` and every `/api` route
+  except `/api/auth` answers 401 without a session, both in `server/src/app.ts`. Two prefixes
+  stay open on purpose: `/login` (the document itself) and `/assets` (build output, code not
+  data - the login document cannot boot without its bundle). An auth database with no users
+  gates nothing; that is what lets the per-app server suites run unauthenticated against
+  in-memory dbs. The client half is thin: the three app api helpers redirect on a 401, and the
+  launcher probes `/api/auth/me` once, which covers `npm run dev` where pages come from Vite
+  rather than through the gate.
 - **Ports:** 8100 API, 8101 Vite, 8150+ e2e (one per Playwright worker).
 - **Deep-link fallback lives in two places.** `server/src/app.ts` handles production; the
   `appFallback` plugin in `web/vite.config.ts` does the same for the dev server. Without it a
-  refresh on `/crm/contacts` serves the launcher. Both carry the same `APPS` list, and they have
-  disagreed before - check both when you touch routing.
-- **One shared module: `web/src/shared/`.** The navigation strip and the theme are the only code
-  the five documents have in common, and the `no-restricted-imports` rule allows it because that
+  refresh on `/crm/contacts` serves the launcher. The lists differ by one on purpose: dev needs
+  `login` in its `APPS` so `/login` resolves without the server gate in the way, while production
+  serves `/login/` straight from static. They have disagreed before - check both when you touch
+  routing.
+- **One shared module: `web/src/shared/`.** The navigation strip, the theme and the session
+  helpers are the only code the six documents have in common, and the `no-restricted-imports`
+  rule allows it because that
   rule is a denylist of the sibling apps, not an allowlist. **Its CSS has to be self-contained.**
   It loads into five stylesheets that collide on `.brand` and `:root`, each app redefines its own
   palette under `[data-theme]`, and Groove restyles every element and sets a monospace body font -

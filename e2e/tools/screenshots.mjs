@@ -16,6 +16,13 @@ page.on("console", (m) => {
 });
 page.on("pageerror", (e) => consoleErrors.push(e.message));
 
+// The gate sits in front of every page; sign in once for the whole walkthrough.
+await page.goto(base + "/login");
+await page.getByLabel("Username").fill("marco");
+await page.getByLabel("Password").fill("bench");
+await page.getByRole("button", { name: "Sign in" }).click();
+await page.getByRole("navigation", { name: "Primary" }).waitFor();
+
 async function shot(name) {
   await page.waitForTimeout(350);
   await page.screenshot({ path: `screenshots/${name}.png` });

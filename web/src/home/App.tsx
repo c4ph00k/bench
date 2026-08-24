@@ -1,5 +1,7 @@
 /** Launcher: one card per app. Plain anchors - each app is its own document. */
+import { useEffect } from "react";
 import BenchNav from "../shared/BenchNav";
+import { redirectTo } from "../shared/auth";
 import {
   IconCrm,
   IconGroove,
@@ -56,12 +58,20 @@ const APPS: AppCard[] = [
 ];
 
 export default function App() {
+  // In production the server redirects before this document is served at all; under `npm run dev`
+  // the page comes from Vite, so the launcher checks the session itself.
+  useEffect(() => {
+    void fetch("/api/auth/me").then((res) => {
+      if (!res.ok) redirectTo("/login");
+    });
+  }, []);
+
   return (
     <>
       <BenchNav active="home" />
       <div className="home">
         <header className="home-header">
-          <p className="home-eyebrow">Local-first · no login · no cloud</p>
+          <p className="home-eyebrow">Local-first · one login · no cloud</p>
           <h1>Bench</h1>
           <p className="home-lede">
             Four apps, one server, one machine. Your data lives in SQLite files

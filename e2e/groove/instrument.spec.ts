@@ -6,7 +6,11 @@
  * The playhead LED is the honest proxy for "the clock is running": it is driven by the same
  * transport that schedules the audio, without reaching into the audio graph.
  */
-import { test, expect } from "../fixtures";
+import { test, expect, login } from "../fixtures";
+
+test.beforeEach(async ({ page }) => {
+  await login(page);
+});
 import type { Page } from "@playwright/test";
 
 declare global {

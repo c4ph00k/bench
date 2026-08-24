@@ -2,7 +2,11 @@
  * One toggle, four apps. The choice lives in localStorage rather than in React state, because
  * each app is its own document and the theme has to survive the navigation between them.
  */
-import { test, expect } from "./fixtures";
+import { test, expect, login } from "./fixtures";
+
+test.beforeEach(async ({ page }) => {
+  await login(page);
+});
 import type { Page } from "@playwright/test";
 
 const APPS = ["/", "/crm/", "/space/", "/rolodex/", "/groove/"];

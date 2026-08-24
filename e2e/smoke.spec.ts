@@ -2,7 +2,11 @@
  * The consolidation seams: four HTML entry points, two router basenames, two API namespaces and
  * deep-link fallback. These are what the merge introduced, so they are what regresses.
  */
-import { test, expect } from "./fixtures";
+import { test, expect, login } from "./fixtures";
+
+test.beforeEach(async ({ page }) => {
+  await login(page);
+});
 import { json, type Organization, type TreeNode } from "./api";
 import type { Locator, Page } from "@playwright/test";
 

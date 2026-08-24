@@ -1,6 +1,7 @@
 # Bench - agent instructions
 
-Four local-first apps (CRM, Space, Rolodex, Groove) behind one Express server. One npm workspace
+Four local-first apps (CRM, Space, Rolodex, Groove) behind one Express server, all behind a
+login gate (`marco` / `bench`, seeded on first run - see `server/src/auth/`). One npm workspace
 root with two workspaces: `web/` (one Vite project, an HTML entry point per app) and `server/`.
 TypeScript throughout, data in local SQLite files under `data/`, Playwright specs in `e2e/`. All
 commands run from the root.

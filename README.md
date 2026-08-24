@@ -1,7 +1,7 @@
 # Bench
 
-Four local-first apps behind one server. No login, no cloud - everything runs on your machine and
-your data lives in local SQLite files. Light and dark, one toggle for all four.
+Four local-first apps behind one server. One login at the door, no cloud - everything runs on
+your machine and your data lives in local SQLite files. Light and dark, one toggle for all four.
 
 |             |            |                                                                                                                     |
 | ----------- | ---------- | ------------------------------------------------------------------------------------------------------------------- |

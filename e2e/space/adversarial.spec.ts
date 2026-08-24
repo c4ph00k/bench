@@ -1,4 +1,8 @@
-import { test, expect } from "../fixtures";
+import { test, expect, login } from "../fixtures";
+
+test.beforeEach(async ({ page }) => {
+  await login(page);
+});
 import { savedBlockTexts } from "../api";
 import type { Page } from "@playwright/test";
 

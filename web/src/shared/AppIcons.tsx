@@ -103,3 +103,11 @@ export const IconMoon = (p: IconProps) => (
     <path d="M20 14.2A8.2 8.2 0 0 1 9.8 4a8.2 8.2 0 1 0 10.2 10.2Z" />
   </Stroke>
 );
+
+/** A door with an arrow out of it - leaving, not arriving. */
+export const IconLogout = (p: IconProps) => (
+  <Stroke {...p}>
+    <path d="M14 4.5H6A1.5 1.5 0 0 0 4.5 6v12A1.5 1.5 0 0 0 6 19.5h8" />
+    <path d="M10 12h10M16.5 8.5 20 12l-3.5 3.5" />
+  </Stroke>
+);

@@ -1,7 +1,10 @@
-import { describe, expect, it, beforeEach } from "vitest";
+import { describe, expect, it, beforeEach, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import BenchNav from "./BenchNav";
+import { signOut } from "./auth";
+
+vi.mock("./auth", () => ({ signOut: vi.fn() }));
 
 const nav = () => within(screen.getByRole("navigation", { name: "Primary" }));
 
@@ -48,5 +51,11 @@ describe("BenchNav", () => {
     await userEvent.click(screen.getByRole("button", { name: /Switch to/ }));
     expect(document.documentElement.dataset.theme).toBe("light");
     expect(localStorage.getItem("bench.theme")).toBe("light");
+  });
+
+  it("signs out from the strip", async () => {
+    render(<BenchNav active="crm" />);
+    await userEvent.click(screen.getByRole("button", { name: "Sign out" }));
+    expect(signOut).toHaveBeenCalled();
   });
 });

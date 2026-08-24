@@ -63,15 +63,24 @@ about them - read it before concluding that a component is untestable.
 
 ### End-to-end tests - `npm run e2e`
 
-Playwright, in `e2e/`. Layout: `smoke.spec.ts` (the seams between the apps), then `crm/`, `space/`,
-`groove/`. `e2e/tools/screenshots.mjs` is not part of the suite - it drives a running app and
-captures every screen in both themes, for reviewing a visual change in one pass.
+Playwright, in `e2e/`. Layout: `auth.spec.ts` (the login gate itself), `smoke.spec.ts` (the seams
+between the apps), then `crm/`, `space/`, `groove/`. `e2e/tools/screenshots.mjs` is not part of
+the suite - it drives a running app and captures every screen in both themes, for reviewing a
+visual change in one pass; it signs itself in before walking.
 
 Rules that keep this suite reliable:
 
+- **Every spec signs in first.** The gate sits in front of every page and API route; each spec
+  opens with `test.beforeEach(async ({ page }) => { await login(page); })` using the `login`
+  helper from `e2e/fixtures.ts`, which fills the real form once per test - each test gets a
+  fresh context, so the cookie does not carry over. `e2e/auth.spec.ts` is the one spec that
+  never signs in up front: it tests the gate itself from the outside.
+
 - **Import `test` and `expect` from `../fixtures`**, never from `@playwright/test` directly, or the
   spec gets no server and no `baseURL`.
-- **Each worker runs its own server and database.** `e2e/fixtures.ts` spawns the API on
+- Each worker runs its own server and database, and **the server readiness probe accepts any
+  answer under 500**: with the auth gate on, the API answers 401 until a spec signs in, which
+  still proves the server is listening. `e2e/fixtures.ts` spawns the API on
   `8150 + workerIndex` with its own `DATA_DIR` under `e2e/.tmp/w<n>`; `e2e/global-setup.ts` builds
   `web/dist` once. There is no `webServer` block in `playwright.config.ts` - do not add one back.
 - **Tests within a worker share a database, and retries re-run against it.** Set up your own state

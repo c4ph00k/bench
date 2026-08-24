@@ -2,7 +2,11 @@
  * Moving a deal along the pipeline re-bases its probability, so both the total and the expected
  * revenue must move with it - on the pipeline itself and on the dashboard.
  */
-import { test, expect } from "../fixtures";
+import { test, expect, login } from "../fixtures";
+
+test.beforeEach(async ({ page }) => {
+  await login(page);
+});
 import { json, type Deal } from "../api";
 import type { Page } from "@playwright/test";
 

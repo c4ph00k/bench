@@ -1,5 +1,9 @@
 /** Organizations, contacts and deals: the CRUD journeys, search and filtering. */
-import { test, expect } from "../fixtures";
+import { test, expect, login } from "../fixtures";
+
+test.beforeEach(async ({ page }) => {
+  await login(page);
+});
 import type { Page } from "@playwright/test";
 
 async function openSection(page: Page, name: string) {

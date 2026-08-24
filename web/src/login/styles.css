@@ -1,0 +1,127 @@
+/**
+ * The login document. Own stylesheet like every entry point, own palette under :root and
+ * [data-theme="dark"] - the shared strip is not loaded here, so nothing collides.
+ */
+
+:root {
+  color-scheme: light;
+  --amber: #ecad0a;
+  --amber-deep: #a97d05;
+  --bg: #f2f4f6;
+  --surface: #ffffff;
+  --border: #dfe3e8;
+  --text: #1c2128;
+  --text-soft: #5b636e;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
+  color: var(--text);
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #14171c;
+  --surface: #1c2128;
+  --border: #2b323b;
+  --text: #e9edf2;
+  --text-soft: #9aa3ae;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+}
+
+.login {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 340px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 32px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.login-brand {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 22px;
+  font-weight: 650;
+}
+
+.login-lede {
+  margin: -6px 0 4px;
+  color: var(--text-soft);
+  font-size: 14px;
+}
+
+.login-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.login-field input {
+  font: inherit;
+  font-weight: 400;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.login-field input:focus {
+  outline: 2px solid var(--amber);
+  outline-offset: -1px;
+}
+
+.login-error {
+  margin: 0;
+  font-size: 13px;
+  color: #b42318;
+}
+
+[data-theme="dark"] .login-error {
+  color: #f97066;
+}
+
+.login-submit {
+  margin-top: 4px;
+  font: inherit;
+  font-weight: 650;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--amber);
+  color: #1c2128;
+  cursor: pointer;
+}
+
+.login-submit:hover {
+  background: var(--amber-deep);
+  color: #ffffff;
+}
+
+.login-submit:disabled {
+  opacity: 0.6;
+  cursor: default;
+}

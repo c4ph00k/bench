@@ -84,6 +84,8 @@ export interface RowData {
   values: Record<string, unknown>;
 }
 
+import { redirectTo } from "../shared/auth";
+
 async function req<T>(method: string, url: string, body?: unknown): Promise<T> {
   const res = await fetch(url, {
     method,
@@ -91,6 +93,11 @@ async function req<T>(method: string, url: string, body?: unknown): Promise<T> {
       body === undefined ? undefined : { "Content-Type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
+  // A 401 means the session is gone; the login page is where that is put right.
+  if (res.status === 401) {
+    redirectTo("/login");
+    throw new Error(`${method} ${url} failed (401)`);
+  }
   if (!res.ok) {
     const detail = (await res.json().catch(() => ({}))) as { error?: string };
     throw new Error(detail.error ?? `${method} ${url} failed (${res.status})`);

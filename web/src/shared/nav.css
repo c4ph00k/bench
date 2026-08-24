@@ -109,6 +109,12 @@
   cursor: pointer;
 }
 
+/* Theme toggle and sign-out are one group at the right end; the strip's 28px gap is room for
+   nav sections, not for two icon buttons that belong together. */
+.bench-nav-theme + .bench-nav-theme {
+  margin-left: -22px;
+}
+
 [data-theme="dark"] .bench-nav-theme {
   color: #98a1ad;
 }

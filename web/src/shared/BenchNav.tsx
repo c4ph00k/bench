@@ -8,12 +8,14 @@ import {
   IconCrm,
   IconGroove,
   IconHome,
+  IconLogout,
   IconMoon,
   IconRolodex,
   IconSpace,
   IconSun,
 } from "./AppIcons";
 import { currentTheme, toggleTheme, type Theme } from "./theme";
+import { signOut } from "./auth";
 import "./nav.css";
 
 type AppKey = "home" | "crm" | "space" | "rolodex" | "groove";
@@ -63,6 +65,15 @@ export default function BenchNav({ active }: { active: AppKey }) {
         title={theme === "dark" ? "Switch to light" : "Switch to dark"}
       >
         {theme === "dark" ? <IconSun size={16} /> : <IconMoon size={16} />}
+      </button>
+      <button
+        type="button"
+        className="bench-nav-theme"
+        onClick={() => void signOut()}
+        aria-label="Sign out"
+        title="Sign out"
+      >
+        <IconLogout size={16} />
       </button>
     </header>
   );

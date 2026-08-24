@@ -1,4 +1,8 @@
-import { test, expect } from "../fixtures";
+import { test, expect, login } from "../fixtures";
+
+test.beforeEach(async ({ page }) => {
+  await login(page);
+});
 
 test("create a database, add properties, rows, edit cells, and reopen after refresh", async ({
   page,
