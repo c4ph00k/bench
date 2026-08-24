@@ -233,7 +233,7 @@ must not be allowed to imply otherwise. Groove's pure modules (`music.ts`, `para
 
 The largest remaining hole is Space's `BoardView` at 31%.
 
-Seven jsdom and library gaps shape how the suites are written. None is a fault in the code, and every
+Eight jsdom and library gaps shape how the suites are written. None is a fault in the code, and every
 one of them will bite again:
 
 - **jsdom implements no pointer capture.** Every knob, fader and grid calls `setPointerCapture` on
@@ -254,6 +254,11 @@ one of them will bite again:
 - **jsdom has no `Blob.text()`**, which is how Rolodex's import modal reads a chosen file - the
   upload succeeds and the read throws. The setup file polyfills it through `FileReader`, which
   jsdom does implement.
+- **Node 26 ships an experimental `localStorage` global** that stays undefined without
+  `--localstorage-file`, and vitest will not overwrite a global Node already defined - so every
+  suite that touches storage reads `undefined` and fails. CI's Node 24 has no such global; on a
+  Node 26 machine the setup file points the name back at the JSDOM window's own storage, reached
+  through the `jsdom` global vitest exposes.
 - **`exact: true` is a Playwright option, not a Testing Library one.** Testing Library's `name`
   already matches the full string; passing `exact` there is a type error. The substring-matching
   warning in [PROCESS.md](./PROCESS.md) applies to the e2e suite only.
