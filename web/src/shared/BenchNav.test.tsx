@@ -14,7 +14,7 @@ beforeEach(() => {
 });
 
 describe("BenchNav", () => {
-  it("offers the launcher and all four apps, in order", () => {
+  it("offers the launcher and all three apps, in order", () => {
     render(<BenchNav active="crm" />);
     expect(
       nav()
@@ -25,7 +25,6 @@ describe("BenchNav", () => {
       ["CRM", "/crm/"],
       ["Space", "/space/"],
       ["Rolodex", "/rolodex/"],
-      ["Groove", "/groove/"],
     ]);
   });
 
@@ -37,9 +36,9 @@ describe("BenchNav", () => {
     expect(current.map((link) => link.textContent)).toEqual(["Space"]);
   });
 
-  it("names the project", () => {
+  it("carries the company brand", () => {
     render(<BenchNav active="home" />);
-    expect(screen.getByText("Bench")).toBeInTheDocument();
+    expect(screen.getByText("Novhora")).toBeInTheDocument();
   });
 
   it("toggles the theme for every app and remembers the choice", async () => {

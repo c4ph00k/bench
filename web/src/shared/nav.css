@@ -1,9 +1,9 @@
 /**
- * The navigation strip. Loaded into all four documents, so every class is prefixed and every
- * value is literal: the four app stylesheets collide on .brand and :root, each redefines its
- * palette under [data-theme="dark"], and Groove restyles every element and sets a monospace
- * body font. The strip can inherit none of it and must look the same over all of them - which
- * is why the theme is read from the document element here too, rather than from a variable.
+ * The navigation strip. Loaded into every document, so every class is prefixed and every
+ * value is literal: the app stylesheets collide on .brand and :root, and each redefines its
+ * palette under [data-theme="dark"]. The strip can inherit none of it and must look the same
+ * over all of them - which is why the theme is read from the document element here too, rather
+ * than from a variable.
  */
 
 .bench-nav {

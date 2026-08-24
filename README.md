@@ -1,14 +1,14 @@
-# Bench
+# Novhora
 
-Four local-first apps behind one server. One login at the door, no cloud - everything runs on
-your machine and your data lives in local SQLite files. Light and dark, one toggle for all four.
+Three local-first apps behind one server, branded for Novhora. One login at the door, no cloud -
+everything runs on your machine and your data lives in local SQLite files. Light and dark, one
+toggle for all three.
 
 |             |            |                                                                                                                     |
 | ----------- | ---------- | ------------------------------------------------------------------------------------------------------------------- |
 | **CRM**     | `/crm`     | Personal sales CRM: organizations, contacts, deals, a drag-and-drop pipeline, activities and a dashboard.           |
 | **Space**   | `/space`   | Personal knowledge manager: pages and blocks, databases with table / board / list views, quick find.                |
 | **Rolodex** | `/rolodex` | Personal CRM for the people in your life: who to contact, circles, birthdays, and a timeline of every conversation. |
-| **Groove**  | `/groove`  | Browser groovebox: four synth units, one transport, a master DJ filter. All Web Audio, no samples.                  |
 
 This README is the full walkthrough: install it, run the checks, make a change, open a pull
 request. Work through it in order.
@@ -101,7 +101,7 @@ before anything appears**, which is normal, not a hang. Then open:
 **http://localhost:8100**
 
 The first run creates and seeds the three SQLite databases under `data/` with sample data. Click
-through all four apps and the theme toggle to confirm it works.
+through all three apps and the theme toggle to confirm it works.
 
 Stop the server with `Ctrl+C`.
 
@@ -175,7 +175,7 @@ past** - anything it reports is yours.
 npm run e2e
 ```
 
-Playwright drives a real Chromium through all four apps: the launcher, CRM, Space, Rolodex, Groove
+Playwright drives a real Chromium through all three apps: the launcher, CRM, Space, Rolodex
 and the shared theme toggle. It takes about a minute.
 
 What it does under the hood, which explains the wait and the ports:

@@ -1,5 +1,5 @@
 /**
- * One toggle, four apps. The choice lives in localStorage rather than in React state, because
+ * One toggle, all apps. The choice lives in localStorage rather than in React state, because
  * each app is its own document and the theme has to survive the navigation between them.
  */
 import { test, expect, login } from "./fixtures";
@@ -9,7 +9,7 @@ test.beforeEach(async ({ page }) => {
   await login(page);
 });
 
-const APPS = ["/", "/crm/", "/space/", "/rolodex/", "/groove/"];
+const APPS = ["/", "/crm/", "/space/", "/rolodex/"];
 
 const theme = (page: Page) =>
   page.evaluate(() => document.documentElement.dataset.theme);

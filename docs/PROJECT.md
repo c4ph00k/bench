@@ -1,18 +1,17 @@
-# Bench - project overview
+# Novhora (Bench) - project overview
 
-Four local-first apps, merged from four separate repos into one project with **one frontend
-server and one backend server**. Everything runs on your own machine: one login at the door, no
-cloud, no external services, no secrets. Data lives in local SQLite files.
+Three local-first apps, merged from four separate repos into one project with **one frontend
+server and one backend server**, branded for Novhora. Everything runs on your own machine: one
+login at the door, no cloud, no external services, no secrets. Data lives in local SQLite files.
 
-| App         | Path       | What it is                                                                                                                      | Backend                        |
-| ----------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
-| **CRM**     | `/crm`     | Personal sales CRM: organizations, contacts, deals, drag-and-drop pipeline, activities, dashboard                               | `data/crm.sqlite`              |
-| **Space**   | `/space`   | Personal knowledge manager, a single-user Notion: pages and blocks, databases with table/board/list views, search               | `data/personal-space.db`       |
-| **Rolodex** | `/rolodex` | Personal CRM for your own people: check-in cadences, circles, birthdays, a timeline of every conversation, CSV and vCard import | `data/rolodex.sqlite`          |
-| **Groove**  | `/groove`  | Browser groovebox instrument: four synth units, one transport, a master DJ filter                                               | none - pure Web Audio, no data |
+| App         | Path       | What it is                                                                                                                      | Backend                  |
+| ----------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
+| **CRM**     | `/crm`     | Personal sales CRM: organizations, contacts, deals, drag-and-drop pipeline, activities, dashboard                               | `data/crm.sqlite`        |
+| **Space**   | `/space`   | Personal knowledge manager, a single-user Notion: pages and blocks, databases with table/board/list views, search               | `data/personal-space.db` |
+| **Rolodex** | `/rolodex` | Personal CRM for your own people: check-in cadences, circles, birthdays, a timeline of every conversation, CSV and vCard import | `data/rolodex.sqlite`    |
 
-A launcher at `/` links to all four, and every page carries the same navigation strip: the Bench
-mark, then Home, CRM, Space, Rolodex and Groove, each with the icon that identifies it inside its
+A launcher at `/` links to all three, and every page carries the same navigation strip: the
+Novhora mark, then Home, CRM, Space and Rolodex, each with the icon that identifies it inside its
 own app too, one theme toggle and one sign-out button on the right.
 
 A login gate sits in front of all of it: one seeded user (`marco` / `bench`, printed on first
@@ -26,12 +25,11 @@ without a session redirects to the login document at `/login`, every `/api` rout
 One directory per app. Read these on demand - they are not loaded into context by default. Open the
 app you are working in before changing its behaviour.
 
-| App     | Implementation                                           | Requirements                                         | Also                                                            |
-| ------- | -------------------------------------------------------- | ---------------------------------------------------- | --------------------------------------------------------------- |
-| CRM     | [crm/IMPLEMENTATION.md](./crm/IMPLEMENTATION.md)         | [crm/REQUIREMENTS.md](./crm/REQUIREMENTS.md)         |                                                                 |
-| Space   | [space/IMPLEMENTATION.md](./space/IMPLEMENTATION.md)     | [space/REQUIREMENTS.md](./space/REQUIREMENTS.md)     |                                                                 |
-| Rolodex | [rolodex/IMPLEMENTATION.md](./rolodex/IMPLEMENTATION.md) | [rolodex/REQUIREMENTS.md](./rolodex/REQUIREMENTS.md) |                                                                 |
-| Groove  | [groove/IMPLEMENTATION.md](./groove/IMPLEMENTATION.md)   | [groove/REQUIREMENTS.md](./groove/REQUIREMENTS.md)   | [groove/INSTRUMENT.md](./groove/INSTRUMENT.md) - player's guide |
+| App     | Implementation                                           | Requirements                                         | Also |
+| ------- | -------------------------------------------------------- | ---------------------------------------------------- | ---- |
+| CRM     | [crm/IMPLEMENTATION.md](./crm/IMPLEMENTATION.md)         | [crm/REQUIREMENTS.md](./crm/REQUIREMENTS.md)         |      |
+| Space   | [space/IMPLEMENTATION.md](./space/IMPLEMENTATION.md)     | [space/REQUIREMENTS.md](./space/REQUIREMENTS.md)     |      |
+| Rolodex | [rolodex/IMPLEMENTATION.md](./rolodex/IMPLEMENTATION.md) | [rolodex/REQUIREMENTS.md](./rolodex/REQUIREMENTS.md) |      |
 
 **IMPLEMENTATION.md** is how the app is built now: structure, domain rules, and the traps.
 **REQUIREMENTS.md** is the original product brief, kept for intent and scope; their phased plans
@@ -43,14 +41,14 @@ worth understanding before you close it.
 ```
 package.json        npm workspaces: web, server. All commands run from the root.
 web/                ONE Vite project, multi-page (MPA)
+  public/novhora.svg  the brand favicon, drawn from the company logo
   index.html          launcher            -> src/home/
   login/index.html    the login document  -> src/login/main.tsx
   crm/index.html      -> src/crm/main.tsx
   space/index.html    -> src/space/main.tsx
   rolodex/index.html  -> src/rolodex/main.tsx
-  groove/index.html   -> src/groove/main.tsx
-  src/shared/         the navigation strip, the theme and the session sign-out - the code all six
-                      documents share
+  src/shared/         the brand, the navigation strip, the theme and the session sign-out - the
+                      code all five documents share
 server/             ONE Express app
   src/index.ts        opens the four DBs, listens on :8100
   src/app.ts          mounts routers, gates pages and API behind the session, serves web/dist
@@ -100,14 +98,18 @@ Under `npm run dev` use **8101**. Port 8100 serves the last build, not your live
 
 These are settled. Changing one is a project-level decision, not an implementation detail.
 
-- **Multi-page, not one SPA.** The four apps keep their own global `styles.css`, and those files
+- **Branding lives in one module.** `web/src/shared/brand.ts` names the company, its mark
+  component and its favicon (`web/public/novhora.svg`, drawn from the company logo in `jpg/`);
+  the nav strip, the launcher, the login card and every document title read from it. Rebranding
+  the suite for another company means changing that module and the SVG, nothing else.
+- **Multi-page, not one SPA.** The three apps keep their own global `styles.css`, and those files
   genuinely collide: `.app`, `.sidebar`, `.btn`, `.chip`, `.board`, `.brand`, `.card`, `.page`,
-  `:root` variables, and groove's `* { margin: 0 }`. Rolodex and Space both style `.board-col`,
+  `:root` variables. Rolodex and Space both style `.board-col`,
   and differently. Separate HTML entry points give one Vite server and one build while the
   stylesheets and routers never meet. Do **not** merge these into a single bundle without scoping
   the CSS first.
 - **Router basenames.** crm and space each mount at `/` inside their own document, via
-  `<BrowserRouter basename="/crm">` / `basename="/space"`. groove has no router.
+  `<BrowserRouter basename="/crm">` / `basename="/space"`. rolodex has no router.
 - **API namespaces.** `/api/crm/*`, `/api/space/*` and `/api/rolodex/*`. The underlying route
   names were already disjoint; the prefixes keep ownership obvious.
 - **`/api` answers `Cache-Control: no-store`.** Express attaches an ETag to every JSON reply, so a
@@ -136,12 +138,12 @@ These are settled. Changing one is a project-level decision, not an implementati
   `login` in its `APPS` so `/login` resolves without the server gate in the way, while production
   serves `/login/` straight from static. They have disagreed before - check both when you touch
   routing.
-- **One shared module: `web/src/shared/`.** The navigation strip, the theme and the session
-  helpers are the only code the six documents have in common, and the `no-restricted-imports`
-  rule allows it because that
+- **One shared module: `web/src/shared/`.** The brand, the navigation strip, the theme and the
+  session helpers are the only code the five documents have in common, and the
+  `no-restricted-imports` rule allows it because that
   rule is a denylist of the sibling apps, not an allowlist. **Its CSS has to be self-contained.**
-  It loads into five stylesheets that collide on `.brand` and `:root`, each app redefines its own
-  palette under `[data-theme]`, and Groove restyles every element and sets a monospace body font -
+  It loads into four stylesheets that collide on `.brand` and `:root`, each app redefines its own
+  palette under `[data-theme]` -
   so every class in `nav.css` is `bench-nav`-prefixed and every value is a literal, never a
   variable. The strip looks the same over all of them, which is the point: it is chrome above the
   app, not part of it.
@@ -150,12 +152,11 @@ These are settled. Changing one is a project-level decision, not an implementati
   `initTheme()` **before it renders**, because setting it after the first paint flashes the wrong
   theme on every navigation between apps. The first visit follows the operating system. Every app
   defines its palette twice - once on `:root`, once under `[data-theme="dark"]` - and sets
-  `color-scheme` so native controls follow. Groove is the exception in direction only: it is dark
-  by default and defines `[data-theme="light"]`.
+  `color-scheme` so native controls follow.
 - **Colour means state, not identity.** In the strip and on the launcher, amber marks the app you
-  are in and nothing else; the apps are told apart by their glyph. That is what keeps a fifth app
-  from needing a fifth brand colour. Inside an app, its own accents are its own business.
-- **One dependency set per workspace.** All four UIs live in `web/`, so they share one set of
+  are in and nothing else; the apps are told apart by their glyph. That is what keeps a fourth app
+  from needing a fourth brand colour. Inside an app, its own accents are its own business.
+- **One dependency set per workspace.** All three UIs live in `web/`, so they share one set of
   versions: TypeScript 6, Vite 8, vitest 4, react-router 8, React 19.
 - **TypeScript 6.0.3, pinned exactly, everywhere.** Root and both workspaces, one hoisted copy.
   6.0.3 is the last release carrying the JS compiler API that type-aware linting needs, so one
@@ -174,7 +175,7 @@ These are settled. Changing one is a project-level decision, not an implementati
   a prebuilt binary instead, which needs no toolchain. Revisit if npm starts carrying `gypfile`
   through the lockfile, or upstream stops shipping `binding.gyp` in the tarball.
 
-## Adding a fifth app
+## Adding a fourth app
 
 A new `web/<name>/index.html`, a new `web/src/<name>/`, an entry in `vite.config.ts`
 `rollupOptions.input`, the prefix in the `APPS` list in **both** `server/src/app.ts` and
@@ -188,7 +189,8 @@ Then the navigation: an icon in `web/src/shared/AppIcons.tsx`, an entry in the `
 `<BenchNav active="<name>" />` above the app's own shell. No colour to pick - the strip's only
 accent is amber, for wherever you are. Two things to get right in the app's own stylesheet: a
 `[data-theme="dark"]` palette and `color-scheme`, and the height chain - the app's root element has
-to leave room for a 47px strip; see how each of the four does it.
+to leave room for a 47px strip; see how each of the three does it. The document's `<title>` ends
+in `- Novhora` and its favicon is `/novhora.svg`, like the other entry points.
 
 ## Design
 

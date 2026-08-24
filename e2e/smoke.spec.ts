@@ -2,9 +2,10 @@
  * The consolidation seams: four HTML entry points, two router basenames, two API namespaces and
  * deep-link fallback. These are what the merge introduced, so they are what regresses.
  */
-import { test, expect, login } from "./fixtures";
 import { json, type Organization, type TreeNode } from "./api";
 import type { Locator, Page } from "@playwright/test";
+
+import { test, expect, login } from "./fixtures";
 
 test.beforeEach(async ({ page }) => {
   await login(page);
@@ -22,33 +23,27 @@ const APPS: {
 }[] = [
   {
     path: "/",
-    title: "Bench",
+    title: "Novhora",
     tab: "Home",
     ready: (p) => p.getByRole("heading", { name: "CRM" }),
   },
   {
     path: "/crm/",
-    title: "Personal CRM",
+    title: "Personal CRM - Novhora",
     tab: "CRM",
     ready: (p) => p.getByTestId("dash-total"),
   },
   {
     path: "/space/",
-    title: "Personal Space",
+    title: "Personal Space - Novhora",
     tab: "Space",
     ready: (p) => p.getByRole("treeitem").first(),
   },
   {
     path: "/rolodex/",
-    title: "Rolodex",
+    title: "Rolodex - Novhora",
     tab: "Rolodex",
     ready: (p) => p.getByRole("heading", { name: "Today" }),
-  },
-  {
-    path: "/groove/",
-    title: "GROOVEBOX GX-4",
-    tab: "Groove",
-    ready: (p) => p.getByRole("region", { name: "RHYTHM" }),
   },
 ];
 
@@ -76,12 +71,11 @@ test("every app serves its own document from its own entry point", async ({
 test("deep links load the owning app, not the launcher", async ({ page }) => {
   // Without per-prefix fallback these serve the launcher and the app never boots.
   for (const [path, title] of [
-    ["/crm/contacts", "Personal CRM"],
-    ["/crm/pipeline", "Personal CRM"],
-    ["/space/p/does-not-exist", "Personal Space"],
-    ["/rolodex/people", "Rolodex"],
-    ["/rolodex/circles", "Rolodex"],
-    ["/groove/anything", "GROOVEBOX GX-4"],
+    ["/crm/contacts", "Personal CRM - Novhora"],
+    ["/crm/pipeline", "Personal CRM - Novhora"],
+    ["/space/p/does-not-exist", "Personal Space - Novhora"],
+    ["/rolodex/people", "Rolodex - Novhora"],
+    ["/rolodex/circles", "Rolodex - Novhora"],
   ]) {
     await page.goto(path);
     await expect(page).toHaveTitle(title);
@@ -130,15 +124,15 @@ test("the launcher links into each app and the back button returns", async ({
   page,
 }) => {
   await page.goto("/");
-  for (const name of ["CRM", "Space", "Rolodex", "Groove"]) {
+  for (const name of ["CRM", "Space", "Rolodex"]) {
     // The card, not the nav tab of the same name: only the card carries a heading.
     await page
       .getByRole("link")
       .filter({ has: page.getByRole("heading", { name }) })
       .click();
-    await expect(page).not.toHaveTitle("Bench");
+    await expect(page).not.toHaveTitle("Novhora");
     await page.goBack();
-    await expect(page).toHaveTitle("Bench");
+    await expect(page).toHaveTitle("Novhora");
   }
 });
 
@@ -162,7 +156,6 @@ test("the nav lists every app and marks the one you are in", async ({
       "CRM",
       "Space",
       "Rolodex",
-      "Groove",
     ]);
     await expect(primary(page).locator("[aria-current=page]")).toHaveText(
       app.tab,
@@ -173,10 +166,9 @@ test("the nav lists every app and marks the one you are in", async ({
 test("the nav reaches every app from every app", async ({ page }) => {
   await page.goto("/crm/");
   for (const [tab, title] of [
-    ["Groove", "GROOVEBOX GX-4"],
-    ["Rolodex", "Rolodex"],
-    ["Space", "Personal Space"],
-    ["Home", "Bench"],
+    ["Rolodex", "Rolodex - Novhora"],
+    ["Space", "Personal Space - Novhora"],
+    ["Home", "Novhora"],
   ]) {
     await primary(page).getByRole("link", { name: tab }).click();
     await expect(page).toHaveTitle(title);
@@ -190,9 +182,9 @@ test("each app keeps its own stylesheet", async ({ page }) => {
     .locator(".sidebar")
     .first()
     .evaluate((el) => getComputedStyle(el).backgroundColor);
-  await page.goto("/groove/");
-  const grooveBody = await page
+  await page.goto("/rolodex/");
+  const rolodexBody = await page
     .locator("body")
     .evaluate((el) => getComputedStyle(el).backgroundColor);
-  expect(crmSidebar).not.toBe(grooveBody);
+  expect(crmSidebar).not.toBe(rolodexBody);
 });

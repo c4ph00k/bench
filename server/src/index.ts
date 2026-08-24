@@ -36,5 +36,5 @@ if (seedAuth(authDb, "marco", "bench"))
   console.log("Seeded the login user: marco (password bench)");
 
 createApp({ crm, space, rolodex, auth: authDb }).listen(port, () => {
-  console.log(`Bench running at http://localhost:${port}`);
+  console.log(`Novhora running at http://localhost:${port}`);
 });

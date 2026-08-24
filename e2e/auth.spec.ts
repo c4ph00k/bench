@@ -9,7 +9,7 @@ test("a page without a session lands on the login document", async ({
   page,
 }) => {
   await page.goto("/crm/contacts");
-  await expect(page).toHaveTitle("Sign in - Bench");
+  await expect(page).toHaveTitle("Sign in - Novhora");
   expect(new URL(page.url()).pathname).toBe("/login/");
 });
 
@@ -38,21 +38,21 @@ test("signing in lands on the launcher and opens the apps", async ({
   page,
 }) => {
   await login(page);
-  await expect(page).toHaveTitle("Bench");
+  await expect(page).toHaveTitle("Novhora");
   await page.getByRole("link", { name: "CRM" }).first().click();
-  await expect(page).toHaveTitle("Personal CRM");
+  await expect(page).toHaveTitle("Personal CRM - Novhora");
 });
 
 test("the session holds across reloads", async ({ page }) => {
   await login(page);
   await page.reload();
-  await expect(page).toHaveTitle("Bench");
+  await expect(page).toHaveTitle("Novhora");
 });
 
 test("signing out from the strip closes the door again", async ({ page }) => {
   await login(page);
   await page.getByRole("button", { name: "Sign out" }).click();
-  await expect(page).toHaveTitle("Sign in - Bench");
+  await expect(page).toHaveTitle("Sign in - Novhora");
   const res = await page.request.get("/api/crm/organizations");
   expect(res.status()).toBe(401);
 });

@@ -1,7 +1,7 @@
 # Exploratory testing charter
 
 What the automated suite deliberately does **not** cover, and how to check it by hand or with an
-agent. Run this when you change something the assertions cannot see: audio, visual design,
+agent. Run this when you change something the assertions cannot see: visual design,
 animation, feel.
 
 The automated suite lives beside this file. Prefer adding a spec over adding a line here - this
@@ -22,37 +22,10 @@ With `agent-browser`: `agent-browser --session bench open http://localhost:8101/
 `snapshot -i` to list interactive elements. Two traps worth knowing - `fill @ref ""` does **not**
 clear a field (reload instead), and refs go stale after navigation, so re-snapshot before clicking.
 
-**Check both themes.** The toggle sits on the right of the nav strip and applies to all four apps.
-The specs assert that each app's background actually changes and that the choice survives a
-reload; whether the result is _legible_ - chart axes, chips on tinted backgrounds, Groove's lit
-steps against a pale panel - is a judgement only you can make.
-
-## Groove - the big one
-
-**Nothing about how it sounds is tested.** The suite proves the transport runs, the playhead
-advances, steps toggle and patches load. Every judgement below is yours:
-
-- Do the drums sound like their names - is the kick punchy, the snare snappy, the hats crisp?
-- Does the master filter sweep smoothly across its range, and does resonance self-oscillate near
-  the top without an ugly jump?
-- Does the sidechain pump in time, ducking bass/pads/lead while the kick stays clear?
-- Do the four patches each have a distinct character?
-- Tempo and swing: does the groove still feel right at 90 and at 160 BPM?
-- Any clicks, pops, or dropouts when toggling steps or switching patches **while playing**?
-- Does audio stop cleanly on stop, with no ringing tail or stuck voice?
-
-**Headless tests never open an audio device, so the suite cannot hear a regression here.** Note
-that driving Groove with a visible browser plays sound out loud - stop the transport before walking
-away.
-
-Two related gaps, now that the components carry unit tests:
-
-- **The spectrum scope is tested for its render loop, not its picture.** `Scope.test.tsx` fakes the
-  2D context and drives frames by hand, so it proves the loop starts, reads the analyser and the
-  filter each frame, and is cancelled on unmount. Whether the curve is drawn in the right place is
-  still an eye judgement - watch it track a filter sweep.
-- **The engine is stubbed in `App.test.tsx`.** Those tests prove the panels are wired to the patch
-  state, not that anything is scheduled or heard.
+**Check both themes.** The toggle sits on the right of the nav strip and applies to all three
+apps. The specs assert that each app's background actually changes and that the choice survives a
+reload; whether the result is _legible_ - chart axes, chips on tinted backgrounds - is a judgement
+only you can make.
 
 ## CRM
 
@@ -99,10 +72,10 @@ adversarial suite. Left to judgement:
 - The launcher, then into each app and back. Because the apps are separate documents, back is a
   full page load, not a router transition, and moving between apps through the nav strip is a
   navigation rather than a transition.
-- **The nav strip should look identical in all four documents** - same height, same dark, same
-  amber line - including Space in dark mode and over Groove's dark rack. The suite asserts the
+- **The nav strip should look identical in every document** - same height, same dark, same
+  amber line - including Space in dark mode. The suite asserts the
   links and the current tab; it cannot see that the strip has picked up a host app's font,
   letter-spacing or palette. That is exactly what would go wrong.
-- Each app should keep its own look below the strip: CRM light, Space light/dark, Groove dark. Any
+- Each app should keep its own look below the strip: CRM light, Space light/dark. Any
   styling bleeding between them means the multi-page split has been broken.
 - Refresh on a deep link in **both** dev and prod.

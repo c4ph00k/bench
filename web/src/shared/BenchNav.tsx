@@ -1,12 +1,10 @@
 /**
- * The primary navigation, identical in all four documents. Each app is its own page, so these
- * are plain anchors rather than router links.
+ * The primary navigation, identical in every document. Each app is its own page, so these are
+ * plain anchors rather than router links.
  */
 import { useState } from "react";
 import {
-  BenchMark,
   IconCrm,
-  IconGroove,
   IconHome,
   IconLogout,
   IconMoon,
@@ -16,9 +14,10 @@ import {
 } from "./AppIcons";
 import { currentTheme, toggleTheme, type Theme } from "./theme";
 import { signOut } from "./auth";
+import { BRAND } from "./brand";
 import "./nav.css";
 
-type AppKey = "home" | "crm" | "space" | "rolodex" | "groove";
+type AppKey = "home" | "crm" | "space" | "rolodex";
 
 /** Colour marks the active app and nothing else: one amber chip, wherever you are. An app is
     told apart by its glyph, which is what still works once there are more of them than there
@@ -33,7 +32,6 @@ const APPS: {
   { key: "crm", href: "/crm/", label: "CRM", Icon: IconCrm },
   { key: "space", href: "/space/", label: "Space", Icon: IconSpace },
   { key: "rolodex", href: "/rolodex/", label: "Rolodex", Icon: IconRolodex },
-  { key: "groove", href: "/groove/", label: "Groove", Icon: IconGroove },
 ];
 
 export default function BenchNav({ active }: { active: AppKey }) {
@@ -41,8 +39,8 @@ export default function BenchNav({ active }: { active: AppKey }) {
   return (
     <header className="bench-nav">
       <span className="bench-nav-brand">
-        <BenchMark size={21} />
-        Bench
+        <BRAND.Mark size={21} />
+        {BRAND.name}
       </span>
       <nav className="bench-nav-links" aria-label="Primary">
         {APPS.map(({ key, href, label, Icon }) => (

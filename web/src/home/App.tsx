@@ -2,12 +2,8 @@
 import { useEffect } from "react";
 import BenchNav from "../shared/BenchNav";
 import { redirectTo } from "../shared/auth";
-import {
-  IconCrm,
-  IconGroove,
-  IconRolodex,
-  IconSpace,
-} from "../shared/AppIcons";
+import { BRAND } from "../shared/brand";
+import { IconCrm, IconRolodex, IconSpace } from "../shared/AppIcons";
 
 interface AppCard {
   href: string;
@@ -46,15 +42,6 @@ const APPS: AppCard[] = [
     facts: ["Check-ins", "Circles", "Calendar"],
     Icon: IconRolodex,
   },
-  {
-    href: "/groove/",
-    name: "Groove",
-    tagline: "A groovebox in the browser",
-    detail:
-      "Four synth units, one transport and a master DJ filter. Pure Web Audio — no samples, no plugins, no latency budget.",
-    facts: ["4 units", "16 steps", "Web Audio"],
-    Icon: IconGroove,
-  },
 ];
 
 export default function App() {
@@ -72,9 +59,9 @@ export default function App() {
       <div className="home">
         <header className="home-header">
           <p className="home-eyebrow">Local-first · one login · no cloud</p>
-          <h1>Bench</h1>
+          <h1>{BRAND.name}</h1>
           <p className="home-lede">
-            Four apps, one server, one machine. Your data lives in SQLite files
+            Three apps, one server, one machine. Your data lives in SQLite files
             on this disk and goes nowhere else.
           </p>
         </header>

@@ -4,8 +4,8 @@
  * without it.
  */
 import { useEffect, useState, type SyntheticEvent } from "react";
-import { BenchMark } from "../shared/AppIcons";
 import { redirectTo } from "../shared/auth";
+import { BRAND } from "../shared/brand";
 
 export default function App() {
   const [username, setUsername] = useState("");
@@ -42,8 +42,8 @@ export default function App() {
     <main className="login">
       <form className="login-card" onSubmit={(e) => void submit(e)}>
         <h1 className="login-brand">
-          <BenchMark size={28} />
-          Bench
+          <BRAND.Mark size={28} />
+          {BRAND.name}
         </h1>
         <p className="login-lede">Sign in to reach your apps.</p>
         <label className="login-field">

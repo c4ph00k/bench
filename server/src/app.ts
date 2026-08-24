@@ -16,7 +16,7 @@ const webDist = path.resolve(
 );
 
 /** The apps with their own HTML entry point in web/dist, for deep-link fallback. */
-const APPS = ["crm", "space", "rolodex", "groove"];
+const APPS = ["crm", "space", "rolodex"];
 
 export interface Dbs {
   crm: Database.Database;
@@ -58,16 +58,18 @@ export function createApp(dbs: Dbs): express.Express {
 
   if (existsSync(webDist)) {
     // Pages are gated too: any GET without a session is sent to the login document, the one page
-    // served to everyone. API paths never reach here - their gate answered above. The /login and
-    // /assets prefixes stay open because the login document has to boot before there is a session:
-    // /assets is build output - code, not data - and /login/ (static's directory form of /login)
-    // would loop back to itself without the prefix match.
+    // served to everyone. API paths never reach here - their gate answered above. Three kinds of
+    // path stay open on purpose: /login (the document itself, including static's /login/ directory
+    // form, which would loop back to itself without the prefix match), /assets (build output,
+    // code not data - the login document cannot boot without its bundle), and anything with a
+    // file extension - the favicon in dist's root, which the login document asks for by name.
     app.use((req, res, next) => {
       if (
         req.method === "GET" &&
         !req.path.startsWith("/api") &&
         !req.path.startsWith("/assets") &&
         !req.path.startsWith("/login") &&
+        !/\.[a-z0-9]+$/i.test(req.path) &&
         auth.userCount(dbs.auth) > 0 &&
         !sessionUser(dbs.auth, req)
       ) {
