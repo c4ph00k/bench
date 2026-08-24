@@ -328,7 +328,7 @@ your machine.
 
 ### Branch protection
 
-A ruleset named `main` on `ed-donner/bench`, enforcement **active**, targeting the default branch,
+A ruleset named `main` on `c4ph00k/bench`, enforcement **active**, targeting the default branch,
 with an **empty bypass list** so it binds the repository owner too:
 
 - Restrict deletions, block force pushes
@@ -406,7 +406,7 @@ unexplained standing exception is worse than a red run.
 
 ## Branching
 
-Ed creates a branch before work starts. The agent commits to it and **never pushes**; Ed pushes and
+Marco creates a branch before work starts. The agent commits to it and **never pushes**; Marco pushes and
 opens the pull request, CI runs there, and the required check gates the merge into `main`.
 
 There is no conflict between committing and branch protection: protection governs `main` only, a
@@ -415,7 +415,7 @@ feature branch is unprotected, and the agent never pushes anything anywhere.
 **If a session begins on `main`, branch before committing** rather than committing onto `main`, and
 say so in the reply.
 
-Because the agent never pushes, CI does not see the work until Ed pushes the branch. That is what
+Because the agent never pushes, CI does not see the work until Marco pushes the branch. That is what
 makes running `npm run check` locally a requirement rather than a courtesy.
 
 ## Related documents

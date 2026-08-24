@@ -49,7 +49,7 @@ confirm with `node -v`. If you would rather not use a package manager, the insta
 **Fork first - do not clone this repository directly.** You will be opening a pull request at the
 end, and that only works from your own copy.
 
-1. Go to **https://github.com/ed-donner/bench**
+1. Go to **https://github.com/c4ph00k/bench**
 2. Click **Fork** (top right), then **Create fork**
 
 You now have `https://github.com/<your-username>/bench`.
@@ -58,7 +58,7 @@ You now have `https://github.com/<your-username>/bench`.
 directly instead and carry on from 1.4:
 
 ```bash
-git clone https://github.com/ed-donner/bench.git
+git clone https://github.com/c4ph00k/bench.git
 cd bench
 ```
 
@@ -266,7 +266,7 @@ Do this in the browser.
    button. Click it. (No banner? Click **Contribute** → **Open pull request**, or use the
    **Pull requests** tab → **New pull request**.)
 3. Check the four dropdowns at the top read:
-   - **base repository:** `ed-donner/bench`
+   - **base repository:** `c4ph00k/bench`
    - **base:** `main`
    - **head repository:** `<your-username>/bench`
    - **compare:** `my-change`

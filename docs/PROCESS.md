@@ -14,7 +14,7 @@ open while lint fails. None of that lets you skip `npm run check` - a hook firin
 already failed.
 
 **The gate is CI.** It runs `check` and `e2e` on every push and pull request, and `main` is
-protected: no merge without it passing. That gate only sees the work once Ed pushes the branch,
+protected: no merge without it passing. That gate only sees the work once Marco pushes the branch,
 which is what makes running the checks locally a requirement rather than a courtesy. See
 [CONTROLS.md](./CONTROLS.md).
 

@@ -37,7 +37,7 @@ test("create a database, add properties, rows, edit cells, and reopen after refr
   await titles.nth(0).fill("Write the report");
   await titles.nth(1).fill("Review the report");
 
-  await page.getByLabel("Owner for Write the report").fill("Ed");
+  await page.getByLabel("Owner for Write the report").fill("Marco");
   await page.getByLabel("Owner for Write the report").press("Enter");
 
   // create a select option on row 1, reuse it on row 2
@@ -61,7 +61,9 @@ test("create a database, add properties, rows, edit cells, and reopen after refr
   await expect(page.getByLabel("Title for row Write the report")).toHaveValue(
     "Write the report",
   );
-  await expect(page.getByLabel("Owner for Write the report")).toHaveValue("Ed");
+  await expect(page.getByLabel("Owner for Write the report")).toHaveValue(
+    "Marco",
+  );
   await expect(
     page.getByLabel("Stage for Review the report").getByText("Drafting"),
   ).toBeVisible();
