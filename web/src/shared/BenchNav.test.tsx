@@ -2,15 +2,19 @@ import { describe, expect, it, beforeEach, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import BenchNav from "./BenchNav";
-import { signOut } from "./auth";
+import { signOut, useSession } from "./auth";
 
-vi.mock("./auth", () => ({ signOut: vi.fn() }));
+vi.mock("./auth", () => ({
+  signOut: vi.fn(),
+  useSession: vi.fn(() => null),
+}));
 
 const nav = () => within(screen.getByRole("navigation", { name: "Primary" }));
 
 beforeEach(() => {
   localStorage.clear();
   delete document.documentElement.dataset.theme;
+  vi.mocked(useSession).mockReturnValue(null);
 });
 
 describe("BenchNav", () => {
@@ -56,5 +60,15 @@ describe("BenchNav", () => {
     render(<BenchNav active="crm" />);
     await userEvent.click(screen.getByRole("button", { name: "Sign out" }));
     expect(signOut).toHaveBeenCalled();
+  });
+
+  it("offers the admin panel only to admins", () => {
+    vi.mocked(useSession).mockReturnValue({
+      username: "marco",
+      role: "admin",
+      mustChangePassword: false,
+    });
+    render(<BenchNav active="home" />);
+    expect(nav().getByRole("link", { name: "Admin" })).toBeInTheDocument();
   });
 });

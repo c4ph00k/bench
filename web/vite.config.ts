@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 const entry = (name: string) => fileURLToPath(new URL(name, import.meta.url));
 
 /** The apps with their own HTML entry point in web/dist, for deep-link fallback. */
-const APPS = ["login", "crm", "space", "rolodex"];
+const APPS = ["login", "crm", "space", "rolodex", "admin", "change-password"];
 
 /** Dev only: send a deep link like /crm/contacts to that app's HTML, not the launcher. The login
     document is in the list so /login resolves in dev too - in production the gate redirects there
@@ -39,6 +39,8 @@ export default defineConfig({
         crm: entry("crm/index.html"),
         space: entry("space/index.html"),
         rolodex: entry("rolodex/index.html"),
+        admin: entry("admin/index.html"),
+        "change-password": entry("change-password/index.html"),
       },
     },
   },

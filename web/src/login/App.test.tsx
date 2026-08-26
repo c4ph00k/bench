@@ -42,6 +42,30 @@ describe("the login document", () => {
     vi.unstubAllGlobals();
   });
 
+  it("sends a login holding a temporary password to the change page", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(jsonResponse(401, { error: "Not signed in" }))
+        .mockResolvedValue(
+          jsonResponse(200, {
+            username: "luca",
+            role: "user",
+            mustChangePassword: true,
+          }),
+        ),
+    );
+    render(<App />);
+    await userEvent.type(screen.getByLabelText("Username"), "luca");
+    await userEvent.type(screen.getByLabelText("Password"), "temporary");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    await waitFor(() =>
+      expect(redirectTo).toHaveBeenCalledWith("/change-password"),
+    );
+    vi.unstubAllGlobals();
+  });
+
   it("shows the server's message and stays put on a bad password", async () => {
     vi.stubGlobal(
       "fetch",

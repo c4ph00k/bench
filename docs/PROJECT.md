@@ -14,11 +14,17 @@ A launcher at `/` links to all three, and every page carries the same navigation
 Novhora mark, then Home, CRM, Space and Rolodex, each with the icon that identifies it inside its
 own app too, one theme toggle and one sign-out button on the right.
 
-A login gate sits in front of all of it: one seeded user (`marco` / `bench`, printed on first
+A login gate sits in front of all of it: one seeded admin (`marco` / `bench`, printed on first
 run), scrypt-hashed in `data/auth.sqlite` with server-side sessions in the same file. Every page
 without a session redirects to the login document at `/login`, every `/api` route except
 `/api/auth` answers 401, and the three app api helpers in `web/src/*/api.ts` send the browser to
 `/login` when they see that 401. Sign out from the strip ends the session server-side.
+
+Every user is an `admin` or a `user`. Admins reach the admin panel at `/admin`, where they add,
+edit and delete users and hand out a temporary password; a fresh account or a reset password sets
+`must_change_password`, which holds every page and API at `/change-password` until the user picks
+their own. `marco` is seeded as the admin; the panel refuses to demote or delete the last admin,
+and to delete one's own account from it.
 
 ## Detailed app documentation
 
@@ -47,13 +53,16 @@ web/                ONE Vite project, multi-page (MPA)
   crm/index.html      -> src/crm/main.tsx
   space/index.html    -> src/space/main.tsx
   rolodex/index.html  -> src/rolodex/main.tsx
+  admin/index.html    the admin panel     -> src/admin/main.tsx
+  change-password/index.html  the forced change page -> src/change-password/main.tsx
   src/shared/         the brand, the navigation strip, the theme and the session sign-out - the
                       code all five documents share
 server/             ONE Express app
   src/index.ts        opens the four DBs, listens on :8100
   src/app.ts          mounts routers, gates pages and API behind the session, serves web/dist
                       with per-prefix SPA fallback
-  src/auth/           login/logout/whoami routes + users and sessions db
+  src/auth/           login/logout/whoami + forced password change, the users and sessions db,
+                      the admin panel's user-management routes
   src/crm/            crm routes + db + seed
   src/space/          space routes + db + seed
   src/rolodex/        rolodex routes + db + seed
@@ -131,6 +140,16 @@ These are settled. Changing one is a project-level decision, not an implementati
   in-memory dbs. The client half is thin: the three app api helpers redirect on a 401, and the
   launcher probes `/api/auth/me` once, which covers `npm run dev` where pages come from Vite
   rather than through the gate.
+- **Each user has a role, and one flag can hold them at the door.** `users.role` is `admin` or
+  `user`; `users.must_change_password` is set when an admin creates the user or resets the
+  password. While it is set, the page gate redirects everything but `/change-password` there and
+  the API gate answers 403 outside `/api/auth`, so the temporary password never reaches an app.
+  The seeded `marco` is the first admin, and the panel enforces the invariants that survive it:
+  the last admin cannot be demoted or deleted, no one deletes their own account, and `marco`
+  itself can be neither renamed nor deleted.
+- **The admin panel is chrome, not a fourth brand.** It is an MPA entry like the apps, but it sits
+  in the nav strip only for admins and carries no colour of its own - amber means "you are here"
+  there exactly as it does everywhere else.
 - **Ports:** 8100 API, 8101 Vite, 8150+ e2e (one per Playwright worker).
 - **Deep-link fallback lives in two places.** `server/src/app.ts` handles production; the
   `appFallback` plugin in `web/vite.config.ts` does the same for the dev server. Without it a

@@ -67,6 +67,18 @@ adversarial suite. Left to judgement:
   1400px its columns plus the sidebar overflow, and a card can sit outside the viewport. This is
   why the suite pins 1440x900.
 
+## Admin
+
+Covered by specs: the panel appears only in an admin's nav, the seeded user is listed, and a user
+created with a temporary password is held at `/change-password` until they replace it. The unit
+suites cover the role change, the reset flow and the delete confirmation. Left to judgement:
+
+- The last-admin and self-delete refusals reach the panel's alert text the way the unit suite
+  mocks them, but no end-to-end scenario drives a second admin down to demotion by hand.
+- Editing a username (the PATCH supports it; no spec exercises it through the UI).
+- The panel is not visited in dark mode by any spec - check the table, the flag chip and the
+  delete confirmation against `[data-theme="dark"]`.
+
 ## Cross-app
 
 - The launcher, then into each app and back. Because the apps are separate documents, back is a

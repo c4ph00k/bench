@@ -109,7 +109,11 @@ describe("/api/auth", () => {
       .post("/api/auth/login")
       .send({ username: USER.username, password: USER.password });
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ username: USER.username });
+    expect(res.body).toEqual({
+      username: USER.username,
+      role: "admin",
+      mustChangePassword: false,
+    });
     expect(res.headers["set-cookie"][0]).toContain("HttpOnly");
     expect(res.headers["set-cookie"][0]).toContain("bench.session=");
   });
@@ -121,7 +125,11 @@ describe("/api/auth", () => {
       .get("/api/auth/me")
       .set("Cookie", cookie);
     expect(signedIn.status).toBe(200);
-    expect(signedIn.body).toEqual({ username: USER.username });
+    expect(signedIn.body).toEqual({
+      username: USER.username,
+      role: "admin",
+      mustChangePassword: false,
+    });
     expect((await request(app).get("/api/auth/me")).status).toBe(401);
   });
 

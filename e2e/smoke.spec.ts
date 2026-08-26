@@ -156,6 +156,7 @@ test("the nav lists every app and marks the one you are in", async ({
       "CRM",
       "Space",
       "Rolodex",
+      "Admin",
     ]);
     await expect(primary(page).locator("[aria-current=page]")).toHaveText(
       app.tab,

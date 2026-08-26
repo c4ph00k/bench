@@ -1,9 +1,9 @@
 /** Launcher: one card per app. Plain anchors - each app is its own document. */
 import { useEffect } from "react";
 import BenchNav from "../shared/BenchNav";
-import { redirectTo } from "../shared/auth";
+import { redirectTo, useSession } from "../shared/auth";
 import { BRAND } from "../shared/brand";
-import { IconCrm, IconRolodex, IconSpace } from "../shared/AppIcons";
+import { IconAdmin, IconCrm, IconRolodex, IconSpace } from "../shared/AppIcons";
 
 interface AppCard {
   href: string;
@@ -45,13 +45,25 @@ const APPS: AppCard[] = [
 ];
 
 export default function App() {
+  const session = useSession();
   // In production the server redirects before this document is served at all; under `npm run dev`
-  // the page comes from Vite, so the launcher checks the session itself.
+  // the page comes from Vite, so the launcher checks the session itself - and sends a user holding
+  // a temporary password to the page that replaces it before the apps open.
   useEffect(() => {
-    void fetch("/api/auth/me").then((res) => {
-      if (!res.ok) redirectTo("/login");
-    });
-  }, []);
+    if (session === null) redirectTo("/login");
+    else if (session?.mustChangePassword) redirectTo("/change-password");
+  }, [session]);
+
+  const adminCard: AppCard = {
+    href: "/admin/",
+    name: "Admin",
+    tagline: "The people who can sign in",
+    detail:
+      "Add, edit and remove users, give admin or user roles, and reset a password for the next sign-in.",
+    facts: ["Users", "Roles", "Reset password"],
+    Icon: IconAdmin,
+  };
+  const cards = session?.role === "admin" ? [...APPS, adminCard] : APPS;
 
   return (
     <>
@@ -67,7 +79,7 @@ export default function App() {
         </header>
 
         <div className="home-grid">
-          {APPS.map((app) => (
+          {cards.map((app) => (
             <a className="home-card" href={app.href} key={app.href}>
               <app.Icon size={104} />
               <div className="home-card-body">

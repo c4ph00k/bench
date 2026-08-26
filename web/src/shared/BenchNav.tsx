@@ -4,6 +4,7 @@
  */
 import { useState } from "react";
 import {
+  IconAdmin,
   IconCrm,
   IconHome,
   IconLogout,
@@ -13,15 +14,15 @@ import {
   IconSun,
 } from "./AppIcons";
 import { currentTheme, toggleTheme, type Theme } from "./theme";
-import { signOut } from "./auth";
+import { signOut, useSession } from "./auth";
 import { BRAND } from "./brand";
 import "./nav.css";
 
-type AppKey = "home" | "crm" | "space" | "rolodex";
+type AppKey = "home" | "crm" | "space" | "rolodex" | "admin";
 
 /** Colour marks the active app and nothing else: one amber chip, wherever you are. An app is
     told apart by its glyph, which is what still works once there are more of them than there
-    are brand colours. */
+    are brand colours. The admin panel is chrome, not an app, so it appears only to admins. */
 const APPS: {
   key: AppKey;
   href: string;
@@ -36,6 +37,14 @@ const APPS: {
 
 export default function BenchNav({ active }: { active: AppKey }) {
   const [theme, setTheme] = useState<Theme>(currentTheme);
+  const session = useSession();
+  const links =
+    session?.role === "admin"
+      ? [
+          ...APPS,
+          { key: "admin", href: "/admin/", label: "Admin", Icon: IconAdmin },
+        ]
+      : APPS;
   return (
     <header className="bench-nav">
       <span className="bench-nav-brand">
@@ -43,7 +52,7 @@ export default function BenchNav({ active }: { active: AppKey }) {
         {BRAND.name}
       </span>
       <nav className="bench-nav-links" aria-label="Primary">
-        {APPS.map(({ key, href, label, Icon }) => (
+        {links.map(({ key, href, label, Icon }) => (
           <a
             key={key}
             className="bench-nav-link"

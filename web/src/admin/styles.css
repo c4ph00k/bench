@@ -1,0 +1,249 @@
+/**
+ * The admin panel. Own stylesheet like every entry point, own palette under :root and
+ * [data-theme="dark"]. The shared strip is loaded separately and stays self-contained.
+ */
+
+:root {
+  color-scheme: light;
+  --amber: #ecad0a;
+  --amber-deep: #a97d05;
+  --bg: #f2f4f6;
+  --surface: #ffffff;
+  --border: #dfe3e8;
+  --text: #1c2128;
+  --text-soft: #5b636e;
+  --text-faint: #868e99;
+  --danger: #b42318;
+  --danger-soft: rgba(180, 35, 24, 0.08);
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
+  color: var(--text);
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #14171c;
+  --surface: #1c2128;
+  --border: #2b323b;
+  --text: #e9edf2;
+  --text-soft: #9aa3ae;
+  --text-faint: #6f7884;
+  --danger: #f97066;
+  --danger-soft: rgba(249, 112, 102, 0.1);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.admin {
+  flex: 1;
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 48px 32px 64px;
+}
+
+.admin-eyebrow {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.admin-header h1 {
+  margin: 0;
+  font-size: 40px;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-weight: 800;
+}
+
+.admin-lede {
+  margin: 12px 0 0;
+  color: var(--text-soft);
+  font-size: 15px;
+}
+
+.admin-error {
+  margin: 16px 0;
+  font-size: 13px;
+  color: var(--danger);
+}
+
+.admin-form {
+  margin-top: 32px;
+  padding: 22px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.admin-form h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.admin-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.admin-field input,
+.admin-field select {
+  font: inherit;
+  font-weight: 400;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.admin-field input:focus,
+.admin-field select:focus {
+  outline: 2px solid var(--amber);
+  outline-offset: -1px;
+}
+
+.admin-submit {
+  align-self: flex-start;
+  font: inherit;
+  font-weight: 650;
+  padding: 9px 16px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--amber);
+  color: #1c2128;
+  cursor: pointer;
+}
+
+.admin-submit:hover {
+  background: var(--amber-deep);
+  color: #ffffff;
+}
+
+.admin-submit:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.admin-list {
+  margin-top: 28px;
+}
+
+.admin-empty {
+  color: var(--text-faint);
+}
+
+.admin-users {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.admin-user {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.admin-user-main,
+.admin-user-actions,
+.admin-reset {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.admin-username {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.admin-flag {
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-faint);
+}
+
+.admin-role {
+  margin-left: auto;
+}
+
+.admin-user button,
+.admin-reset button {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.admin-user button:hover,
+.admin-reset button:hover {
+  border-color: var(--amber);
+}
+
+.admin-user button:disabled,
+.admin-reset button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.admin-user .admin-danger {
+  color: var(--danger);
+  border-color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.admin-reset {
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  align-items: flex-end;
+}
+
+.admin-reset .admin-field {
+  flex: 1;
+  min-width: 220px;
+}

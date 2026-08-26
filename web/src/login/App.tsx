@@ -13,10 +13,13 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  // Already signed in: straight to the launcher, no second form to click through.
+  // Already signed in: straight to the launcher, no second form to click through - or to the
+  // change-password page when the sign-in that made the session used a temporary password.
   useEffect(() => {
-    void fetch("/api/auth/me").then((res) => {
-      if (res.ok) redirectTo("/");
+    void fetch("/api/auth/me").then(async (res) => {
+      if (!res.ok) return;
+      const body = (await res.json()) as { mustChangePassword?: boolean };
+      redirectTo(body.mustChangePassword ? "/change-password" : "/");
     });
   }, []);
 
@@ -30,7 +33,8 @@ export default function App() {
       body: JSON.stringify({ username, password }),
     });
     if (res.ok) {
-      redirectTo("/");
+      const body = (await res.json()) as { mustChangePassword?: boolean };
+      redirectTo(body.mustChangePassword ? "/change-password" : "/");
       return;
     }
     const body = (await res.json().catch(() => ({}))) as { error?: string };

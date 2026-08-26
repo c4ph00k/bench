@@ -99,3 +99,13 @@ export const IconLogout = (p: IconProps) => (
     <path d="M10 12h10M16.5 8.5 20 12l-3.5 3.5" />
   </Stroke>
 );
+
+/** Two people under one roof, the panel that manages users, not the contact cards elsewhere. */
+export const IconAdmin = (p: IconProps) => (
+  <Stroke {...p}>
+    <circle cx="9" cy="8" r="3.25" />
+    <path d="M3.5 20a5.5 5.5 0 0 1 11 0" />
+    <path d="M16 5.4a3.25 3.25 0 0 1 0 5.2" />
+    <path d="M15.8 14.7a5.5 5.5 0 0 1 4.7 5.3" />
+  </Stroke>
+);
