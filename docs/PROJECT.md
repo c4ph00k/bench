@@ -47,7 +47,7 @@ worth understanding before you close it.
 ```
 package.json        npm workspaces: web, server. All commands run from the root.
 web/                ONE Vite project, multi-page (MPA)
-  public/novhora.svg  the brand favicon, drawn from the company logo
+  public/novhora.svg  the brand favicon, drawn from the company logo (logo/)
   index.html          launcher            -> src/home/
   login/index.html    the login document  -> src/login/main.tsx
   crm/index.html      -> src/crm/main.tsx
@@ -108,7 +108,7 @@ Under `npm run dev` use **8101**. Port 8100 serves the last build, not your live
 These are settled. Changing one is a project-level decision, not an implementation detail.
 
 - **Branding lives in one module.** `web/src/shared/brand.ts` names the company, its mark
-  component and its favicon (`web/public/novhora.svg`, drawn from the company logo in `jpg/`);
+  component and its favicon (`web/public/novhora.svg`, drawn from the company logo in `logo/`);
   the nav strip, the launcher, the login card and every document title read from it. Rebranding
   the suite for another company means changing that module and the SVG, nothing else.
 - **Multi-page, not one SPA.** The three apps keep their own global `styles.css`, and those files

@@ -3,8 +3,8 @@
  * glyph identifies an app wherever you are.
  *
  * Stroke icons sit on the same 24 grid as CRM's Icons.tsx and take their colour from the text
- * around them. The Novhora mark is the company's plaque logo reduced to strokes: a tall panel
- * with a divider, an N in the upper chamber and a dot in the lower one.
+ * around them. The Novhora mark is the company logo reduced to strokes: two pillars with two
+ * diagonals crossing between them, one woven over the other.
  */
 
 interface IconProps {
@@ -33,13 +33,13 @@ function Stroke({
   );
 }
 
-/** The plaque: panel, divider, N above, dot below - the company logo as strokes. */
+/** The Novhora mark: two pillars with two diagonals crossing between them, one woven over the
+    other - the company logo (logo/Novhora_logo_*.jpg) reduced to strokes. */
 export const NovhoraMark = (p: IconProps) => (
   <Stroke {...p}>
-    <rect x="7" y="2.75" width="10" height="18.5" rx="1.75" />
-    <path d="M7 12.25h10" />
-    <path d="M10 9.75v-4l4 4v-4" />
-    <circle cx="12" cy="16.25" r="0.9" fill="currentColor" stroke="none" />
+    <path d="M18.8 5.2 14 10M10 14 5.2 18.8" />
+    <path d="M5.2 5.2v13.6M18.8 5.2v13.6" />
+    <path d="M5.2 5.2l13.6 13.6" />
   </Stroke>
 );
 
