@@ -29,7 +29,12 @@ afterEach(() => {
 describe("adminApi", () => {
   it("lists users", async () => {
     const users = [
-      { id: 1, username: "marco", role: "admin", mustChangePassword: false },
+      {
+        id: 1,
+        email: "marco@example.com",
+        role: "owner",
+        mustChangePassword: false,
+      },
     ];
     fetchMock.mockResolvedValue(jsonResponse(200, users));
     await expect(adminApi.list()).resolves.toEqual(users);
@@ -44,20 +49,20 @@ describe("adminApi", () => {
       .mockResolvedValueOnce(
         jsonResponse(201, {
           id: 2,
-          username: "luca",
+          email: "luca@example.com",
           role: "user",
           mustChangePassword: true,
         }),
       )
       .mockResolvedValueOnce(jsonResponse(204, {}));
-    await adminApi.create("luca", "temp1", "user");
+    await adminApi.create("luca@example.com", "temp1", "user");
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,
       "/api/auth/users",
       expect.objectContaining({
         method: "POST",
         body: JSON.stringify({
-          username: "luca",
+          email: "luca@example.com",
           password: "temp1",
           role: "user",
         }),
@@ -82,10 +87,10 @@ describe("adminApi", () => {
 
   it("raises the server's message on a refusal", async () => {
     fetchMock.mockResolvedValue(
-      jsonResponse(403, { error: "The last admin cannot be demoted" }),
+      jsonResponse(403, { error: "The last owner cannot be demoted" }),
     );
     await expect(adminApi.update(1, { role: "user" })).rejects.toThrow(
-      "The last admin cannot be demoted",
+      "The last owner cannot be demoted",
     );
   });
 });

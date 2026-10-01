@@ -4,7 +4,7 @@ import { redirectTo, type Role } from "../shared/auth";
 /** A user as the admin panel sees them - the shape /api/auth/users returns. */
 export interface PublicUser {
   id: number;
-  username: string;
+  email: string;
   role: Role;
   mustChangePassword: boolean;
 }
@@ -34,9 +34,9 @@ async function req<T>(
 
 export const adminApi = {
   list: () => req<PublicUser[]>("GET", ""),
-  create: (username: string, password: string, role: Role) =>
-    req<PublicUser>("POST", "", { username, password, role }),
-  update: (id: number, patch: { role?: Role; username?: string }) =>
+  create: (email: string, password: string, role: Role) =>
+    req<PublicUser>("POST", "", { email, password, role }),
+  update: (id: number, patch: { role?: Role; email?: string }) =>
     req<PublicUser>("PATCH", `/${id}`, patch),
   remove: (id: number) => req<undefined>("DELETE", `/${id}`),
   resetPassword: (id: number, password: string) =>

@@ -40,7 +40,6 @@ describe("migrations", () => {
     expect(names).toContain("tenants");
     expect(names).toContain("users");
     expect(names).toContain("memberships");
-    expect(names).toContain("sessions");
 
     expect(await migrate(pool, migrationsDir)).toEqual([]);
   });

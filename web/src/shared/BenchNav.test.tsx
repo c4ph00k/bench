@@ -64,9 +64,10 @@ describe("BenchNav", () => {
 
   it("offers the admin panel only to admins", () => {
     vi.mocked(useSession).mockReturnValue({
-      username: "marco",
+      email: "marco@example.com",
       role: "admin",
       mustChangePassword: false,
+      masterAdmin: true,
     });
     render(<BenchNav active="home" />);
     expect(nav().getByRole("link", { name: "Admin" })).toBeInTheDocument();

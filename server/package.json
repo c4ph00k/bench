@@ -12,7 +12,9 @@
   "dependencies": {
     "better-sqlite3": "^12.11.1",
     "date-fns": "^4.4.0",
+    "dotenv": "^18.0.5",
     "express": "^5.2.1",
+    "jose": "^6.2.12",
     "papaparse": "^5.6.0",
     "pg": "^8.23.1",
     "vcf": "^2.1.2"

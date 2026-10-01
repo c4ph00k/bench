@@ -22,16 +22,16 @@ test("a wrong password is refused, with one message either way", async ({
   page,
 }) => {
   await page.goto("/login");
-  await page.getByLabel("Username").fill("marco");
+  await page.getByLabel("Email").fill("marco@example.com");
   await page.getByLabel("Password").fill("not-the-password");
   await page.getByRole("button", { name: "Sign in" }).click();
   const alert = page.getByRole("alert");
-  await expect(alert).toHaveText("Wrong username or password");
+  await expect(alert).toHaveText("Wrong email or password");
   expect(new URL(page.url()).pathname).toBe("/login/");
 
-  await page.getByLabel("Username").fill("not-the-user");
+  await page.getByLabel("Email").fill("not-the-user");
   await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(alert).toHaveText("Wrong username or password");
+  await expect(alert).toHaveText("Wrong email or password");
 });
 
 test("signing in lands on the launcher and opens the apps", async ({

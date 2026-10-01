@@ -11,9 +11,9 @@ import type { Count, Ok, Page, TreeNode } from "./responses.js";
 let db: Database.Database;
 let app: express.Express;
 
-beforeEach(() => {
+beforeEach(async () => {
   db = openDb(":memory:");
-  app = appWithSpace(db);
+  app = await appWithSpace(db);
 });
 
 const createPage = async (payload: Record<string, unknown>) =>

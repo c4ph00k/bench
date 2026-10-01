@@ -15,7 +15,7 @@ vi.mock("./api", () => ({
 
 const user: PublicUser = {
   id: 2,
-  username: "luca",
+  email: "luca@example.com",
   role: "user",
   mustChangePassword: true,
 };
@@ -31,7 +31,7 @@ describe("a user row", () => {
     render(<UserRow user={user} onChanged={onChanged} />);
 
     await userEvent.selectOptions(
-      screen.getByRole("combobox", { name: "Role for luca" }),
+      screen.getByRole("combobox", { name: "Role for luca@example.com" }),
       "admin",
     );
 
@@ -42,23 +42,6 @@ describe("a user row", () => {
   it("shows the flag for a temporary password", () => {
     render(<UserRow user={user} onChanged={vi.fn()} />);
     expect(screen.getByText("Temporary password")).toBeInTheDocument();
-  });
-
-  it("offers no delete button for the seeded admin", () => {
-    render(
-      <UserRow
-        user={{
-          id: 1,
-          username: "marco",
-          role: "admin",
-          mustChangePassword: false,
-        }}
-        onChanged={vi.fn()}
-      />,
-    );
-    expect(
-      screen.queryByRole("button", { name: "Delete" }),
-    ).not.toBeInTheDocument();
   });
 
   it("resets the password through the inline form", async () => {
@@ -97,17 +80,17 @@ describe("a user row", () => {
 
   it("surfaces the server's refusal", async () => {
     vi.mocked(adminApi.update).mockRejectedValue(
-      new Error("The last admin cannot be demoted"),
+      new Error("The last owner cannot be demoted"),
     );
     render(<UserRow user={user} onChanged={vi.fn()} />);
 
     await userEvent.selectOptions(
-      screen.getByRole("combobox", { name: "Role for luca" }),
+      screen.getByRole("combobox", { name: "Role for luca@example.com" }),
       "admin",
     );
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "The last admin cannot be demoted",
+      "The last owner cannot be demoted",
     );
   });
 });

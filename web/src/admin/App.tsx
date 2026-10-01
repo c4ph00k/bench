@@ -21,18 +21,18 @@ export default function App() {
       redirectTo("/change-password");
       return;
     }
-    if (session.role !== "admin") redirectTo("/");
+    if (session.role !== "admin" && session.role !== "owner") redirectTo("/");
   }, [session]);
 
   useEffect(() => {
-    if (session?.role !== "admin") return;
+    if (session?.role !== "admin" && session?.role !== "owner") return;
     adminApi
       .list()
       .then(setUsers)
       .catch(() => setError("Could not load the users"));
   }, [session?.role]);
 
-  if (session?.role !== "admin") return null;
+  if (session?.role !== "admin" && session?.role !== "owner") return null;
 
   function reload() {
     adminApi

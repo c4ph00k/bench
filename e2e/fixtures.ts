@@ -1,4 +1,5 @@
 import { test as base, expect } from "@playwright/test";
+import { PostgreSqlContainer } from "@testcontainers/postgresql";
 import { spawn } from "node:child_process";
 import { rmSync } from "node:fs";
 import path from "node:path";
@@ -7,8 +8,8 @@ import type { Page } from "@playwright/test";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-/** The seeded login - see server/src/index.ts, which prints it on first run. */
-const LOGIN = { username: "marco", password: "bench" };
+/** The seeded login - see server/src/index.ts and .env.example, which seed it on first run. */
+const LOGIN = { email: "marco@example.com", password: "bench" };
 
 /** Poll the API until the server answers, so tests never race the boot. Any HTTP reply proves it
     is listening; the gate turns everything into a 401 until a spec signs in, which is still an answer. */
@@ -33,7 +34,7 @@ async function waitForServer(url: string, timeoutMs = 60_000) {
  */
 export async function login(page: Page): Promise<void> {
   await page.goto("/login");
-  await page.getByLabel("Username").fill(LOGIN.username);
+  await page.getByLabel("Email").fill(LOGIN.email);
   await page.getByLabel("Password").fill(LOGIN.password);
   await page.getByRole("button", { name: "Sign in" }).click();
   await page.getByRole("navigation", { name: "Primary" }).waitFor();
@@ -41,7 +42,8 @@ export async function login(page: Page): Promise<void> {
 
 /**
  * One server per worker, each with its own freshly seeded databases, so specs running in
- * parallel never share state. Ports start at 8150.
+ * parallel never share state. Ports start at 8150 and the auth store is a Postgres container per
+ * worker, migrated and seeded by the server on boot the same way the unit suites do.
  */
 export const test = base.extend<object, { appServer: string }>({
   appServer: [
@@ -50,11 +52,21 @@ export const test = base.extend<object, { appServer: string }>({
       const dataDir = path.join("e2e", ".tmp", `w${workerInfo.workerIndex}`);
       rmSync(path.join(root, dataDir), { recursive: true, force: true });
 
+      const postgres = await new PostgreSqlContainer(
+        "postgres:17-alpine",
+      ).start();
+
       // npx is a .cmd on Windows, which child_process cannot execute by its bare name.
       const npx = process.platform === "win32" ? "npx.cmd" : "npx";
       const server = spawn(npx, ["tsx", "server/src/index.ts"], {
         cwd: root,
-        env: { ...process.env, PORT: String(port), DATA_DIR: dataDir },
+        env: {
+          ...process.env,
+          PORT: String(port),
+          DATA_DIR: dataDir,
+          DATABASE_URL: postgres.getConnectionUri(),
+          JWT_SECRET: "e2e-secret",
+        },
         stdio: "ignore",
       });
       const base = `http://localhost:${port}`;
@@ -63,6 +75,7 @@ export const test = base.extend<object, { appServer: string }>({
       await use(base);
 
       server.kill();
+      await postgres.stop();
     },
     { scope: "worker", auto: true },
   ],

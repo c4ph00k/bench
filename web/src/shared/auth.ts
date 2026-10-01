@@ -5,12 +5,13 @@
  */
 import { useEffect, useState } from "react";
 
-export type Role = "admin" | "user";
+export type Role = "owner" | "admin" | "user";
 
 export interface SessionInfo {
-  username: string;
-  role: Role;
+  email: string;
+  role?: Role;
   mustChangePassword: boolean;
+  masterAdmin: boolean;
 }
 
 /** Leaving, in one place so the unit tests can intercept it - jsdom cannot navigate. */

@@ -1,4 +1,5 @@
 import express from "express";
+import type { Pool } from "pg";
 import type Database from "better-sqlite3";
 import { existsSync } from "node:fs";
 import path from "node:path";
@@ -9,7 +10,7 @@ import type { Repo } from "./rolodex/db/index.js";
 import { spaceRouter } from "./space/routes/index.js";
 import { authRouter } from "./auth/routes.js";
 import { sessionUser } from "./auth/session.js";
-import * as auth from "./auth/db.js";
+import { userCount } from "./auth/db.js";
 
 const webDist = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -19,15 +20,26 @@ const webDist = path.resolve(
 /** The apps with their own HTML entry point in web/dist, for deep-link fallback. */
 const APPS = ["crm", "space", "rolodex", "admin", "change-password"];
 
-export interface Dbs {
+interface Dbs {
   crm: Database.Database;
   space: Database.Database;
   rolodex: Repo;
-  auth: auth.AuthDb;
 }
 
-/** Build the Express app around the open databases. */
-export function createApp(dbs: Dbs): express.Express {
+export interface AppOptions {
+  pool: Pool;
+  jwtSecret: string;
+  jwtTtl?: number;
+  dbs: Dbs;
+}
+
+/**
+ * Build the Express app around the shared Postgres pool (auth) and the per-app SQLite handles
+ * (crm, space, rolodex). Auth has moved to Postgres; the app data layers follow in a later
+ * increment, so they still hand their old handles here.
+ */
+export function createApp(options: AppOptions): express.Express {
+  const { pool, jwtSecret, jwtTtl, dbs } = options;
   const app = express();
   // Rolodex accepts whole address books and photos in one request, which is why this is not 2mb.
   app.use(express.json({ limit: "25mb" }));
@@ -40,17 +52,16 @@ export function createApp(dbs: Dbs): express.Express {
     next();
   });
 
-  app.use("/api/auth", authRouter(dbs.auth));
+  app.use("/api/auth", authRouter({ pool, jwtSecret, jwtTtl }));
 
-  // Everything else under /api answers 401 until a session cookie names a user, and 403 to a
-  // user whose password was reset and not yet replaced - change-password is the only /api route
-  // that may still be used, and it lives under /api/auth, mounted above this gate. An auth
-  // database with no users gates nothing: the server test suites open it in memory and unseeded,
-  // while index.ts always seeds before listening.
-  app.use("/api", (req, res, next) => {
-    const user = sessionUser(dbs.auth, req);
-    if (auth.userCount(dbs.auth) === 0 || user) {
-      if (user?.must_change_password === 1) {
+  // Everything else under /api answers 401 until a session cookie names a user, and 403 to a user
+  // whose password was reset and not yet replaced - change-password is the only /api route that may
+  // still be used, and it lives under /api/auth, mounted above this gate. A database with no users
+  // gates nothing, which is how the app suites run unauthenticated while index.ts always seeds.
+  app.use("/api", async (req, res, next) => {
+    const user = await sessionUser(pool, jwtSecret, req);
+    if ((await userCount(pool)) === 0 || user) {
+      if (user?.must_change_password) {
         res.status(403).json({ error: "Password change required" });
         return;
       }
@@ -68,11 +79,11 @@ export function createApp(dbs: Dbs): express.Express {
     // Pages are gated too: any GET without a session is sent to the login document, the one page
     // served to everyone. API paths never reach here - their gate answered above. Three kinds of
     // path stay open on purpose: /login (the document itself, including static's /login/ directory
-    // form, which would loop back to itself without the prefix match), /assets (build output,
-    // code not data - the login document cannot boot without its bundle), and anything with a
-    // file extension - the favicon in dist's root, which the login document asks for by name.
-    app.use((req, res, next) => {
-      const user = sessionUser(dbs.auth, req);
+    // form, which would loop back to itself without the prefix match), /assets (build output, code
+    // not data - the login document cannot boot without its bundle), and anything with a file
+    // extension - the favicon in dist's root, which the login document asks for by name.
+    app.use(async (req, res, next) => {
+      const user = await sessionUser(pool, jwtSecret, req);
       if (
         req.method === "GET" &&
         !req.path.startsWith("/api") &&
@@ -80,12 +91,12 @@ export function createApp(dbs: Dbs): express.Express {
         !req.path.startsWith("/login") &&
         !/\.[a-z0-9]+$/i.test(req.path)
       ) {
-        if (auth.userCount(dbs.auth) > 0 && !user) {
+        if ((await userCount(pool)) > 0 && !user) {
           res.redirect("/login/");
           return;
         }
         if (
-          user?.must_change_password === 1 &&
+          user?.must_change_password &&
           !req.path.startsWith("/change-password")
         ) {
           res.redirect("/change-password");

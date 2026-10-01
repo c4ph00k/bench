@@ -4,37 +4,58 @@
  * app is built around a seeded auth database, unlike the per-app suites whose unseeded one is the
  * gate-off case.
  */
-import { describe, expect, it } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import request from "supertest";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import type { Pool } from "pg";
 import { createApp } from "../../src/app.js";
 import { openDb as openCrmDb } from "../../src/crm/db.js";
 import { openDb as openSpaceDb } from "../../src/space/db.js";
 import { openDb as openRolodexDb } from "../../src/rolodex/db/index.js";
 import * as auth from "../../src/auth/db.js";
+import {
+  JWT_SECRET,
+  SEED_EMAIL,
+  SEED_PASSWORD,
+  resetAuth,
+  seedAuth,
+  testPool,
+} from "../helpers/postgres.js";
 
-const USER = { username: "marco", password: "bench" };
+let pool: Pool;
 
-function seededApp() {
-  const db = auth.openDb(":memory:");
-  auth.seedIfEmpty(db, USER.username, USER.password);
+beforeAll(async () => {
+  pool = await testPool();
+});
+
+beforeEach(async () => {
+  await resetAuth(pool);
+});
+
+function makeApp() {
   return createApp({
-    crm: openCrmDb(":memory:"),
-    space: openSpaceDb(":memory:"),
-    rolodex: openRolodexDb(":memory:"),
-    auth: db,
+    pool,
+    jwtSecret: JWT_SECRET,
+    dbs: {
+      crm: openCrmDb(":memory:"),
+      space: openSpaceDb(":memory:"),
+      rolodex: openRolodexDb(":memory:"),
+    },
   });
 }
 
+async function seededApp() {
+  await seedAuth(pool);
+  return makeApp();
+}
+
 /** Login once and return the cookie that came back, for requests that should pass the gate. */
-async function sessionCookie(
-  app: ReturnType<typeof seededApp>,
-): Promise<string> {
+async function sessionCookie(app: ReturnType<typeof makeApp>): Promise<string> {
   const res = await request(app)
     .post("/api/auth/login")
-    .send({ username: USER.username, password: USER.password });
+    .send({ email: SEED_EMAIL, password: SEED_PASSWORD });
   return res.headers["set-cookie"][0].split(";")[0];
 }
 
@@ -57,84 +78,75 @@ describe("password hashing", () => {
   });
 });
 
-describe("sessions in the database", () => {
-  it("finds the user a live token belongs to", () => {
-    const db = auth.openDb(":memory:");
-    auth.seedIfEmpty(db, USER.username, USER.password);
-    const user = auth.getUser(db, USER.username)!;
-    const session = auth.createSession(db, user.id);
-    expect(auth.getSessionUser(db, session.token)?.username).toBe(
-      USER.username,
-    );
-    auth.deleteSession(db, session.token);
-    expect(auth.getSessionUser(db, session.token)).toBeNull();
-  });
+describe("token revokation", () => {
+  it("revokes every prior token once the password changes", async () => {
+    const app = await seededApp();
+    const oldCookie = await sessionCookie(app);
 
-  it("refuses an expired token", () => {
-    const db = auth.openDb(":memory:");
-    auth.seedIfEmpty(db, USER.username, USER.password);
-    const user = auth.getUser(db, USER.username)!;
-    // A row already in the past, rather than a clock fudge or a configurable lifetime.
-    db.prepare(
-      "INSERT INTO sessions (token, user_id, expires_at) VALUES ('tok', ?, 0)",
-    ).run(user.id);
-    expect(auth.getSessionUser(db, "tok")).toBeNull();
-  });
+    const change = await request(app)
+      .post("/api/auth/change-password")
+      .set("Cookie", oldCookie)
+      .send({ password: "honeydew" });
+    expect(change.status).toBe(204);
+    const newCookie = change.headers["set-cookie"][0].split(";")[0];
 
-  it("seeds once and never twice", () => {
-    const db = auth.openDb(":memory:");
-    expect(auth.seedIfEmpty(db, USER.username, USER.password)).toBe(true);
-    expect(auth.seedIfEmpty(db, "other", "other")).toBe(false);
-    expect(auth.userCount(db)).toBe(1);
+    expect(
+      (await request(app).get("/api/auth/me").set("Cookie", oldCookie)).status,
+    ).toBe(401);
+    expect(
+      (await request(app).get("/api/auth/me").set("Cookie", newCookie)).status,
+    ).toBe(200);
   });
 });
 
 describe("/api/auth", () => {
-  it("answers 401 with one message for a wrong password and a wrong username alike", async () => {
-    const app = seededApp();
+  it("answers 401 with one message for a wrong password and a wrong email alike", async () => {
+    const app = await seededApp();
     const badPassword = await request(app)
       .post("/api/auth/login")
-      .send({ username: USER.username, password: "nope" });
+      .send({ email: SEED_EMAIL, password: "nope" });
     expect(badPassword.status).toBe(401);
-    const badUsername = await request(app)
+    const badEmail = await request(app)
       .post("/api/auth/login")
-      .send({ username: "nobody", password: USER.password });
-    expect(badUsername.status).toBe(401);
-    expect(badUsername.body).toEqual(badPassword.body);
+      .send({ email: "nobody@example.com", password: SEED_PASSWORD });
+    expect(badEmail.status).toBe(401);
+    expect(badEmail.body).toEqual(badPassword.body);
   });
 
   it("signs in with an HttpOnly cookie and names the user back", async () => {
-    const app = seededApp();
+    const app = await seededApp();
     const res = await request(app)
       .post("/api/auth/login")
-      .send({ username: USER.username, password: USER.password });
+      .send({ email: SEED_EMAIL, password: SEED_PASSWORD });
     expect(res.status).toBe(200);
     expect(res.body).toEqual({
-      username: USER.username,
-      role: "admin",
+      email: SEED_EMAIL,
+      role: "owner",
       mustChangePassword: false,
+      masterAdmin: true,
     });
     expect(res.headers["set-cookie"][0]).toContain("HttpOnly");
     expect(res.headers["set-cookie"][0]).toContain("bench.session=");
   });
 
   it("says who is signed in, and 401 when nobody is", async () => {
-    const app = seededApp();
+    const app = await seededApp();
     const cookie = await sessionCookie(app);
     const signedIn = await request(app)
       .get("/api/auth/me")
       .set("Cookie", cookie);
     expect(signedIn.status).toBe(200);
     expect(signedIn.body).toEqual({
-      username: USER.username,
-      role: "admin",
+      email: SEED_EMAIL,
+      role: "owner",
       mustChangePassword: false,
+      masterAdmin: true,
     });
     expect((await request(app).get("/api/auth/me")).status).toBe(401);
   });
 
   it("ends the session on logout", async () => {
-    const app = seededApp();
+    const app = await seededApp();
     const cookie = await sessionCookie(app);
     expect(
       (await request(app).get("/api/auth/me").set("Cookie", cookie)).status,
@@ -151,14 +163,14 @@ describe("/api/auth", () => {
 
 describe("the API gate", () => {
   it("answers 401 from an app route without a session", async () => {
-    const app = seededApp();
+    const app = await seededApp();
     const res = await request(app).get("/api/crm/organizations");
     expect(res.status).toBe(401);
     expect(res.body).toEqual({ error: "Not signed in" });
   });
 
   it("lets an app route through with a session", async () => {
-    const app = seededApp();
+    const app = await seededApp();
     const cookie = await sessionCookie(app);
     const res = await request(app)
       .get("/api/crm/organizations")
@@ -167,26 +179,21 @@ describe("the API gate", () => {
   });
 
   it("gates nothing when no user exists, which is how the app suites run", async () => {
-    const app = createApp({
-      crm: openCrmDb(":memory:"),
-      space: openSpaceDb(":memory:"),
-      rolodex: openRolodexDb(":memory:"),
-      auth: auth.openDb(":memory:"),
-    });
+    const app = makeApp();
     expect((await request(app).get("/api/crm/organizations")).status).toBe(200);
   });
 });
 
 describe.skipIf(!existsSync(webDist))("the page gate", () => {
   it("redirects a page without a session to the login document", async () => {
-    const app = seededApp();
+    const app = await seededApp();
     const res = await request(app).get("/crm/contacts");
     expect(res.status).toBe(302);
     expect(res.headers.location).toBe("/login/");
   });
 
   it("serves the login document without a session, under either form of the path", async () => {
-    const app = seededApp();
+    const app = await seededApp();
     // /login is a directory in dist, so static answers it with a 301 to /login/ - not a loop,
     // because the gate lets the whole /login prefix through.
     expect((await request(app).get("/login")).status).toBe(301);

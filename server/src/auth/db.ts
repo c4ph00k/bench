@@ -1,78 +1,43 @@
 /**
- * Auth store: the users and the sessions that keep them signed in. One file, auth.sqlite, because
- * the gate is Bench-level, not app-level - none of the three app databases owns it. A user is an
- * admin (the admin panel) or a plain user, and `must_change_password` records that the password
- * they just signed in with was set by someone else and has to be replaced before the apps open.
+ * The global domain: users, tenants, and the memberships that bind a user to a tenant with a role.
+ * Auth runs on Postgres now, so every operation is async and the role an admin panel sees belongs
+ * to the membership, not to the user.
  */
-import Database from "better-sqlite3";
+import type { Pool } from "pg";
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 
-export type AuthDb = Database.Database;
-export type Role = "admin" | "user";
+export type Role = "owner" | "admin" | "user";
 
 export interface UserRow {
   id: number;
-  username: string;
+  email: string;
   password_hash: string;
-  role: Role;
-  must_change_password: number;
+  master_admin: boolean;
+  must_change_password: boolean;
+  token_version: number;
 }
 
-/** The shape the panel and /me see - never the hash. */
 export interface PublicUser {
   id: number;
-  username: string;
+  email: string;
   role: Role;
   mustChangePassword: boolean;
 }
 
-function toPublicUser(u: {
+interface PublicUserRow {
   id: number;
-  username: string;
+  email: string;
   role: Role;
-  must_change_password: number;
-}): PublicUser {
+  must_change_password: boolean;
+}
+
+function toPublicUser(row: PublicUserRow): PublicUser {
   return {
-    id: u.id,
-    username: u.username,
-    role: u.role,
-    mustChangePassword: u.must_change_password === 1,
+    id: row.id,
+    email: row.email,
+    role: row.role,
+    mustChangePassword: row.must_change_password,
   };
-}
-
-export function openDb(path: string): AuthDb {
-  const db = new Database(path);
-  db.pragma("journal_mode = WAL");
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY,
-      username TEXT NOT NULL UNIQUE,
-      password_hash TEXT NOT NULL,
-      role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('admin', 'user')),
-      must_change_password INTEGER NOT NULL DEFAULT 0
-    );
-    CREATE TABLE IF NOT EXISTS sessions (
-      token TEXT PRIMARY KEY,
-      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      expires_at INTEGER NOT NULL
-    );
-  `);
-  migrate(db);
-  return db;
-}
-
-/** Databases created before roles existed get the columns added; marco, the only row there ever
-    was, becomes admin. */
-function migrate(db: AuthDb) {
-  const columns = (
-    db.prepare("PRAGMA table_info(users)").all() as { name: string }[]
-  ).map((c) => c.name);
-  if (!columns.includes("role"))
-    db.exec("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'admin'");
-  if (!columns.includes("must_change_password"))
-    db.exec(
-      "ALTER TABLE users ADD COLUMN must_change_password INTEGER NOT NULL DEFAULT 0",
-    );
 }
 
 /** salt:hash, both hex. scrypt needs no dependency and hashes in ~100ms at the default cost. */
@@ -93,163 +58,225 @@ export function verifyPassword(password: string, stored: string): boolean {
   return timingSafeEqual(actual, expected);
 }
 
-export function userCount(db: AuthDb): number {
-  return (db.prepare("SELECT COUNT(*) AS n FROM users").get() as { n: number })
-    .n;
+export async function userCount(pool: Pool): Promise<number> {
+  const result = await pool.query<{ n: number }>(
+    "SELECT COUNT(*)::int AS n FROM users",
+  );
+  return result.rows[0].n;
 }
 
-export function countAdmins(db: AuthDb): number {
-  return (
-    db
-      .prepare("SELECT COUNT(*) AS n FROM users WHERE role = 'admin'")
-      .get() as { n: number }
-  ).n;
+export async function getUserByEmail(
+  pool: Pool,
+  email: string,
+): Promise<UserRow | undefined> {
+  const result = await pool.query<UserRow>(
+    "SELECT * FROM users WHERE email = $1",
+    [email],
+  );
+  return result.rows[0];
 }
 
-/** Seeds the one login the server has, on first run only. Returns whether it inserted. */
-export function seedIfEmpty(
-  db: AuthDb,
-  username: string,
-  password: string,
-): boolean {
-  if (userCount(db) > 0) return false;
-  db.prepare(
-    "INSERT INTO users (username, password_hash, role) VALUES (?, ?, 'admin')",
-  ).run(username, hashPassword(password));
+export async function getUserById(
+  pool: Pool,
+  id: number,
+): Promise<UserRow | undefined> {
+  const result = await pool.query<UserRow>(
+    "SELECT * FROM users WHERE id = $1",
+    [id],
+  );
+  return result.rows[0];
+}
+
+export interface Seed {
+  name: string;
+  slug: string;
+  email: string;
+  password: string;
+}
+
+/** Seeds the first tenant and its owner, on first run only. Returns whether it inserted. */
+export async function seed(pool: Pool, input: Seed): Promise<boolean> {
+  if ((await userCount(pool)) > 0) return false;
+  const tenant = await pool.query<{ id: number }>(
+    "INSERT INTO tenants (name, slug, plan) VALUES ($1, $2, 'gold') RETURNING id",
+    [input.name, input.slug],
+  );
+  const tenantId = tenant.rows[0].id;
+  const user = await pool.query<{ id: number }>(
+    "INSERT INTO users (email, password_hash, master_admin) VALUES ($1, $2, true) RETURNING id",
+    [input.email, hashPassword(input.password)],
+  );
+  const userId = user.rows[0].id;
+  await pool.query(
+    "INSERT INTO memberships (tenant_id, user_id, role) VALUES ($1, $2, 'owner')",
+    [tenantId, userId],
+  );
   return true;
 }
 
-export function getUser(db: AuthDb, username: string): UserRow | undefined {
-  return db.prepare("SELECT * FROM users WHERE username = ?").get(username) as
-    UserRow | undefined;
+export async function listUsers(
+  pool: Pool,
+  tenantId: number,
+): Promise<PublicUser[]> {
+  const result = await pool.query<PublicUserRow>(
+    `SELECT u.id, u.email, u.must_change_password, m.role
+     FROM users u JOIN memberships m ON m.user_id = u.id
+     WHERE m.tenant_id = $1 ORDER BY u.id`,
+    [tenantId],
+  );
+  return result.rows.map(toPublicUser);
 }
 
-export function getUserById(db: AuthDb, id: number): UserRow | undefined {
-  return db.prepare("SELECT * FROM users WHERE id = ?").get(id) as
-    UserRow | undefined;
-}
-
-export function listUsers(db: AuthDb): PublicUser[] {
-  const rows = db
-    .prepare(
-      "SELECT id, username, role, must_change_password FROM users ORDER BY id",
-    )
-    .all() as {
-    id: number;
-    username: string;
-    role: Role;
-    must_change_password: number;
-  }[];
-  return rows.map(toPublicUser);
-}
-
-/** Inserts a user bound to change their password on first sign-in. Undefined if the name is
-    taken. */
-export function createUser(
-  db: AuthDb,
-  username: string,
+/** Creates a user bound to change their password on first sign-in, as a member of the tenant.
+    Undefined if the email is already taken. */
+export async function createUser(
+  pool: Pool,
+  tenantId: number,
+  email: string,
   password: string,
   role: Role,
-): PublicUser | undefined {
-  if (getUser(db, username)) return undefined;
-  const info = db
-    .prepare(
-      "INSERT INTO users (username, password_hash, role, must_change_password) VALUES (?, ?, ?, 1)",
-    )
-    .run(username, hashPassword(password), role);
-  return toPublicUser(getUserById(db, Number(info.lastInsertRowid))!);
+): Promise<PublicUser | undefined> {
+  const inserted = await pool.query<{ id: number }>(
+    "INSERT INTO users (email, password_hash, must_change_password) VALUES ($1, $2, true) ON CONFLICT (email) DO NOTHING RETURNING id",
+    [email, hashPassword(password)],
+  );
+  if (inserted.rows.length === 0) return undefined;
+  const userId = inserted.rows[0].id;
+  await pool.query(
+    "INSERT INTO memberships (tenant_id, user_id, role) VALUES ($1, $2, $3)",
+    [tenantId, userId, role],
+  );
+  return { id: userId, email, role, mustChangePassword: true };
 }
 
-/** Applies a username and/or role change. Undefined if the user or the new name is taken. */
-export function updateUser(
-  db: AuthDb,
+export async function updateUser(
+  pool: Pool,
+  tenantId: number,
   id: number,
-  patch: { username?: string; role?: Role },
-): PublicUser | undefined {
-  const existing = getUserById(db, id);
+  patch: { email?: string; role?: Role },
+): Promise<PublicUser | undefined> {
+  const existing = await getUserById(pool, id);
   if (!existing) return undefined;
-  if (
-    patch.username !== undefined &&
-    patch.username !== existing.username &&
-    getUser(db, patch.username)
-  )
-    return undefined;
-  db.prepare("UPDATE users SET username = ?, role = ? WHERE id = ?").run(
-    patch.username ?? existing.username,
-    patch.role ?? existing.role,
-    id,
+  if (patch.email !== undefined && patch.email !== existing.email) {
+    const updated = await pool.query<{ id: number }>(
+      "UPDATE users SET email = $1, updated_at = now() WHERE id = $2 AND NOT EXISTS (SELECT 1 FROM users WHERE email = $1 AND id != $2) RETURNING id",
+      [patch.email, id],
+    );
+    if (updated.rows.length === 0) return undefined;
+  }
+  if (patch.role !== undefined) {
+    await pool.query(
+      "UPDATE memberships SET role = $1 WHERE tenant_id = $2 AND user_id = $3",
+      [patch.role, tenantId, id],
+    );
+  }
+  const member = await pool.query<PublicUserRow>(
+    `SELECT u.id, u.email, u.must_change_password, m.role
+     FROM users u JOIN memberships m ON m.user_id = u.id
+     WHERE u.id = $1 AND m.tenant_id = $2`,
+    [id, tenantId],
   );
-  return toPublicUser(getUserById(db, id)!);
+  return member.rows[0] ? toPublicUser(member.rows[0]) : undefined;
 }
 
-/** Deletes the user and their sessions. Returns whether a row went. */
-export function deleteUser(db: AuthDb, id: number): boolean {
-  db.prepare("DELETE FROM sessions WHERE user_id = ?").run(id);
-  return db.prepare("DELETE FROM users WHERE id = ?").run(id).changes > 0;
+/** The user's role in their first membership, so the chrome can decide whether to show admin. */
+export async function primaryRole(
+  pool: Pool,
+  userId: number,
+): Promise<Role | undefined> {
+  const result = await pool.query<{ role: Role }>(
+    "SELECT role FROM memberships WHERE user_id = $1 ORDER BY tenant_id LIMIT 1",
+    [userId],
+  );
+  return result.rows[0]?.role;
 }
 
-/** Sets a new temporary password that must be replaced at the next sign-in. */
-export function resetPassword(
-  db: AuthDb,
+/** The tenant this user administers as an owner or admin - first match until the switcher lands. */
+export async function adminTenantId(
+  pool: Pool,
+  userId: number,
+): Promise<number | null> {
+  const result = await pool.query<{ tenant_id: number }>(
+    "SELECT tenant_id FROM memberships WHERE user_id = $1 AND role IN ('owner', 'admin') ORDER BY tenant_id LIMIT 1",
+    [userId],
+  );
+  return result.rows.length > 0 ? result.rows[0].tenant_id : null;
+}
+
+export async function membershipRole(
+  pool: Pool,
+  tenantId: number,
+  userId: number,
+): Promise<Role | undefined> {
+  const result = await pool.query<{ role: Role }>(
+    "SELECT role FROM memberships WHERE tenant_id = $1 AND user_id = $2",
+    [tenantId, userId],
+  );
+  return result.rows[0]?.role;
+}
+
+export async function countRole(
+  pool: Pool,
+  tenantId: number,
+  role: Role,
+): Promise<number> {
+  const result = await pool.query<{ n: number }>(
+    "SELECT COUNT(*)::int AS n FROM memberships WHERE tenant_id = $1 AND role = $2",
+    [tenantId, role],
+  );
+  return result.rows[0].n;
+}
+
+/** Removes the membership; the user itself goes when it is a member of nothing else. */
+export async function deleteUser(
+  pool: Pool,
+  tenantId: number,
+  id: number,
+): Promise<boolean> {
+  const removed = await pool.query(
+    "DELETE FROM memberships WHERE tenant_id = $1 AND user_id = $2",
+    [tenantId, id],
+  );
+  if ((removed.rowCount ?? 0) === 0) return false;
+  await pool.query(
+    "DELETE FROM users WHERE id = $1 AND NOT EXISTS (SELECT 1 FROM memberships WHERE user_id = $1)",
+    [id],
+  );
+  return true;
+}
+
+/** Sets a new temporary password that must be replaced at the next sign-in, revoking old tokens. */
+export async function resetPassword(
+  pool: Pool,
   id: number,
   password: string,
-): boolean {
-  return (
-    db
-      .prepare(
-        "UPDATE users SET password_hash = ?, must_change_password = 1 WHERE id = ?",
-      )
-      .run(hashPassword(password), id).changes > 0
+): Promise<boolean> {
+  const result = await pool.query(
+    "UPDATE users SET password_hash = $1, must_change_password = true, token_version = token_version + 1, updated_at = now() WHERE id = $2",
+    [hashPassword(password), id],
+  );
+  return (result.rowCount ?? 0) > 0;
+}
+
+/** Revokes every outstanding token for the user by bumping the version they all carry. Stateless
+    logout: the next sign-in mints a token with the new version. */
+export async function revokeTokens(pool: Pool, userId: number): Promise<void> {
+  await pool.query(
+    "UPDATE users SET token_version = token_version + 1, updated_at = now() WHERE id = $1",
+    [userId],
   );
 }
 
-/** Replaces the password and lifts the must-change flag. */
-export function changePassword(
-  db: AuthDb,
+/** Replaces the password and lifts the must-change flag, revoking old tokens. Returns the updated
+    user, whose `token_version` now differs from every previously issued token. */
+export async function changePassword(
+  pool: Pool,
   id: number,
   password: string,
-): boolean {
-  return (
-    db
-      .prepare(
-        "UPDATE users SET password_hash = ?, must_change_password = 0 WHERE id = ?",
-      )
-      .run(hashPassword(password), id).changes > 0
+): Promise<UserRow | undefined> {
+  const result = await pool.query<UserRow>(
+    "UPDATE users SET password_hash = $1, must_change_password = false, token_version = token_version + 1, updated_at = now() WHERE id = $2 RETURNING *",
+    [hashPassword(password), id],
   );
-}
-
-const SESSION_MS = 30 * 24 * 3600 * 1000;
-
-export interface Session {
-  token: string;
-  expires_at: number;
-}
-
-export function createSession(db: AuthDb, userId: number): Session {
-  // Login is also the one moment expired rows are worth sweeping; a cron per local app would be
-  // machinery for a table that grows by one row a month.
-  db.prepare("DELETE FROM sessions WHERE expires_at < ?").run(Date.now());
-  const session: Session = {
-    token: randomBytes(32).toString("hex"),
-    expires_at: Date.now() + SESSION_MS,
-  };
-  db.prepare(
-    "INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)",
-  ).run(session.token, userId, session.expires_at);
-  return session;
-}
-
-export function getSessionUser(db: AuthDb, token: string): UserRow | null {
-  return (
-    (db
-      .prepare(
-        `SELECT u.* FROM sessions s JOIN users u ON u.id = s.user_id
-         WHERE s.token = ? AND s.expires_at >= ?`,
-      )
-      .get(token, Date.now()) as UserRow | undefined) ?? null
-  );
-}
-
-export function deleteSession(db: AuthDb, token: string): void {
-  db.prepare("DELETE FROM sessions WHERE token = ?").run(token);
+  return result.rows[0];
 }

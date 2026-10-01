@@ -39,7 +39,7 @@ export default function BenchNav({ active }: { active: AppKey }) {
   const [theme, setTheme] = useState<Theme>(currentTheme);
   const session = useSession();
   const links =
-    session?.role === "admin"
+    session?.role === "admin" || session?.role === "owner"
       ? [
           ...APPS,
           { key: "admin", href: "/admin/", label: "Admin", Icon: IconAdmin },

@@ -1,8 +1,8 @@
 # Novhora
 
 Three local-first apps behind one server, branded for Novhora. One login at the door, no cloud -
-everything runs on your machine and your data lives in local SQLite files. Light and dark, one
-toggle for all three.
+everything runs on your machine. The apps' data lives in local SQLite files; auth runs on Postgres.
+Light and dark, one toggle for all three.
 
 |             |            |                                                                                                                     |
 | ----------- | ---------- | ------------------------------------------------------------------------------------------------------------------- |
@@ -91,6 +91,16 @@ the reason it stays is documented in [docs/PROJECT.md](./docs/PROJECT.md).
 
 ## 1.5 Run it
 
+The server needs two things before it will start: a running Postgres and a `.env` pointing at it.
+Copy the example and fill in real values:
+
+```bash
+cp .env.example .env
+```
+
+`.env` must hold at least `DATABASE_URL` (your Postgres connection string) and `JWT_SECRET`
+(a long random value). Then:
+
 ```bash
 npm start
 ```
@@ -100,8 +110,9 @@ before anything appears**, which is normal, not a hang. Then open:
 
 **http://localhost:8100**
 
-The first run creates and seeds the three SQLite databases under `data/` with sample data. Click
-through all three apps and the theme toggle to confirm it works.
+The first run migrates Postgres, seeds an owner account (see `.env.example`, default
+`marco@example.com` / `bench`) and seeds the three app SQLite databases under `data/` with sample
+data. Click through all three apps and the theme toggle to confirm it works.
 
 Stop the server with `Ctrl+C`.
 
@@ -114,7 +125,13 @@ The repository has two test commands. `npm run check` is the fast one you run co
 
 ## 2.1 One-time tool installation
 
-Two tools do not arrive with `npm ci` and have to be installed once.
+Two tools do not arrive with `npm ci` and have to be installed once, plus Docker must be running.
+
+### Docker
+
+`npm test`, `npm run check` and `npm run e2e` all start Postgres containers through testcontainers,
+so **Docker must be running** (Docker Desktop on macOS/Windows). The server also needs a running
+Postgres and a `.env` - see 1.5.
 
 ### gitleaks - the credential scanner
 
@@ -181,8 +198,8 @@ and the shared theme toggle. It takes about a minute.
 What it does under the hood, which explains the wait and the ports:
 
 - It **builds the frontend once** before the first test, so it exercises the real production bundle.
-- **Each parallel worker starts its own API server with its own SQLite databases**, on ports from
-  8150 up. Tests never share state with each other or with your `npm start` data.
+- **Each parallel worker starts its own API server with its own Postgres and SQLite databases**, on
+  ports from 8150 up. Tests never share state with each other or with your `npm start` data.
 - It runs at 1440x900, because at a narrower viewport the drag-and-drop boards fall outside the
   window and drags never activate.
 

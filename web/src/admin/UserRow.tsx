@@ -15,10 +15,6 @@ export function UserRow({ user, onChanged }: Props) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [password, setPassword] = useState("");
 
-  // The seeded bootstrap admin cannot be deleted - the server refuses it too, so the button is
-  // not offered. Same name the server guards on in server/src/auth/admin.ts.
-  const seededAdmin = user.username === "marco";
-
   function fail(err: unknown, fallback: string) {
     setError(err instanceof Error ? err.message : fallback);
   }
@@ -68,19 +64,20 @@ export function UserRow({ user, onChanged }: Props) {
   return (
     <li className="admin-user">
       <div className="admin-user-main">
-        <strong className="admin-username">{user.username}</strong>
+        <strong className="admin-username">{user.email}</strong>
         {user.mustChangePassword && (
           <span className="admin-flag">Temporary password</span>
         )}
         <select
           className="admin-role"
-          aria-label={`Role for ${user.username}`}
+          aria-label={`Role for ${user.email}`}
           value={user.role}
           disabled={busy}
           onChange={(e) => void changeRole(e.target.value as Role)}
         >
           <option value="user">User</option>
           <option value="admin">Admin</option>
+          <option value="owner">Owner</option>
         </select>
       </div>
 
@@ -92,7 +89,7 @@ export function UserRow({ user, onChanged }: Props) {
         >
           Reset password
         </button>
-        {!seededAdmin && !confirmingDelete && (
+        {!confirmingDelete && (
           <button
             type="button"
             className="admin-danger"
@@ -102,7 +99,7 @@ export function UserRow({ user, onChanged }: Props) {
             Delete
           </button>
         )}
-        {!seededAdmin && confirmingDelete && (
+        {confirmingDelete && (
           <>
             <button
               type="button"

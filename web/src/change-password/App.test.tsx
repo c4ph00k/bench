@@ -33,9 +33,10 @@ describe("the forced password change", () => {
 
   it("sends someone with a real password on to the launcher", async () => {
     vi.mocked(getSession).mockResolvedValue({
-      username: "marco",
+      email: "marco@example.com",
       role: "admin",
       mustChangePassword: false,
+      masterAdmin: true,
     });
     render(<App />);
     await waitFor(() => expect(redirectTo).toHaveBeenCalledWith("/"));
@@ -43,9 +44,10 @@ describe("the forced password change", () => {
 
   it("refuses two passwords that do not match", async () => {
     vi.mocked(getSession).mockResolvedValue({
-      username: "luca",
+      email: "luca@example.com",
       role: "user",
       mustChangePassword: true,
+      masterAdmin: false,
     });
     render(<App />);
     await userEvent.type(screen.getByLabelText("New password"), "pass1");
@@ -58,9 +60,10 @@ describe("the forced password change", () => {
 
   it("saves the new password and lands on the launcher", async () => {
     vi.mocked(getSession).mockResolvedValue({
-      username: "luca",
+      email: "luca@example.com",
       role: "user",
       mustChangePassword: true,
+      masterAdmin: false,
     });
     vi.stubGlobal("fetch", fetchMock);
     fetchMock.mockResolvedValue(jsonResponse(204, {}));

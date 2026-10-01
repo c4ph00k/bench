@@ -74,9 +74,9 @@ interface Failure {
 let repo: Repo;
 let app: express.Express;
 
-beforeEach(() => {
+beforeEach(async () => {
   repo = testRepo();
-  app = appWithRolodex(repo);
+  app = await appWithRolodex(repo);
 });
 
 const post = (path: string, body: object) =>

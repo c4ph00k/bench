@@ -38,6 +38,7 @@ users  (dominio globale)
 ├── password_hash           scrypt, salato (vedi §4.3)
 ├── master_admin            boolean   — il flag che dà lo switcher e i privilegi di piattaforma
 ├── must_change_password    boolean
+├── token_version           integer   — incrementato a ogni cambio/reset password, invalida i JWT
 ├── created_at / updated_at
 
 tenants  (dominio globale)
@@ -87,12 +88,33 @@ Non è un quarto ruolo di membership: è un attributo globale che _mette a dispo
 diversa da quella di chiunque altro quando è dentro un tenant — è l'accesso a _tutti_ i tenant che lo
 distingue.
 
-### 1.4 Sessioni
+### 1.4 Autenticazione e tenant attivo
 
-Una richiesta porta un token di sessione che risolve a `user_id`. Il _tenant attivo_ è memorizzato
-nella sessione (selezione dello switcher) o derivato dalla route. Ogni query di dati operativi è
-scoped da `tenant_id` a valle (§2.2), e da un controllo di membership a monte ("questo utente è
-almeno `user` in questo tenant?").
+L'identità viaggia in un **JWT** firmato HS256: payload `sub` (user id), `iat`, `exp` (scadenza
+breve, ~30 min). La firma usa un `JWT_SECRET` che vive solo in `.env` (§1.5). Il token è trasportato
+in un cookie `httpOnly` + `Secure` + `SameSite=Lax` - mai in `localStorage`, dove uno script XSS lo
+leggerebbe.
+
+**Il tenant non sta dentro il token.** Scriverlo lì e "verificarlo" non chiude il varco: un utente
+con più membership otterrebbe comunque un token valido, e nulla impedirebbe al server di fidarsi di
+un `tenant_id` scelto dal client. La regola d'oro è che l'autorizzazione si risolve _sul server, a
+ogni richiesta_: il JWT dice _chi sei_, non _cosa puoi vedere_. Il client dichiara il tenant attivo
+(header `X-Tenant-Id` o route `/t/:slug`); il server carica le membership dell'utente e risponde 403
+se non è membro di quel tenant. Un `master_admin` in impersonificazione passa dallo stesso controllo,
+con in più il flag globale.
+
+Il JWT è preferito alla sessione opaca per la statelessness tra istanze; l'alternativa equivalente è
+un token opaco conservato in uno store di sessione condiviso. La revoca immediata resta stateless:
+il JWT porta il `token_version` dell'utente, e un cambio/reset password o un logout lo incrementa,
+invalidando all'istante ogni token precedente. La configurazione (§1.5) è il mezzo con cui il segreto
+di firma non entra mai nel codice né nel repository.
+
+### 1.5 Configurazione e segreti
+
+Variabili d'ambiente e segreti vivono in un `.env` **gitignorato**; il repository traccia solo
+`.env.example`, con valori placeholder. Nessun segreto reale entra nel tree, e l'agente non legge né
+modifica mai il `.env` reale (vincolo esplicito in AGENTS.md). Le variabili previste: `DATABASE_URL`,
+`JWT_SECRET`, `JWT_TTL`, `PORT`, `NODE_ENV`.
 
 ## 2. Isolamento dei dati
 
@@ -209,8 +231,9 @@ tenant_id).
 
 ### 4.3 Note di sicurezza
 
-- Il token di sessione odierno (`randomBytes(32)`, 30 giorni) può restare, ma va rivista la
-  scadenza e il meccanismo di revoca vista la superficie testata verso l'esterno.
+- Le sessioni sono JWT HS256 firmati con un segreto `.env`, scadenza breve (~30 min) e revoca
+  immediata via `token_version` sull'utente: un cambio o reset password, o un logout, incrementa la
+  colonna e invalida all'istante ogni token precedente.
 - `must_change_password` resta, ma ora appartiene al dominio globale `users`, non a un singolo
   file.
 - Logging dell'impersonificazione del master admin: ogni ingresso come admin in un tenant va

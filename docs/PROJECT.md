@@ -2,7 +2,8 @@
 
 Three local-first apps, merged from four separate repos into one project with **one frontend
 server and one backend server**, branded for Novhora. Everything runs on your own machine: one
-login at the door, no cloud, no external services, no secrets. Data lives in local SQLite files.
+login at the door, no external services. The apps' data lives in local SQLite files; auth has
+moved to Postgres (see [SAAS-MULTITENANCY.md](./SAAS-MULTITENANCY.md)).
 
 | App         | Path       | What it is                                                                                                                      | Backend                  |
 | ----------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
@@ -14,17 +15,18 @@ A launcher at `/` links to all three, and every page carries the same navigation
 Novhora mark, then Home, CRM, Space and Rolodex, each with the icon that identifies it inside its
 own app too, one theme toggle and one sign-out button on the right.
 
-A login gate sits in front of all of it: one seeded admin (`marco` / `bench`, printed on first
-run), scrypt-hashed in `data/auth.sqlite` with server-side sessions in the same file. Every page
-without a session redirects to the login document at `/login`, every `/api` route except
-`/api/auth` answers 401, and the three app api helpers in `web/src/*/api.ts` send the browser to
-`/login` when they see that 401. Sign out from the strip ends the session server-side.
+A login gate sits in front of all of it: one seeded owner account (`marco@example.com`, password
+`bench`, printed on first run), scrypt-hashed in Postgres, with JWT sessions whose `token_version`
+revokes every earlier token on logout or password change. Every page without a session redirects
+to the login document at `/login`, every `/api` route except `/api/auth` answers 401, and the three
+app api helpers in `web/src/*/api.ts` send the browser to `/login` when they see that 401. Sign out
+from the strip ends the session server-side.
 
-Every user is an `admin` or a `user`. Admins reach the admin panel at `/admin`, where they add,
-edit and delete users and hand out a temporary password; a fresh account or a reset password sets
-`must_change_password`, which holds every page and API at `/change-password` until the user picks
-their own. `marco` is seeded as the admin; the panel refuses to demote or delete the last admin,
-and to delete one's own account from it.
+Every user belongs to a tenant with a role - `owner`, `admin` or `user` - carried by a membership.
+Owners and admins reach the admin panel at `/admin`, where they add, edit and delete members and
+hand out a temporary password; a fresh account or a reset password sets `must_change_password`,
+which holds every page and API at `/change-password` until the user picks their own. The seed owner
+will not let the panel demote or delete the last owner, or delete one's own membership.
 
 ## Detailed app documentation
 
@@ -67,8 +69,8 @@ server/             ONE Express app
   src/space/          space routes + db + seed
   src/rolodex/        rolodex routes + db + seed
   test/{auth,crm,space,rolodex}/   vitest suites
-data/                 auth.sqlite, crm.sqlite, personal-space.db, rolodex.sqlite (gitignored,
-                      seeded on first run)
+data/                 crm.sqlite, personal-space.db, rolodex.sqlite (gitignored, seeded on
+                      first run); auth lives in Postgres
 docs/                 this documentation; docs/<app>/ per app
 e2e/                  Playwright specs; auth.spec.ts is the only one that never signs in
 scripts/              check-secrets.mjs, the repo-specific half of the secrets check
@@ -125,13 +127,14 @@ These are settled. Changing one is a project-level decision, not an implementati
   browser that revalidates one gets **304 with an empty body** - which the client then parses as
   JSON and fails on, with a message that names neither the request nor the status. Nothing is
   saved by caching a list that changes whenever you touch it, on a machine talking to itself.
-- **Three app SQLite files plus one auth file, one process.** The app schemas are unrelated - do
-  not merge them. Each is opened separately and seeded if empty; `auth.sqlite` holds the one user
-  and the sessions, and belongs to Bench rather than to any app. They run in WAL mode, so recent
-  writes live in the `-wal` sidecar rather than the main file: copy or move the whole set
+- **Three app SQLite files, one Postgres for auth, one process.** The app schemas are
+  unrelated - do not merge them. Each is opened separately and seeded if empty, in WAL mode, so
+  recent writes live in the `-wal` sidecar rather than the main file: copy or move the whole set
   together, or checkpoint first (`sqlite3 f.sqlite "PRAGMA wal_checkpoint(TRUNCATE);"`). Deleting
   a `-wal` as a stray artifact discards data - a 4KB `.sqlite` beside a 3MB `-wal` is a full
-  database, not an empty one.
+  database, not an empty one. Auth lives outside those files: `users`, `tenants`, `memberships`
+  and the JWT-session logic run on Postgres behind `DATABASE_URL` - see
+  [SAAS-MULTITENANCY.md](./SAAS-MULTITENANCY.md).
 - **The login gate is server-side and total.** Pages redirect to `/login` and every `/api` route
   except `/api/auth` answers 401 without a session, both in `server/src/app.ts`. Two prefixes
   stay open on purpose: `/login` (the document itself) and `/assets` (build output, code not
@@ -140,13 +143,12 @@ These are settled. Changing one is a project-level decision, not an implementati
   in-memory dbs. The client half is thin: the three app api helpers redirect on a 401, and the
   launcher probes `/api/auth/me` once, which covers `npm run dev` where pages come from Vite
   rather than through the gate.
-- **Each user has a role, and one flag can hold them at the door.** `users.role` is `admin` or
-  `user`; `users.must_change_password` is set when an admin creates the user or resets the
-  password. While it is set, the page gate redirects everything but `/change-password` there and
-  the API gate answers 403 outside `/api/auth`, so the temporary password never reaches an app.
-  The seeded `marco` is the first admin, and the panel enforces the invariants that survive it:
-  the last admin cannot be demoted or deleted, no one deletes their own account, and `marco`
-  itself can be neither renamed nor deleted.
+- **A role lives on each membership, and one flag can hold users at the door.** The role is
+  `owner`, `admin` or `user`, stored on the membership; `users.must_change_password` is set when an
+  admin creates a member or resets a password. While it is set, the page gate redirects everything
+  but `/change-password` there and the API gate answers 403 outside `/api/auth`, so the temporary
+  password never reaches an app. The panel enforces the invariants that survive it: the last owner
+  cannot be demoted or deleted, and no one deletes their own membership.
 - **The admin panel is chrome, not a fourth brand.** It is an MPA entry like the apps, but it sits
   in the nav strip only for admins and carries no colour of its own - amber means "you are here"
   there exactly as it does everywhere else.

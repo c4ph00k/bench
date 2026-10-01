@@ -12,7 +12,7 @@ let pageId: string;
 
 beforeEach(async () => {
   db = openDb(":memory:");
-  app = appWithSpace(db);
+  app = await appWithSpace(db);
   pageId = (
     (await request(app).post("/api/space/pages").send({ title: "Doc" }))
       .body as Page

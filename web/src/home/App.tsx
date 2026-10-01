@@ -63,7 +63,10 @@ export default function App() {
     facts: ["Users", "Roles", "Reset password"],
     Icon: IconAdmin,
   };
-  const cards = session?.role === "admin" ? [...APPS, adminCard] : APPS;
+  const cards =
+    session?.role === "admin" || session?.role === "owner"
+      ? [...APPS, adminCard]
+      : APPS;
 
   return (
     <>

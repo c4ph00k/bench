@@ -8,7 +8,7 @@ import { redirectTo } from "../shared/auth";
 import { BRAND } from "../shared/brand";
 
 export default function App() {
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -30,7 +30,7 @@ export default function App() {
     const res = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ email, password }),
     });
     if (res.ok) {
       const body = (await res.json()) as { mustChangePassword?: boolean };
@@ -51,11 +51,12 @@ export default function App() {
         </h1>
         <p className="login-lede">Sign in to reach your apps.</p>
         <label className="login-field">
-          Username
+          Email
           <input
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            autoComplete="username"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="email"
             required
           />
         </label>

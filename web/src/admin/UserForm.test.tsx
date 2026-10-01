@@ -19,36 +19,43 @@ describe("the add-user form", () => {
   it("creates the user and clears the fields", async () => {
     vi.mocked(adminApi.create).mockResolvedValue({
       id: 2,
-      username: "luca",
+      email: "luca@example.com",
       role: "user",
       mustChangePassword: true,
     });
     const onCreated = vi.fn();
     render(<UserForm onCreated={onCreated} />);
 
-    await userEvent.type(screen.getByLabelText("Username"), "  luca  ");
+    await userEvent.type(
+      screen.getByLabelText("Email"),
+      "  luca@example.com  ",
+    );
     await userEvent.type(screen.getByLabelText("Temporary password"), "temp1");
     await userEvent.selectOptions(screen.getByLabelText("Role"), "admin");
     await userEvent.click(screen.getByRole("button", { name: "Add user" }));
 
-    expect(adminApi.create).toHaveBeenCalledWith("luca", "temp1", "admin");
+    expect(adminApi.create).toHaveBeenCalledWith(
+      "luca@example.com",
+      "temp1",
+      "admin",
+    );
     expect(onCreated).toHaveBeenCalled();
-    expect(screen.getByLabelText("Username")).toHaveValue("");
+    expect(screen.getByLabelText("Email")).toHaveValue("");
     expect(screen.getByLabelText("Temporary password")).toHaveValue("");
   });
 
-  it("shows the server's message when the name is taken", async () => {
+  it("shows the server's message when the email is taken", async () => {
     vi.mocked(adminApi.create).mockRejectedValue(
-      new Error("That username is taken"),
+      new Error("That email is taken"),
     );
     render(<UserForm onCreated={vi.fn()} />);
 
-    await userEvent.type(screen.getByLabelText("Username"), "luca");
+    await userEvent.type(screen.getByLabelText("Email"), "luca@example.com");
     await userEvent.type(screen.getByLabelText("Temporary password"), "temp1");
     await userEvent.click(screen.getByRole("button", { name: "Add user" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "That username is taken",
+      "That email is taken",
     );
   });
 });

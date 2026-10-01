@@ -14,7 +14,7 @@ const search = async (q: string) =>
 
 beforeEach(async () => {
   db = openDb(":memory:");
-  app = appWithSpace(db);
+  app = await appWithSpace(db);
   const parent = (
     await request(app)
       .post("/api/space/pages")

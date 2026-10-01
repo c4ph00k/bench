@@ -20,9 +20,10 @@ beforeEach(() => {
 });
 
 const admin = {
-  username: "marco",
+  email: "marco@example.com",
   role: "admin" as const,
   mustChangePassword: false,
+  masterAdmin: true,
 };
 
 describe("the admin panel gate", () => {
@@ -56,13 +57,13 @@ describe("the panel for an admin", () => {
     vi.mocked(adminApi.list).mockResolvedValue([
       {
         id: 1,
-        username: "marco",
+        email: "marco@example.com",
         role: "admin",
         mustChangePassword: false,
       },
       {
         id: 2,
-        username: "luca",
+        email: "luca@example.com",
         role: "user",
         mustChangePassword: true,
       },
@@ -71,8 +72,8 @@ describe("the panel for an admin", () => {
     expect(
       await screen.findByRole("heading", { name: "Users" }),
     ).toBeInTheDocument();
-    expect(await screen.findByText("marco")).toBeInTheDocument();
-    expect(await screen.findByText("luca")).toBeInTheDocument();
+    expect(await screen.findByText("marco@example.com")).toBeInTheDocument();
+    expect(await screen.findByText("luca@example.com")).toBeInTheDocument();
   });
 
   it("marks itself as the current page in the nav", async () => {

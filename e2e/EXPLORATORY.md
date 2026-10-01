@@ -73,9 +73,9 @@ Covered by specs: the panel appears only in an admin's nav, the seeded user is l
 created with a temporary password is held at `/change-password` until they replace it. The unit
 suites cover the role change, the reset flow and the delete confirmation. Left to judgement:
 
-- The last-admin and self-delete refusals reach the panel's alert text the way the unit suite
-  mocks them, but no end-to-end scenario drives a second admin down to demotion by hand.
-- Editing a username (the PATCH supports it; no spec exercises it through the UI).
+- The last-owner and self-delete refusals reach the panel's alert text the way the unit suite
+  mocks them, but no end-to-end scenario drives a second owner down to demotion by hand.
+- Editing an email (the PATCH supports it; no spec exercises it through the UI).
 - The panel is not visited in dark mode by any spec - check the table, the flag chip and the
   delete confirmation against `[data-theme="dark"]`.
 

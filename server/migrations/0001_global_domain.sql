@@ -14,6 +14,7 @@ CREATE TABLE users (
   password_hash text NOT NULL,
   master_admin boolean NOT NULL DEFAULT false,
   must_change_password boolean NOT NULL DEFAULT false,
+  token_version integer NOT NULL DEFAULT 0,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
@@ -24,10 +25,4 @@ CREATE TABLE memberships (
   role text NOT NULL CHECK (role IN ('owner', 'admin', 'user')),
   created_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (tenant_id, user_id)
-);
-
-CREATE TABLE sessions (
-  token text PRIMARY KEY,
-  user_id bigint NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  expires_at timestamptz NOT NULL
 );

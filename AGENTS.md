@@ -1,12 +1,14 @@
 # Bench - agent instructions
 
 Three local-first apps (CRM, Space, Rolodex) behind one Express server, all behind a
-login gate (`marco` / `bench`, seeded on first run - see `server/src/auth/`). The suite is
+login gate (email + password, seeded on first run - see `server/src/auth/`). The suite is
 branded for Novhora - name, mark and favicon come from `web/src/shared/brand.ts` and
 `web/public/novhora.svg`. One npm workspace
 root with two workspaces: `web/` (one Vite project, an HTML entry point per app) and `server/`.
-TypeScript throughout, data in local SQLite files under `data/`, Playwright specs in `e2e/`. All
-commands run from the root.
+TypeScript throughout. The apps still store data in local SQLite files under `data/`; auth has
+moved to Postgres (JWT sessions, memberships - see `docs/SAAS-MULTITENANCY.md`), so the server
+reads `DATABASE_URL` and `JWT_SECRET` from `.env`. Playwright specs in `e2e/`. All commands run
+from the root.
 
 ## Golden rules
 
@@ -17,6 +19,9 @@ commands run from the root.
 - **Never push.** The agent commits; Marco pushes and opens the pull request on
   https://github.com/c4ph00k/bench, and CI gates the merge.
 - **If a session begins on `main`, branch before committing**, and say so in the reply.
+- **`.env` is Marco's alone.** The agent never reads, creates or edits a real `.env` file.
+  It works from `.env.example`, which holds placeholder values only. Real secrets live in `.env`,
+  which git ignores. If a task cannot proceed without a secret, stop and ask Marco for it.
 
 ## Commands
 
@@ -29,6 +34,10 @@ npm run e2e          Playwright suite (npx playwright install chromium once, fir
 npm run format       prettier --write
 npm run check        the full pre-commit bar; needs the gitleaks binary (brew install gitleaks)
 ```
+
+`npm test`, `npm run check` and `npm run e2e` need **Docker** running: the auth tests and the e2e
+harness each start a Postgres container via testcontainers. The server itself also needs Postgres
+(`DATABASE_URL`) plus `JWT_SECRET` - see `.env.example`.
 
 ## The working documents
 

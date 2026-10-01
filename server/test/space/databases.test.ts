@@ -22,7 +22,7 @@ let dbId: string;
 
 beforeEach(async () => {
   db = openDb(":memory:");
-  app = appWithSpace(db);
+  app = await appWithSpace(db);
   dbId = (
     (
       await request(app)

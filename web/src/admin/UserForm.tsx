@@ -4,7 +4,7 @@ import type { Role } from "../shared/auth";
 import { adminApi } from "./api";
 
 export function UserForm({ onCreated }: { onCreated: () => void }) {
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<Role>("user");
   const [error, setError] = useState<string | null>(null);
@@ -15,8 +15,8 @@ export function UserForm({ onCreated }: { onCreated: () => void }) {
     setBusy(true);
     setError(null);
     try {
-      await adminApi.create(username.trim(), password, role);
-      setUsername("");
+      await adminApi.create(email.trim(), password, role);
+      setEmail("");
       setPassword("");
       setRole("user");
       onCreated();
@@ -31,10 +31,11 @@ export function UserForm({ onCreated }: { onCreated: () => void }) {
     <form className="admin-form" onSubmit={(e) => void submit(e)}>
       <h2>Add a user</h2>
       <label className="admin-field">
-        Username
+        Email
         <input
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
           autoComplete="off"
           required
         />
@@ -58,6 +59,7 @@ export function UserForm({ onCreated }: { onCreated: () => void }) {
         >
           <option value="user">User</option>
           <option value="admin">Admin</option>
+          <option value="owner">Owner</option>
         </select>
       </div>
       {error && (

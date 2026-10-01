@@ -27,17 +27,25 @@ describe("the login document", () => {
       .fn()
       // First the mount-time /me probe (no session yet), then the login itself.
       .mockResolvedValueOnce(jsonResponse(401, { error: "Not signed in" }))
-      .mockResolvedValue(jsonResponse(200, { username: "marco" }));
+      .mockResolvedValue(
+        jsonResponse(200, {
+          email: "marco@example.com",
+          mustChangePassword: false,
+        }),
+      );
     vi.stubGlobal("fetch", fetchMock);
     render(<App />);
-    await userEvent.type(screen.getByLabelText("Username"), "marco");
+    await userEvent.type(screen.getByLabelText("Email"), "marco@example.com");
     await userEvent.type(screen.getByLabelText("Password"), "bench");
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
     await waitFor(() => expect(redirectTo).toHaveBeenCalledWith("/"));
     expect(fetchMock).toHaveBeenLastCalledWith("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: "marco", password: "bench" }),
+      body: JSON.stringify({
+        email: "marco@example.com",
+        password: "bench",
+      }),
     });
     vi.unstubAllGlobals();
   });
@@ -50,14 +58,14 @@ describe("the login document", () => {
         .mockResolvedValueOnce(jsonResponse(401, { error: "Not signed in" }))
         .mockResolvedValue(
           jsonResponse(200, {
-            username: "luca",
+            email: "luca@example.com",
             role: "user",
             mustChangePassword: true,
           }),
         ),
     );
     render(<App />);
-    await userEvent.type(screen.getByLabelText("Username"), "luca");
+    await userEvent.type(screen.getByLabelText("Email"), "luca@example.com");
     await userEvent.type(screen.getByLabelText("Password"), "temporary");
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
     await waitFor(() =>
@@ -74,16 +82,16 @@ describe("the login document", () => {
         // First the mount-time /me probe, then the rejected login.
         .mockResolvedValueOnce(jsonResponse(401, { error: "Not signed in" }))
         .mockResolvedValue(
-          jsonResponse(401, { error: "Wrong username or password" }),
+          jsonResponse(401, { error: "Wrong email or password" }),
         ),
     );
     render(<App />);
-    await userEvent.type(screen.getByLabelText("Username"), "marco");
+    await userEvent.type(screen.getByLabelText("Email"), "marco@example.com");
     await userEvent.type(screen.getByLabelText("Password"), "nope");
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
     // role=alert carries no accessible name, so the message is asserted as text.
     const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent("Wrong username or password");
+    expect(alert).toHaveTextContent("Wrong email or password");
     expect(redirectTo).not.toHaveBeenCalled();
     vi.unstubAllGlobals();
   });
@@ -91,7 +99,12 @@ describe("the login document", () => {
   it("goes straight to the launcher when a session is already live", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue(jsonResponse(200, { username: "marco" })),
+      vi.fn().mockResolvedValue(
+        jsonResponse(200, {
+          email: "marco@example.com",
+          mustChangePassword: false,
+        }),
+      ),
     );
     render(<App />);
     await waitFor(() => expect(redirectTo).toHaveBeenCalledWith("/"));
