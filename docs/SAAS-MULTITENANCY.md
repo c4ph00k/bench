@@ -151,11 +151,13 @@ Di seguito le trasformazioni materiali.
 
 ### 3.2 Migrazioni
 
-Il migratore raccomandato è **node-pg-migrate** (o `drizzle-kit`, se si preferisce un ORM leggero).
-Punti fermi:
+Il migratore scelto è un **runner SQL-first custom** (`server/src/db/migrate.ts`), non
+`node-pg-migrate` né `drizzle-kit`: il data layer è già tutto SQL grezzo, e un file `.sql` numerato
+applicato in ordine sotto un `pg_advisory_lock` è più piccolo e più trasparente di una CLI con un
+proprio DSL. Punti fermi:
 
-- File di migrazione versionati, applicati in ordine, con una tabella `migrations` che traccia ciò
-  che è stato eseguito.
+- File di migrazione numerati e versionati, applicati in ordine, con una tabella
+  `schema_migrations` che traccia ciò che è stato eseguito.
 - **Niente** migrazioni "in-place ad hoc" come l'attuale `migrate()` in `crm/db.ts`.
 - Le migrazioni _devono_ includere `tenant_id NOT NULL` fin dalla creazione di ogni tabella
   operativa (nessuna tabella nasce senza e poi "viene aggiunta" la colonna).

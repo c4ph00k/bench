@@ -373,8 +373,10 @@ A full history scan was run once when this was built; it was clean across all 27
 ### The bespoke script
 
 `scripts/check-secrets.mjs`, run as `npm run check:secrets`, zero dependencies. Scans tracked files
-only, via `git ls-files`. With gitleaks covering credentials it stays small, and exists for the
-repo-specific rules:
+only, via `git ls-files`, skipping `package-lock.json` - its text is third-party metadata (a package
+deprecation notice carries a maintainer's email), never project PII, and gitleaks already scans it
+for credentials. With gitleaks covering credentials it stays small, and exists for the repo-specific
+rules:
 
 **Structural.** Fail if `.env` is tracked, or if anything under `data/` is. Both are gitignored;
 this makes it durable rather than dependent on `.gitignore` staying correct.
