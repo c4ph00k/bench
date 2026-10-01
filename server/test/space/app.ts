@@ -3,7 +3,6 @@
 import type Database from "better-sqlite3";
 import type express from "express";
 import { createApp } from "../../src/app.js";
-import { openDb as openCrmDb } from "../../src/crm/db.js";
 import { openDb as openRolodexDb } from "../../src/rolodex/db/index.js";
 import { JWT_SECRET, testPool } from "../helpers/postgres.js";
 
@@ -14,7 +13,6 @@ export async function appWithSpace(
     pool: await testPool(),
     jwtSecret: JWT_SECRET,
     dbs: {
-      crm: openCrmDb(":memory:"),
       space,
       rolodex: openRolodexDb(":memory:"),
     },

@@ -38,6 +38,7 @@ test("create an organization, see it listed, then delete it", async ({
   page,
 }) => {
   await openSection(page, "Organizations");
+  await expect(page.locator("tbody tr").first()).toBeVisible();
   const before = await page.locator("tbody tr").count();
 
   await page.getByRole("button", { name: "Add organization" }).click();
@@ -111,6 +112,7 @@ test("search narrows the contact list and clearing restores it", async ({
   page,
 }) => {
   await openSection(page, "Contacts");
+  await expect(page.locator("tbody tr").first()).toBeVisible();
   const all = await page.locator("tbody tr").count();
   expect(all).toBeGreaterThan(1);
 

@@ -179,6 +179,26 @@ export async function updateUser(
   return member.rows[0] ? toPublicUser(member.rows[0]) : undefined;
 }
 
+/** The user's first membership, whichever role it carries. */
+export async function primaryTenantId(
+  pool: Pool,
+  userId: number,
+): Promise<number | null> {
+  const result = await pool.query<{ tenant_id: number }>(
+    "SELECT tenant_id FROM memberships WHERE user_id = $1 ORDER BY tenant_id LIMIT 1",
+    [userId],
+  );
+  return result.rows.length > 0 ? result.rows[0].tenant_id : null;
+}
+
+export async function tenantExists(pool: Pool, id: number): Promise<boolean> {
+  const result = await pool.query<{ id: number }>(
+    "SELECT 1 AS id FROM tenants WHERE id = $1",
+    [id],
+  );
+  return result.rows.length > 0;
+}
+
 /** The user's role in their first membership, so the chrome can decide whether to show admin. */
 export async function primaryRole(
   pool: Pool,

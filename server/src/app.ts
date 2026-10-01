@@ -11,6 +11,7 @@ import { spaceRouter } from "./space/routes/index.js";
 import { authRouter } from "./auth/routes.js";
 import { sessionUser } from "./auth/session.js";
 import { userCount } from "./auth/db.js";
+import { resolveTenant } from "./tenant.js";
 
 const webDist = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -21,7 +22,6 @@ const webDist = path.resolve(
 const APPS = ["crm", "space", "rolodex", "admin", "change-password"];
 
 interface Dbs {
-  crm: Database.Database;
   space: Database.Database;
   rolodex: Repo;
 }
@@ -34,9 +34,8 @@ export interface AppOptions {
 }
 
 /**
- * Build the Express app around the shared Postgres pool (auth) and the per-app SQLite handles
- * (crm, space, rolodex). Auth has moved to Postgres; the app data layers follow in a later
- * increment, so they still hand their old handles here.
+ * Build the Express app around the shared Postgres pool. CRM's data has moved there, alongside
+ * auth; Space and Rolodex hand their old SQLite handles until their own ports land.
  */
 export function createApp(options: AppOptions): express.Express {
   const { pool, jwtSecret, jwtTtl, dbs } = options;
@@ -56,8 +55,8 @@ export function createApp(options: AppOptions): express.Express {
 
   // Everything else under /api answers 401 until a session cookie names a user, and 403 to a user
   // whose password was reset and not yet replaced - change-password is the only /api route that may
-  // still be used, and it lives under /api/auth, mounted above this gate. A database with no users
-  // gates nothing, which is how the app suites run unauthenticated while index.ts always seeds.
+  // still be used, and it lives under /api/auth, mounted above this gate. The tenant a request acts
+  // on is resolved here and carried on res.locals for the router that handles it.
   app.use("/api", async (req, res, next) => {
     const user = await sessionUser(pool, jwtSecret, req);
     if ((await userCount(pool)) === 0 || user) {
@@ -65,13 +64,21 @@ export function createApp(options: AppOptions): express.Express {
         res.status(403).json({ error: "Password change required" });
         return;
       }
+      if (user) {
+        const tenantId = await resolveTenant(pool, user, req);
+        if (tenantId === null) {
+          res.status(403).json({ error: "No access to that tenant" });
+          return;
+        }
+        res.locals.tenantId = tenantId;
+      }
       next();
       return;
     }
     res.status(401).json({ error: "Not signed in" });
   });
 
-  app.use("/api/crm", crmRouter(dbs.crm));
+  app.use("/api/crm", crmRouter(pool));
   app.use("/api/space", spaceRouter(dbs.space));
   app.use("/api/rolodex", rolodexRouter(dbs.rolodex));
 

@@ -4,7 +4,6 @@ import { fileURLToPath } from "node:url";
 import { config as loadEnv } from "dotenv";
 import { migrate } from "./db/migrate.js";
 import { createPool } from "./db/pool.js";
-import { openDb as openCrmDb } from "./crm/db.js";
 import { isSeeded, seed } from "./crm/seed.js";
 import { openDb as openRolodexDb } from "./rolodex/db/index.js";
 import { seedIfEmpty as seedRolodex } from "./rolodex/seed.js";
@@ -31,12 +30,6 @@ if (!databaseUrl || !jwtSecret) {
 
 mkdirSync(dataDir, { recursive: true });
 
-const crm = openCrmDb(path.join(dataDir, "crm.sqlite"));
-if (!isSeeded(crm)) {
-  seed(crm);
-  console.log("Seeded the CRM database with sample data");
-}
-
 const space = openSpaceDb(path.join(dataDir, "personal-space.db"));
 seedIfEmpty(space);
 
@@ -50,22 +43,29 @@ const migrationsDir = path.resolve(
 );
 await migrate(pool, migrationsDir);
 
+const seedEmail = process.env.SEED_EMAIL ?? "marco@example.com";
+const seedSlug = "novhora";
 if (
   await seedAuth(pool, {
     name: "Novhora",
-    slug: "novhora",
-    email: process.env.SEED_EMAIL ?? "marco@example.com",
+    slug: seedSlug,
+    email: seedEmail,
     password: process.env.SEED_PASSWORD ?? "bench",
   })
 ) {
-  console.log(
-    `Seeded the login owner: ${process.env.SEED_EMAIL ?? "marco@example.com"}`,
-  );
+  console.log(`Seeded the login owner: ${seedEmail}`);
 }
 
-createApp({ pool, jwtSecret, dbs: { crm, space, rolodex } }).listen(
-  port,
-  () => {
-    console.log(`Novhora running at http://localhost:${port}`);
-  },
+const tenant = await pool.query<{ id: number }>(
+  "SELECT id FROM tenants WHERE slug = $1",
+  [seedSlug],
 );
+const tenantId = tenant.rows[0].id;
+if (!(await isSeeded(pool, tenantId))) {
+  await seed(pool, tenantId);
+  console.log("Seeded the CRM database with sample data");
+}
+
+createApp({ pool, jwtSecret, dbs: { space, rolodex } }).listen(port, () => {
+  console.log(`Novhora running at http://localhost:${port}`);
+});

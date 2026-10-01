@@ -11,7 +11,6 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Pool } from "pg";
 import { createApp } from "../../src/app.js";
-import { openDb as openCrmDb } from "../../src/crm/db.js";
 import { openDb as openSpaceDb } from "../../src/space/db.js";
 import { openDb as openRolodexDb } from "../../src/rolodex/db/index.js";
 import * as auth from "../../src/auth/db.js";
@@ -39,7 +38,6 @@ function makeApp() {
     pool,
     jwtSecret: JWT_SECRET,
     dbs: {
-      crm: openCrmDb(":memory:"),
       space: openSpaceDb(":memory:"),
       rolodex: openRolodexDb(":memory:"),
     },
@@ -176,11 +174,6 @@ describe("the API gate", () => {
       .get("/api/crm/organizations")
       .set("Cookie", cookie);
     expect(res.status).toBe(200);
-  });
-
-  it("gates nothing when no user exists, which is how the app suites run", async () => {
-    const app = makeApp();
-    expect((await request(app).get("/api/crm/organizations")).status).toBe(200);
   });
 });
 

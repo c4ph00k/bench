@@ -1,14 +1,14 @@
-/** Fills an empty database with realistic sample data. Dates are relative to today. */
+/** Fills an empty tenant with realistic sample data. Dates are relative to today. */
+import type { Pool } from "pg";
 import {
-  DB,
   createOrganization,
   createContact,
   createDeal,
   createActivity,
-  ContactStatus,
-  DealStage,
-  ActivityType,
-  Contact,
+  type ContactStatus,
+  type DealStage,
+  type ActivityType,
+  type Contact,
 } from "./db.js";
 
 function daysFromNow(days: number): string {
@@ -22,15 +22,16 @@ function timestampDaysAgo(days: number, hour = 10): string {
   return d.toISOString().replace("T", " ").slice(0, 19);
 }
 
-export function isSeeded(db: DB): boolean {
-  const row = db.prepare("SELECT COUNT(*) AS n FROM organizations").get() as {
-    n: number;
-  };
-  return row.n > 0;
+export async function isSeeded(pool: Pool, tenantId: number): Promise<boolean> {
+  const row = await pool.query<{ n: number }>(
+    "SELECT COUNT(*)::int AS n FROM organizations WHERE tenant_id = $1",
+    [tenantId],
+  );
+  return row.rows[0].n > 0;
 }
 
-export function seed(db: DB) {
-  const orgs = [
+export async function seed(pool: Pool, tenantId: number): Promise<void> {
+  const orgDefs = [
     {
       name: "Northwind Logistics",
       website: "northwindlogistics.com",
@@ -79,8 +80,10 @@ export function seed(db: DB) {
       industry: "Real Estate",
       notes: "Commercial property manager across three states.",
     },
-  ].map((o) => createOrganization(db, o));
-
+  ];
+  const orgs = await Promise.all(
+    orgDefs.map((o) => createOrganization(pool, tenantId, o)),
+  );
   const [
     northwind,
     bluepeak,
@@ -221,18 +224,19 @@ export function seed(db: DB) {
       "lead",
     ],
   ];
-  const contacts = contactRows.map(
-    ([name, email, phone, job_title, organization_id, status]) =>
-      createContact(db, {
-        name,
-        email,
-        phone,
-        job_title,
-        organization_id,
-        status,
-      }),
+  const contacts = await Promise.all(
+    contactRows.map(
+      ([name, email, phone, job_title, organization_id, status]) =>
+        createContact(pool, tenantId, {
+          name,
+          email,
+          phone,
+          job_title,
+          organization_id,
+          status,
+        }),
+    ),
   );
-
   const [
     maria,
     tom,
@@ -259,7 +263,6 @@ export function seed(db: DB) {
     number,
     string,
   ][] = [
-    // Won deals spread over recent months so the dashboard chart has history.
     [
       "Fleet telematics rollout",
       northwind.id,
@@ -308,7 +311,6 @@ export function seed(db: DB) {
       32000,
       daysFromNow(-12),
     ],
-    // Lost.
     [
       "Warehouse robotics pilot",
       northwind.id,
@@ -325,7 +327,6 @@ export function seed(db: DB) {
       12000,
       daysFromNow(-20),
     ],
-    // Open pipeline.
     [
       "Fernwood tenant portal",
       fernwood.id,
@@ -391,20 +392,22 @@ export function seed(db: DB) {
       daysFromNow(10),
     ],
   ];
-  const deals = dealRows.map(
-    ([name, organization_id, contact_id, stage, value, close_date]) =>
-      createDeal(db, {
-        name,
-        organization_id,
-        contact_id,
-        stage,
-        value,
-        close_date,
-      }),
+  const deals = await Promise.all(
+    dealRows.map(
+      ([name, organization_id, contact_id, stage, value, close_date]) =>
+        createDeal(pool, tenantId, {
+          name,
+          organization_id,
+          contact_id,
+          stage,
+          value,
+          close_date,
+        }),
+    ),
   );
 
   const dealByName = new Map(deals.map((d) => [d.name, d]));
-  const act = (
+  const act = async (
     type: ActivityType,
     description: string,
     opts: {
@@ -415,7 +418,7 @@ export function seed(db: DB) {
       done?: boolean;
     } = {},
   ) =>
-    createActivity(db, {
+    createActivity(pool, tenantId, {
       type,
       description,
       contact_id: opts.contact?.id ?? null,
@@ -425,91 +428,136 @@ export function seed(db: DB) {
       done: opts.done ?? false,
     });
 
-  act(
+  await act(
     "call",
     "Kickoff call for the cold-chain module. Maria wants phased rollout starting with the Chicago hub.",
-    { contact: maria, deal: "Northwind cold-chain module", daysAgo: 14 },
+    {
+      contact: maria,
+      deal: "Northwind cold-chain module",
+      daysAgo: 14,
+    },
   );
-  act("email", "Sent signed order form and onboarding schedule.", {
+  await act("email", "Sent signed order form and onboarding schedule.", {
     contact: tom,
     deal: "Northwind cold-chain module",
     daysAgo: 11,
   });
-  act(
+  await act(
     "note",
     "Jonas pushing legal for redlines on the enterprise upgrade. Target signature mid-month.",
-    { contact: jonas, deal: "Bluepeak enterprise upgrade", daysAgo: 6 },
+    {
+      contact: jonas,
+      deal: "Bluepeak enterprise upgrade",
+      daysAgo: 6,
+    },
   );
-  act(
+  await act(
     "call",
     "Pricing call went well. They want a 3-year term with a cap on uplift.",
-    { contact: jonas, deal: "Bluepeak enterprise upgrade", daysAgo: 3, due: 2 },
+    {
+      contact: jonas,
+      deal: "Bluepeak enterprise upgrade",
+      daysAgo: 3,
+      due: 2,
+    },
   );
-  act("email", "Proposal v2 sent to Dr. Chen with the compliance appendix.", {
-    contact: alice,
-    deal: "Cobalt patient portal",
-    daysAgo: 8,
-  });
-  act("call", "Walked through the security questionnaire with Robert.", {
+  await act(
+    "email",
+    "Proposal v2 sent to Dr. Chen with the compliance appendix.",
+    {
+      contact: alice,
+      deal: "Cobalt patient portal",
+      daysAgo: 8,
+    },
+  );
+  await act("call", "Walked through the security questionnaire with Robert.", {
     contact: robert,
     deal: "Cobalt patient portal",
     daysAgo: 5,
     due: -2,
   });
-  act(
+  await act(
     "note",
     "Elaine happy with the analytics pilot results; upsell path is the loyalty program.",
-    { contact: elaine, daysAgo: 9 },
+    {
+      contact: elaine,
+      daysAgo: 9,
+    },
   );
-  act("email", "Intro email to Marcus about the loyalty program scope.", {
+  await act("email", "Intro email to Marcus about the loyalty program scope.", {
     contact: marcusB,
     deal: "Harbor loyalty program",
     daysAgo: 7,
     due: 5,
   });
-  act(
+  await act(
     "call",
     "Discovery with Sofia — field techs need offline mode. Demo scheduled.",
-    { contact: sofia, deal: "Veldt field service app", daysAgo: 4, due: 7 },
+    {
+      contact: sofia,
+      deal: "Veldt field service app",
+      daysAgo: 4,
+      due: 7,
+    },
   );
-  act("note", "Nina confirmed budget for the production suite next quarter.", {
-    contact: nina,
-    deal: "Marlowe production suite",
-    daysAgo: 2,
-  });
-  act("email", "Sent Helen the partner integration statement of work.", {
+  await act(
+    "note",
+    "Nina confirmed budget for the production suite next quarter.",
+    {
+      contact: nina,
+      deal: "Marlowe production suite",
+      daysAgo: 2,
+    },
+  );
+  await act("email", "Sent Helen the partner integration statement of work.", {
     contact: helen,
     deal: "Quarry partner integration",
     daysAgo: 1,
     due: 4,
   });
-  act("call", "Left voicemail for Grace about the tenant portal timeline.", {
-    contact: grace,
-    deal: "Fernwood tenant portal",
-    daysAgo: 3,
-    due: -1,
-  });
-  act(
+  await act(
+    "call",
+    "Left voicemail for Grace about the tenant portal timeline.",
+    {
+      contact: grace,
+      deal: "Fernwood tenant portal",
+      daysAgo: 3,
+      due: -1,
+    },
+  );
+  await act(
     "note",
     "Sam mentioned two more consultancies asking about embedded dashboards — referral potential.",
-    { contact: sam, daysAgo: 5 },
+    {
+      contact: sam,
+      daysAgo: 5,
+    },
   );
-  act("email", "Quarterly check-in with Priya. Platform usage up 22%.", {
+  await act("email", "Quarterly check-in with Priya. Platform usage up 22%.", {
     contact: priya,
     daysAgo: 12,
     done: true,
     due: -10,
   });
-  act(
+  await act(
     "call",
     "Renewal call with Maria — telematics rollout fully deployed across the fleet.",
-    { contact: maria, daysAgo: 18, done: true, due: -16 },
+    {
+      contact: maria,
+      daysAgo: 18,
+      done: true,
+      due: -16,
+    },
   );
-  act("note", "Robotics pilot lost to incumbent on price. Revisit in Q1.", {
-    deal: "Warehouse robotics pilot",
-    daysAgo: 60,
-  });
-  act("email", "Follow up with Jack about smaller ad-platform scope.", {
+  await act(
+    "note",
+    "Robotics pilot lost to incumbent on price. Revisit in Q1.",
+    {
+      deal: "Warehouse robotics pilot",
+      daysAgo: 60,
+    },
+  );
+  await act("email", "Follow up with Jack about smaller ad-platform scope.", {
     contact: jack,
     daysAgo: 15,
     due: 12,

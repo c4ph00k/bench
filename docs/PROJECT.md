@@ -2,12 +2,12 @@
 
 Three local-first apps, merged from four separate repos into one project with **one frontend
 server and one backend server**, branded for Novhora. Everything runs on your own machine: one
-login at the door, no external services. The apps' data lives in local SQLite files; auth has
-moved to Postgres (see [SAAS-MULTITENANCY.md](./SAAS-MULTITENANCY.md)).
+login at the door, no external services. Auth and CRM live in Postgres; Space and Rolodex still
+store data in local SQLite files (see [SAAS-MULTITENANCY.md](./SAAS-MULTITENANCY.md)).
 
 | App         | Path       | What it is                                                                                                                      | Backend                  |
 | ----------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
-| **CRM**     | `/crm`     | Personal sales CRM: organizations, contacts, deals, drag-and-drop pipeline, activities, dashboard                               | `data/crm.sqlite`        |
+| **CRM**     | `/crm`     | Personal sales CRM: organizations, contacts, deals, drag-and-drop pipeline, activities, dashboard                               | Postgres                 |
 | **Space**   | `/space`   | Personal knowledge manager, a single-user Notion: pages and blocks, databases with table/board/list views, search               | `data/personal-space.db` |
 | **Rolodex** | `/rolodex` | Personal CRM for your own people: check-in cadences, circles, birthdays, a timeline of every conversation, CSV and vCard import | `data/rolodex.sqlite`    |
 
@@ -69,8 +69,8 @@ server/             ONE Express app
   src/space/          space routes + db + seed
   src/rolodex/        rolodex routes + db + seed
   test/{auth,crm,space,rolodex}/   vitest suites
-data/                 crm.sqlite, personal-space.db, rolodex.sqlite (gitignored, seeded on
-                      first run); auth lives in Postgres
+data/                 personal-space.db, rolodex.sqlite (gitignored, seeded on first run);
+                      auth and CRM live in Postgres
 docs/                 this documentation; docs/<app>/ per app
 e2e/                  Playwright specs; auth.spec.ts is the only one that never signs in
 scripts/              check-secrets.mjs, the repo-specific half of the secrets check
@@ -127,14 +127,14 @@ These are settled. Changing one is a project-level decision, not an implementati
   browser that revalidates one gets **304 with an empty body** - which the client then parses as
   JSON and fails on, with a message that names neither the request nor the status. Nothing is
   saved by caching a list that changes whenever you touch it, on a machine talking to itself.
-- **Three app SQLite files, one Postgres for auth, one process.** The app schemas are
-  unrelated - do not merge them. Each is opened separately and seeded if empty, in WAL mode, so
-  recent writes live in the `-wal` sidecar rather than the main file: copy or move the whole set
-  together, or checkpoint first (`sqlite3 f.sqlite "PRAGMA wal_checkpoint(TRUNCATE);"`). Deleting
-  a `-wal` as a stray artifact discards data - a 4KB `.sqlite` beside a 3MB `-wal` is a full
-  database, not an empty one. Auth lives outside those files: `users`, `tenants`, `memberships`
-  and the JWT-session logic run on Postgres behind `DATABASE_URL` - see
-  [SAAS-MULTITENANCY.md](./SAAS-MULTITENANCY.md).
+- **SQLite for the two unported apps, Postgres for auth and CRM.** The app schemas are
+  unrelated - do not merge them. Space and Rolodex each still open a SQLite file seeded on first
+  use, in WAL mode, so recent writes live in the `-wal` sidecar rather than the main file: copy or
+  move the whole set together, or checkpoint first
+  (`sqlite3 f.sqlite "PRAGMA wal_checkpoint(TRUNCATE);"`). Deleting a `-wal` as a stray artifact
+  discards data - a 4KB `.sqlite` beside a 3MB `-wal` is a full database, not an empty one. Auth
+  and CRM live in Postgres behind `DATABASE_URL`; CRM's rows carry a `tenant_id` resolved per
+  request - see [SAAS-MULTITENANCY.md](./SAAS-MULTITENANCY.md).
 - **The login gate is server-side and total.** Pages redirect to `/login` and every `/api` route
   except `/api/auth` answers 401 without a session, both in `server/src/app.ts`. Two prefixes
   stay open on purpose: `/login` (the document itself) and `/assets` (build output, code not

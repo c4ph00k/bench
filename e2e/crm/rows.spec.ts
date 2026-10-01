@@ -30,6 +30,7 @@ test("the delete icon asks first and removes the row on confirm", async ({
   page,
 }) => {
   await page.goto("/crm/contacts");
+  await expect(page.locator("tbody tr").first()).toBeVisible();
   const before = await page.locator("tbody tr").count();
   const name = (
     await page.locator("tbody tr").first().locator("td").first().innerText()
@@ -52,6 +53,7 @@ test("the delete icon asks first and removes the row on confirm", async ({
 
 test("cancelling the row delete keeps the record", async ({ page }) => {
   await page.goto("/crm/contacts");
+  await expect(page.locator("tbody tr").first()).toBeVisible();
   const before = await page.locator("tbody tr").count();
   const name = (
     await page.locator("tbody tr").first().locator("td").first().innerText()

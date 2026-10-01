@@ -1,7 +1,6 @@
-/** SQLite data layer: schema plus CRUD for organizations, contacts, deals and activities. */
-import Database from "better-sqlite3";
-
-export type DB = Database.Database;
+/** CRM data layer: schema lives in migrations/0002_crm.sql, CRUD here. Every row is scoped to the
+    tenant the request acts on, passed in from the gate. */
+import type { Pool } from "pg";
 
 export const DEAL_STAGES = [
   "New",
@@ -51,7 +50,6 @@ export interface ActivityInput {
   done?: boolean;
 }
 
-/** The shapes the tables below actually return. `done` is SQLite's 0 or 1, not a boolean. */
 interface Organization {
   id: number;
   name: string;
@@ -81,7 +79,6 @@ interface Deal {
   value: number;
   probability: number;
   close_date: string | null;
-  /** Position within the deal's own pipeline column, ascending. */
   board_order: number;
   created_at: string;
 }
@@ -94,56 +91,11 @@ interface Activity {
   description: string;
   occurred_at: string;
   due_date: string | null;
-  done: number;
+  done: boolean;
   created_at: string;
 }
 
-/** Everything these queries bind is a string or a number. */
-type BindValue = string | number;
-
-const SCHEMA = `
-CREATE TABLE IF NOT EXISTS organizations (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  name TEXT NOT NULL,
-  website TEXT,
-  industry TEXT,
-  notes TEXT,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-CREATE TABLE IF NOT EXISTS contacts (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  name TEXT NOT NULL,
-  email TEXT,
-  phone TEXT,
-  job_title TEXT,
-  organization_id INTEGER REFERENCES organizations(id) ON DELETE SET NULL,
-  status TEXT NOT NULL CHECK (status IN ('lead', 'qualified', 'customer')),
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-CREATE TABLE IF NOT EXISTS deals (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  name TEXT NOT NULL,
-  organization_id INTEGER REFERENCES organizations(id) ON DELETE SET NULL,
-  contact_id INTEGER REFERENCES contacts(id) ON DELETE SET NULL,
-  stage TEXT NOT NULL CHECK (stage IN ('New', 'Qualified', 'Proposal', 'Negotiation', 'Won', 'Lost')),
-  value REAL NOT NULL DEFAULT 0,
-  probability INTEGER NOT NULL DEFAULT 0,
-  close_date TEXT,
-  board_order INTEGER NOT NULL DEFAULT 0,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-CREATE TABLE IF NOT EXISTS activities (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  type TEXT NOT NULL CHECK (type IN ('note', 'call', 'email')),
-  contact_id INTEGER REFERENCES contacts(id) ON DELETE SET NULL,
-  deal_id INTEGER REFERENCES deals(id) ON DELETE SET NULL,
-  description TEXT NOT NULL,
-  occurred_at TEXT NOT NULL DEFAULT (datetime('now')),
-  due_date TEXT,
-  done INTEGER NOT NULL DEFAULT 0,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-`;
+type BindValue = string | number | boolean | null;
 
 /** Default win likelihood for each stage. A deal picks these up as it moves along the pipeline. */
 export const STAGE_PROBABILITY: Record<DealStage, number> = {
@@ -163,176 +115,196 @@ export function expectedValue(deal: {
   return (deal.value * deal.probability) / 100;
 }
 
-/** Databases created before a deal column existed get it added and backfilled in place. */
-function migrate(db: DB) {
-  const columns = (
-    db.prepare("PRAGMA table_info(deals)").all() as { name: string }[]
-  ).map((c) => c.name);
-  if (!columns.includes("probability")) {
-    db.exec(
-      "ALTER TABLE deals ADD COLUMN probability INTEGER NOT NULL DEFAULT 0",
-    );
-    const update = db.prepare(
-      "UPDATE deals SET probability = ? WHERE stage = ?",
-    );
-    for (const [stage, probability] of Object.entries(STAGE_PROBABILITY))
-      update.run(probability, stage);
-  }
-  if (!columns.includes("board_order")) {
-    db.exec(
-      "ALTER TABLE deals ADD COLUMN board_order INTEGER NOT NULL DEFAULT 0",
-    );
-    // Every existing row reads 0, which is no order at all. Number each column 0..n-1 by id.
-    db.exec(`UPDATE deals SET board_order = (
-      SELECT COUNT(*) FROM deals AS earlier
-      WHERE earlier.stage = deals.stage AND earlier.id < deals.id)`);
-  }
-}
-
-export function openDb(path: string): DB {
-  const db = new Database(path);
-  db.pragma("journal_mode = WAL");
-  db.pragma("foreign_keys = ON");
-  db.exec(SCHEMA);
-  migrate(db);
-  return db;
-}
-
 // --- Organizations ---
 
-export function createOrganization(db: DB, input: OrganizationInput) {
-  const info = db
-    .prepare(
-      "INSERT INTO organizations (name, website, industry, notes) VALUES (?, ?, ?, ?)",
-    )
-    .run(
+export async function createOrganization(
+  pool: Pool,
+  tenantId: number,
+  input: OrganizationInput,
+): Promise<Organization> {
+  const inserted = await pool.query<{ id: number }>(
+    "INSERT INTO organizations (tenant_id, name, website, industry, notes) VALUES ($1, $2, $3, $4, $5) RETURNING id",
+    [
+      tenantId,
       input.name,
       input.website ?? null,
       input.industry ?? null,
       input.notes ?? null,
-    );
-  // Just inserted, so the read back cannot miss - hence the non-optional row type.
-  return db
-    .prepare("SELECT * FROM organizations WHERE id = ?")
-    .get(info.lastInsertRowid) as Organization;
+    ],
+  );
+  return (await getOrganization(pool, tenantId, inserted.rows[0].id))!;
 }
 
-export function getOrganization(db: DB, id: number) {
-  return db.prepare("SELECT * FROM organizations WHERE id = ?").get(id) as
-    Organization | undefined;
+export async function getOrganization(
+  pool: Pool,
+  tenantId: number,
+  id: number,
+): Promise<Organization | undefined> {
+  const result = await pool.query<Organization>(
+    "SELECT * FROM organizations WHERE id = $1 AND tenant_id = $2",
+    [id, tenantId],
+  );
+  return result.rows[0];
 }
 
-export function listOrganizations(db: DB, q?: string) {
+export async function listOrganizations(
+  pool: Pool,
+  tenantId: number,
+  q?: string,
+): Promise<Organization[]> {
   if (q) {
     const like = `%${q}%`;
-    return db
-      .prepare(
-        "SELECT * FROM organizations WHERE name LIKE ? OR website LIKE ? OR industry LIKE ? ORDER BY name",
-      )
-      .all(like, like, like) as Organization[];
+    const result = await pool.query<Organization>(
+      "SELECT * FROM organizations WHERE tenant_id = $1 AND (name ILIKE $2 OR website ILIKE $2 OR industry ILIKE $2) ORDER BY name",
+      [tenantId, like],
+    );
+    return result.rows;
   }
-  return db
-    .prepare("SELECT * FROM organizations ORDER BY name")
-    .all() as Organization[];
+  const result = await pool.query<Organization>(
+    "SELECT * FROM organizations WHERE tenant_id = $1 ORDER BY name",
+    [tenantId],
+  );
+  return result.rows;
 }
 
-export function updateOrganization(
-  db: DB,
+export async function updateOrganization(
+  pool: Pool,
+  tenantId: number,
   id: number,
   input: OrganizationInput,
-) {
-  db.prepare(
-    "UPDATE organizations SET name = ?, website = ?, industry = ?, notes = ? WHERE id = ?",
-  ).run(
-    input.name,
-    input.website ?? null,
-    input.industry ?? null,
-    input.notes ?? null,
-    id,
+): Promise<Organization | undefined> {
+  const result = await pool.query(
+    "UPDATE organizations SET name = $1, website = $2, industry = $3, notes = $4 WHERE id = $5 AND tenant_id = $6",
+    [
+      input.name,
+      input.website ?? null,
+      input.industry ?? null,
+      input.notes ?? null,
+      id,
+      tenantId,
+    ],
   );
-  return getOrganization(db, id);
+  if ((result.rowCount ?? 0) === 0) return undefined;
+  return getOrganization(pool, tenantId, id);
 }
 
-export function deleteOrganization(db: DB, id: number) {
-  db.prepare("DELETE FROM organizations WHERE id = ?").run(id);
+export async function deleteOrganization(
+  pool: Pool,
+  tenantId: number,
+  id: number,
+): Promise<void> {
+  await pool.query(
+    "DELETE FROM organizations WHERE id = $1 AND tenant_id = $2",
+    [id, tenantId],
+  );
 }
 
 // --- Contacts ---
 
-export function createContact(db: DB, input: ContactInput) {
-  const info = db
-    .prepare(
-      "INSERT INTO contacts (name, email, phone, job_title, organization_id, status) VALUES (?, ?, ?, ?, ?, ?)",
-    )
-    .run(
+export async function createContact(
+  pool: Pool,
+  tenantId: number,
+  input: ContactInput,
+): Promise<Contact> {
+  const inserted = await pool.query<{ id: number }>(
+    "INSERT INTO contacts (tenant_id, name, email, phone, job_title, organization_id, status) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id",
+    [
+      tenantId,
       input.name,
       input.email ?? null,
       input.phone ?? null,
       input.job_title ?? null,
       input.organization_id ?? null,
       input.status,
-    );
-  return db
-    .prepare("SELECT * FROM contacts WHERE id = ?")
-    .get(info.lastInsertRowid) as Contact;
-}
-
-export function getContact(db: DB, id: number) {
-  return db.prepare("SELECT * FROM contacts WHERE id = ?").get(id) as
-    Contact | undefined;
-}
-
-export function listContacts(
-  db: DB,
-  opts: { q?: string; status?: string; organization_id?: number } = {},
-) {
-  const where: string[] = [];
-  const params: BindValue[] = [];
-  if (opts.q) {
-    where.push("(name LIKE ? OR email LIKE ? OR job_title LIKE ?)");
-    const like = `%${opts.q}%`;
-    params.push(like, like, like);
-  }
-  if (opts.status) {
-    where.push("status = ?");
-    params.push(opts.status);
-  }
-  if (opts.organization_id != null) {
-    where.push("organization_id = ?");
-    params.push(opts.organization_id);
-  }
-  const sql = `SELECT * FROM contacts ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY name`;
-  return db.prepare(sql).all(...params) as Contact[];
-}
-
-export function updateContact(db: DB, id: number, input: ContactInput) {
-  db.prepare(
-    "UPDATE contacts SET name = ?, email = ?, phone = ?, job_title = ?, organization_id = ?, status = ? WHERE id = ?",
-  ).run(
-    input.name,
-    input.email ?? null,
-    input.phone ?? null,
-    input.job_title ?? null,
-    input.organization_id ?? null,
-    input.status,
-    id,
+    ],
   );
-  return getContact(db, id);
+  return (await getContact(pool, tenantId, inserted.rows[0].id))!;
 }
 
-export function deleteContact(db: DB, id: number) {
-  db.prepare("DELETE FROM contacts WHERE id = ?").run(id);
+export async function getContact(
+  pool: Pool,
+  tenantId: number,
+  id: number,
+): Promise<Contact | undefined> {
+  const result = await pool.query<Contact>(
+    "SELECT * FROM contacts WHERE id = $1 AND tenant_id = $2",
+    [id, tenantId],
+  );
+  return result.rows[0];
+}
+
+export async function listContacts(
+  pool: Pool,
+  tenantId: number,
+  opts: { q?: string; status?: string; organization_id?: number } = {},
+): Promise<Contact[]> {
+  const clauses = ["tenant_id = $1"];
+  const params: BindValue[] = [tenantId];
+  const add = (clause: string, value: BindValue) => {
+    params.push(value);
+    clauses.push(clause.replaceAll("?", `$${params.length}`));
+  };
+  if (opts.q) {
+    add("(name ILIKE ? OR email ILIKE ? OR job_title ILIKE ?)", `%${opts.q}%`);
+  }
+  if (opts.status) add("status = ?", opts.status);
+  if (opts.organization_id != null)
+    add("organization_id = ?", opts.organization_id);
+  const result = await pool.query<Contact>(
+    `SELECT * FROM contacts WHERE ${clauses.join(" AND ")} ORDER BY name`,
+    params,
+  );
+  return result.rows;
+}
+
+export async function updateContact(
+  pool: Pool,
+  tenantId: number,
+  id: number,
+  input: ContactInput,
+): Promise<Contact | undefined> {
+  const result = await pool.query(
+    "UPDATE contacts SET name = $1, email = $2, phone = $3, job_title = $4, organization_id = $5, status = $6 WHERE id = $7 AND tenant_id = $8",
+    [
+      input.name,
+      input.email ?? null,
+      input.phone ?? null,
+      input.job_title ?? null,
+      input.organization_id ?? null,
+      input.status,
+      id,
+      tenantId,
+    ],
+  );
+  if ((result.rowCount ?? 0) === 0) return undefined;
+  return getContact(pool, tenantId, id);
+}
+
+export async function deleteContact(
+  pool: Pool,
+  tenantId: number,
+  id: number,
+): Promise<void> {
+  await pool.query("DELETE FROM contacts WHERE id = $1 AND tenant_id = $2", [
+    id,
+    tenantId,
+  ]);
 }
 
 // --- Deals ---
 
-export function createDeal(db: DB, input: DealInput) {
-  const info = db
-    .prepare(
-      `INSERT INTO deals (name, organization_id, contact_id, stage, value, probability, close_date, board_order)
-       VALUES (?, ?, ?, ?, ?, ?, ?, (SELECT COALESCE(MAX(board_order), -1) + 1 FROM deals WHERE stage = ?))`,
-    )
-    .run(
+export async function createDeal(
+  pool: Pool,
+  tenantId: number,
+  input: DealInput,
+): Promise<Deal> {
+  const inserted = await pool.query<{ id: number }>(
+    `INSERT INTO deals (tenant_id, name, organization_id, contact_id, stage, value, probability, close_date, board_order)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8,
+       (SELECT COALESCE(MAX(board_order), -1) + 1 FROM deals WHERE stage = $5 AND tenant_id = $1))
+     RETURNING id`,
+    [
+      tenantId,
       input.name,
       input.organization_id ?? null,
       input.contact_id ?? null,
@@ -340,71 +312,81 @@ export function createDeal(db: DB, input: DealInput) {
       input.value,
       input.probability ?? STAGE_PROBABILITY[input.stage],
       input.close_date ?? null,
-      input.stage,
-    );
-  return db
-    .prepare("SELECT * FROM deals WHERE id = ?")
-    .get(info.lastInsertRowid) as Deal;
+    ],
+  );
+  return (await getDeal(pool, tenantId, inserted.rows[0].id))!;
 }
 
-export function getDeal(db: DB, id: number) {
-  return db.prepare("SELECT * FROM deals WHERE id = ?").get(id) as
-    Deal | undefined;
+export async function getDeal(
+  pool: Pool,
+  tenantId: number,
+  id: number,
+): Promise<Deal | undefined> {
+  const result = await pool.query<Deal>(
+    "SELECT * FROM deals WHERE id = $1 AND tenant_id = $2",
+    [id, tenantId],
+  );
+  return result.rows[0];
 }
 
-export function listDeals(
-  db: DB,
+export async function listDeals(
+  pool: Pool,
+  tenantId: number,
   opts: {
     q?: string;
     stage?: string;
     organization_id?: number;
     contact_id?: number;
   } = {},
-) {
-  const where: string[] = [];
-  const params: BindValue[] = [];
+): Promise<Deal[]> {
+  const clauses = ["deals.tenant_id = $1"];
+  const params: BindValue[] = [tenantId];
+  const add = (clause: string, value: BindValue) => {
+    params.push(value);
+    clauses.push(clause.replaceAll("?", `$${params.length}`));
+  };
   if (opts.q) {
-    where.push(
-      "(deals.name LIKE ? OR organizations.name LIKE ? OR contacts.name LIKE ?)",
+    add(
+      "(deals.name ILIKE ? OR organizations.name ILIKE ? OR contacts.name ILIKE ?)",
+      `%${opts.q}%`,
     );
-    const like = `%${opts.q}%`;
-    params.push(like, like, like);
   }
-  if (opts.stage) {
-    where.push("deals.stage = ?");
-    params.push(opts.stage);
-  }
-  if (opts.organization_id != null) {
-    where.push("deals.organization_id = ?");
-    params.push(opts.organization_id);
-  }
-  if (opts.contact_id != null) {
-    where.push("deals.contact_id = ?");
-    params.push(opts.contact_id);
-  }
-  // A deal's own text is just its name, so search reaches through to the organization and contact
-  // it is with. Left joins, so a deal with neither still matches on its own name.
-  const sql = `SELECT deals.* FROM deals
-    LEFT JOIN organizations ON organizations.id = deals.organization_id
-    LEFT JOIN contacts ON contacts.id = deals.contact_id
-    ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY deals.close_date`;
-  return db.prepare(sql).all(...params) as Deal[];
+  if (opts.stage) add("deals.stage = ?", opts.stage);
+  if (opts.organization_id != null)
+    add("deals.organization_id = ?", opts.organization_id);
+  if (opts.contact_id != null) add("deals.contact_id = ?", opts.contact_id);
+  const result = await pool.query<Deal>(
+    `SELECT deals.* FROM deals
+     LEFT JOIN organizations ON organizations.id = deals.organization_id
+     LEFT JOIN contacts ON contacts.id = deals.contact_id
+     WHERE ${clauses.join(" AND ")} ORDER BY deals.close_date`,
+    params,
+  );
+  return result.rows;
 }
 
-export function updateDeal(db: DB, id: number, input: DealInput) {
-  db.prepare(
-    "UPDATE deals SET name = ?, organization_id = ?, contact_id = ?, stage = ?, value = ?, probability = ?, close_date = ? WHERE id = ?",
-  ).run(
-    input.name,
-    input.organization_id ?? null,
-    input.contact_id ?? null,
-    input.stage,
-    input.value,
-    input.probability ?? STAGE_PROBABILITY[input.stage],
-    input.close_date ?? null,
-    id,
+export async function updateDeal(
+  pool: Pool,
+  tenantId: number,
+  id: number,
+  input: DealInput,
+): Promise<Deal | undefined> {
+  const result = await pool.query(
+    "UPDATE deals SET name = $1, organization_id = $2, contact_id = $3, stage = $4, value = $5, probability = $6, close_date = $7 WHERE id = $8 AND tenant_id = $9",
+    [
+      input.name,
+      input.organization_id ?? null,
+      input.contact_id ?? null,
+      input.stage,
+      input.value,
+      input.probability ?? STAGE_PROBABILITY[input.stage],
+      input.close_date ?? null,
+      id,
+      tenantId,
+    ],
   );
-  return getDeal(db, id);
+  if ((result.rowCount ?? 0) === 0) return undefined;
+  return getDeal(pool, tenantId, id);
 }
 
 /**
@@ -412,115 +394,142 @@ export function updateDeal(db: DB, id: number, input: DealInput) {
  * Changing column re-bases the probability on the new stage; reordering inside one does not, or a
  * card could not be moved without losing a probability set by hand.
  */
-export function moveDeal(db: DB, id: number, stage: DealStage, index?: number) {
-  const current = getDeal(db, id);
+export async function moveDeal(
+  pool: Pool,
+  tenantId: number,
+  id: number,
+  stage: DealStage,
+  index?: number,
+): Promise<Deal | undefined> {
+  const current = await getDeal(pool, tenantId, id);
   if (!current) return undefined;
-  if (current.stage !== stage)
-    db.prepare("UPDATE deals SET stage = ?, probability = ? WHERE id = ?").run(
-      stage,
-      STAGE_PROBABILITY[stage],
-      id,
+  if (current.stage !== stage) {
+    await pool.query(
+      "UPDATE deals SET stage = $1, probability = $2 WHERE id = $3 AND tenant_id = $4",
+      [stage, STAGE_PROBABILITY[stage], id, tenantId],
     );
-
-  const others = (
-    db
-      .prepare(
-        "SELECT id FROM deals WHERE stage = ? AND id != ? ORDER BY board_order, id",
-      )
-      .all(stage, id) as { id: number }[]
-  ).map((row) => row.id);
-  others.splice(index ?? others.length, 0, id);
-  const place = db.prepare("UPDATE deals SET board_order = ? WHERE id = ?");
-  others.forEach((dealId, position) => place.run(position, dealId));
-  return getDeal(db, id);
+  }
+  const others = await pool.query<{ id: number }>(
+    "SELECT id FROM deals WHERE stage = $1 AND tenant_id = $2 AND id != $3 ORDER BY board_order, id",
+    [stage, tenantId, id],
+  );
+  const order = others.rows.map((row) => row.id);
+  order.splice(index ?? order.length, 0, id);
+  for (const [position, dealId] of order.entries()) {
+    await pool.query(
+      "UPDATE deals SET board_order = $1 WHERE id = $2 AND tenant_id = $3",
+      [position, dealId, tenantId],
+    );
+  }
+  return getDeal(pool, tenantId, id);
 }
 
-export function deleteDeal(db: DB, id: number) {
-  db.prepare("DELETE FROM deals WHERE id = ?").run(id);
+export async function deleteDeal(
+  pool: Pool,
+  tenantId: number,
+  id: number,
+): Promise<void> {
+  await pool.query("DELETE FROM deals WHERE id = $1 AND tenant_id = $2", [
+    id,
+    tenantId,
+  ]);
 }
 
 // --- Activities ---
 
-export function createActivity(db: DB, input: ActivityInput) {
-  const info = db
-    .prepare(
-      `INSERT INTO activities (type, contact_id, deal_id, description, occurred_at, due_date, done)
-       VALUES (?, ?, ?, ?, COALESCE(?, datetime('now')), ?, ?)`,
-    )
-    .run(
+export async function createActivity(
+  pool: Pool,
+  tenantId: number,
+  input: ActivityInput,
+): Promise<Activity> {
+  const inserted = await pool.query<{ id: number }>(
+    `INSERT INTO activities (tenant_id, type, contact_id, deal_id, description, occurred_at, due_date, done)
+     VALUES ($1, $2, $3, $4, $5, COALESCE($6, now()::text), $7, $8) RETURNING id`,
+    [
+      tenantId,
       input.type,
       input.contact_id ?? null,
       input.deal_id ?? null,
       input.description,
       input.occurred_at ?? null,
       input.due_date ?? null,
-      input.done ? 1 : 0,
-    );
-  return db
-    .prepare("SELECT * FROM activities WHERE id = ?")
-    .get(info.lastInsertRowid) as Activity;
+      input.done ?? false,
+    ],
+  );
+  return (await getActivity(pool, tenantId, inserted.rows[0].id))!;
 }
 
-export function getActivity(db: DB, id: number) {
-  return db.prepare("SELECT * FROM activities WHERE id = ?").get(id) as
-    Activity | undefined;
+export async function getActivity(
+  pool: Pool,
+  tenantId: number,
+  id: number,
+): Promise<Activity | undefined> {
+  const result = await pool.query<Activity>(
+    "SELECT * FROM activities WHERE id = $1 AND tenant_id = $2",
+    [id, tenantId],
+  );
+  return result.rows[0];
 }
 
-export function listActivities(
-  db: DB,
+export async function listActivities(
+  pool: Pool,
+  tenantId: number,
   opts: { contact_id?: number; deal_id?: number; limit?: number } = {},
-) {
-  const where: string[] = [];
-  const params: BindValue[] = [];
-  if (opts.contact_id != null) {
-    where.push("contact_id = ?");
-    params.push(opts.contact_id);
-  }
-  if (opts.deal_id != null) {
-    where.push("deal_id = ?");
-    params.push(opts.deal_id);
-  }
-  let sql = `SELECT * FROM activities ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY occurred_at DESC, id DESC`;
-  if (opts.limit) {
-    sql += " LIMIT ?";
-    params.push(opts.limit);
-  }
-  return db.prepare(sql).all(...params) as Activity[];
+): Promise<Activity[]> {
+  const clauses = ["tenant_id = $1"];
+  const params: BindValue[] = [tenantId];
+  const add = (clause: string, value: BindValue) => {
+    params.push(value);
+    clauses.push(clause.replaceAll("?", `$${params.length}`));
+  };
+  if (opts.contact_id != null) add("contact_id = ?", opts.contact_id);
+  if (opts.deal_id != null) add("deal_id = ?", opts.deal_id);
+  const limitSql =
+    opts.limit != null && opts.limit > 0 ? ` LIMIT $${params.length + 1}` : "";
+  const result = await pool.query<Activity>(
+    `SELECT * FROM activities WHERE ${clauses.join(" AND ")} ORDER BY occurred_at DESC, id DESC${limitSql}`,
+    limitSql ? [...params, opts.limit ?? 0] : params,
+  );
+  return result.rows;
 }
 
-/** `done` is a boolean coming in and SQLite's 0 or 1 going out; absent means leave it alone. */
-function doneFlag(done: boolean | undefined, current: number): number {
-  if (done === undefined) return current;
-  return done ? 1 : 0;
-}
-
-export function updateActivity(
-  db: DB,
+export async function updateActivity(
+  pool: Pool,
+  tenantId: number,
   id: number,
   fields: Partial<ActivityInput>,
-) {
-  const current = getActivity(db, id);
+): Promise<Activity | undefined> {
+  const current = await getActivity(pool, tenantId, id);
   if (!current) return undefined;
   const next = {
     ...current,
     ...fields,
-    done: doneFlag(fields.done, current.done),
+    done: fields.done ?? current.done,
   };
-  db.prepare(
-    "UPDATE activities SET type = ?, contact_id = ?, deal_id = ?, description = ?, occurred_at = ?, due_date = ?, done = ? WHERE id = ?",
-  ).run(
-    next.type,
-    next.contact_id,
-    next.deal_id,
-    next.description,
-    next.occurred_at,
-    next.due_date,
-    next.done,
-    id,
+  await pool.query(
+    "UPDATE activities SET type = $1, contact_id = $2, deal_id = $3, description = $4, occurred_at = $5, due_date = $6, done = $7 WHERE id = $8 AND tenant_id = $9",
+    [
+      next.type,
+      next.contact_id,
+      next.deal_id,
+      next.description,
+      next.occurred_at,
+      next.due_date,
+      next.done,
+      id,
+      tenantId,
+    ],
   );
-  return getActivity(db, id);
+  return getActivity(pool, tenantId, id);
 }
 
-export function deleteActivity(db: DB, id: number) {
-  db.prepare("DELETE FROM activities WHERE id = ?").run(id);
+export async function deleteActivity(
+  pool: Pool,
+  tenantId: number,
+  id: number,
+): Promise<void> {
+  await pool.query("DELETE FROM activities WHERE id = $1 AND tenant_id = $2", [
+    id,
+    tenantId,
+  ]);
 }

@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import type { Pool } from "pg";
 import {
-  DB,
-  openDb,
   createContact,
   createDeal,
   createActivity,
@@ -9,22 +8,29 @@ import {
   listActivities,
   updateActivity,
 } from "../../src/crm/db.js";
+import { setupCrm } from "./helpers.js";
 
-let db: DB;
+let pool: Pool;
+let tenantId: number;
 
-beforeEach(() => {
-  db = openDb(":memory:");
+beforeEach(async () => {
+  ({ pool, tenantId } = await setupCrm());
 });
 
 describe("adding activities", () => {
-  it("adds an activity to a contact and lists it on their timeline", () => {
-    const contact = createContact(db, { name: "Jane", status: "lead" });
-    createActivity(db, {
+  it("adds an activity to a contact and lists it on their timeline", async () => {
+    const contact = await createContact(pool, tenantId, {
+      name: "Jane",
+      status: "lead",
+    });
+    await createActivity(pool, tenantId, {
       type: "call",
       contact_id: contact.id,
       description: "Discovery call",
     });
-    const timeline = listActivities(db, { contact_id: contact.id });
+    const timeline = await listActivities(pool, tenantId, {
+      contact_id: contact.id,
+    });
     expect(timeline).toHaveLength(1);
     expect(timeline[0]).toMatchObject({
       type: "call",
@@ -32,83 +38,90 @@ describe("adding activities", () => {
     });
   });
 
-  it("adds an activity to a deal and lists it on the deal timeline", () => {
-    const deal = createDeal(db, {
+  it("adds an activity to a deal and lists it on the deal timeline", async () => {
+    const deal = await createDeal(pool, tenantId, {
       name: "Big deal",
       stage: "Proposal",
       value: 1000,
     });
-    createActivity(db, {
+    await createActivity(pool, tenantId, {
       type: "email",
       deal_id: deal.id,
       description: "Sent proposal",
     });
-    expect(listActivities(db, { deal_id: deal.id })).toHaveLength(1);
+    expect(
+      await listActivities(pool, tenantId, { deal_id: deal.id }),
+    ).toHaveLength(1);
   });
 
-  it("orders a timeline newest first", () => {
-    const contact = createContact(db, { name: "Jane", status: "lead" });
-    createActivity(db, {
+  it("orders a timeline newest first", async () => {
+    const contact = await createContact(pool, tenantId, {
+      name: "Jane",
+      status: "lead",
+    });
+    await createActivity(pool, tenantId, {
       type: "note",
       contact_id: contact.id,
       description: "First",
       occurred_at: "2026-06-01 09:00:00",
     });
-    createActivity(db, {
+    await createActivity(pool, tenantId, {
       type: "note",
       contact_id: contact.id,
       description: "Second",
       occurred_at: "2026-06-15 09:00:00",
     });
-    createActivity(db, {
+    await createActivity(pool, tenantId, {
       type: "note",
       contact_id: contact.id,
       description: "Third",
       occurred_at: "2026-06-30 09:00:00",
     });
     expect(
-      listActivities(db, { contact_id: contact.id }).map((a) => a.description),
+      (await listActivities(pool, tenantId, { contact_id: contact.id })).map(
+        (a) => a.description,
+      ),
     ).toEqual(["Third", "Second", "First"]);
   });
 
-  it("stores an optional due date so an activity doubles as a task", () => {
-    const activity = createActivity(db, {
+  it("stores an optional due date so an activity doubles as a task", async () => {
+    const activity = await createActivity(pool, tenantId, {
       type: "note",
       description: "Follow up",
       due_date: "2026-07-10",
     });
-    expect(getActivity(db, activity.id)).toMatchObject({
+    expect(await getActivity(pool, tenantId, activity.id)).toMatchObject({
       due_date: "2026-07-10",
-      done: 0,
+      done: false,
     });
   });
 });
 
 describe("toggling task completion", () => {
-  it("marks a task done and back to not-done", () => {
-    const activity = createActivity(db, {
+  it("marks a task done and back to not-done", async () => {
+    const activity = await createActivity(pool, tenantId, {
       type: "call",
       description: "Call back",
       due_date: "2026-07-10",
     });
-    updateActivity(db, activity.id, { done: true });
-    expect(getActivity(db, activity.id)!.done).toBe(1);
-    updateActivity(db, activity.id, { done: false });
-    expect(getActivity(db, activity.id)!.done).toBe(0);
+    await updateActivity(pool, tenantId, activity.id, { done: true });
+    expect((await getActivity(pool, tenantId, activity.id))!.done).toBe(true);
+    await updateActivity(pool, tenantId, activity.id, { done: false });
+    expect((await getActivity(pool, tenantId, activity.id))!.done).toBe(false);
   });
 
-  it("keeps other fields intact when toggling", () => {
-    const activity = createActivity(db, {
+  it("keeps other fields intact when toggling", async () => {
+    const activity = await createActivity(pool, tenantId, {
       type: "email",
       description: "Send recap",
       due_date: "2026-07-08",
     });
-    updateActivity(db, activity.id, { done: true });
-    expect(getActivity(db, activity.id)).toMatchObject({
+    await updateActivity(pool, tenantId, activity.id, { done: true });
+    expect(await getActivity(pool, tenantId, activity.id)).toMatchObject({
       type: "email",
       description: "Send recap",
       due_date: "2026-07-08",
-      done: 1,
+      done: true,
     });
   });
 });

@@ -66,6 +66,9 @@ export const test = base.extend<object, { appServer: string }>({
           DATA_DIR: dataDir,
           DATABASE_URL: postgres.getConnectionUri(),
           JWT_SECRET: "e2e-secret",
+          // Keep the seed deterministic whatever the developer's .env holds, so LOGIN below matches.
+          SEED_EMAIL: LOGIN.email,
+          SEED_PASSWORD: LOGIN.password,
         },
         stdio: "ignore",
       });
