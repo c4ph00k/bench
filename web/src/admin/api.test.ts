@@ -5,6 +5,7 @@ import { redirectTo } from "../shared/auth";
 
 vi.mock("../shared/auth", () => ({
   redirectTo: vi.fn(),
+  tenantHeader: vi.fn(() => ({})),
 }));
 
 const fetchMock = vi.fn();

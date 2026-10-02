@@ -128,3 +128,22 @@
   color: #ffffff;
   background: #272d36;
 }
+
+/* The tenant switcher sits before the theme/sign-out group, styled as a quiet inline control. */
+.bench-nav-tenant {
+  flex: 0 0 auto;
+  max-width: 160px;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid #d9dde3;
+  border-radius: 6px;
+  background: none;
+  color: #5b636e;
+  font: inherit;
+  cursor: pointer;
+}
+
+[data-theme="dark"] .bench-nav-tenant {
+  border-color: #343b45;
+  color: #98a1ad;
+}

@@ -1,5 +1,5 @@
 /** Fetch helpers for the users endpoint, the admin panel's only API surface. */
-import { redirectTo, type Role } from "../shared/auth";
+import { redirectTo, tenantHeader, type Role } from "../shared/auth";
 
 /** A user as the admin panel sees them - the shape /api/auth/users returns. */
 export interface PublicUser {
@@ -17,7 +17,9 @@ async function req<T>(
   const res = await fetch(`/api/auth/users${path}`, {
     method,
     headers:
-      body === undefined ? undefined : { "Content-Type": "application/json" },
+      body === undefined
+        ? tenantHeader()
+        : { "Content-Type": "application/json", ...tenantHeader() },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   if (res.status === 401) {

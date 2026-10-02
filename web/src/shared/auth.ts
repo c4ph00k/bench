@@ -25,6 +25,37 @@ export async function signOut(): Promise<void> {
   redirectTo("/login");
 }
 
+export interface Tenant {
+  id: number;
+  name: string;
+  slug: string;
+}
+
+const TENANT_KEY = "bench.tenantId";
+
+/** The tenant the user has switched into, or null when they run on their default membership. */
+export function selectedTenantId(): string | null {
+  return localStorage.getItem(TENANT_KEY);
+}
+
+export function selectTenant(id: number | null): void {
+  if (id === null) localStorage.removeItem(TENANT_KEY);
+  else localStorage.setItem(TENANT_KEY, String(id));
+}
+
+/** The X-Tenant-Id header naming the selected tenant, empty when defaulting. The server still
+    validates it against the session's memberships, so this is a preference, not an authority. */
+export function tenantHeader(): Record<string, string> {
+  const id = selectedTenantId();
+  return id ? { "X-Tenant-Id": id } : {};
+}
+
+export async function getTenants(): Promise<Tenant[]> {
+  const res = await fetch("/api/auth/tenants");
+  if (!res.ok) return [];
+  return (await res.json()) as Tenant[];
+}
+
 /** The signed-in user, or null - the same call the launcher and login document already make. */
 export async function getSession(): Promise<SessionInfo | null> {
   const res = await fetch("/api/auth/me");

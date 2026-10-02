@@ -171,6 +171,47 @@ describe("the API gate", () => {
   });
 });
 
+describe("tenant switching", () => {
+  it("shows every tenant to a master admin, and only their own to a member", async () => {
+    const app = await seededApp();
+    await pool.query(
+      "INSERT INTO tenants (name, slug, plan) VALUES ($1, $2, 'free')",
+      ["Second Co", "second"],
+    );
+    const cookie = await sessionCookie(app);
+    const master = await request(app)
+      .get("/api/auth/tenants")
+      .set("Cookie", cookie);
+    expect(master.status).toBe(200);
+    expect((master.body as { slug: string }[]).map((t) => t.slug)).toEqual([
+      "novhora",
+      "second",
+    ]);
+
+    // A plain member of the seed tenant sees only that one.
+    const adminCookie = cookie;
+    await request(app)
+      .post("/api/auth/users")
+      .set("Cookie", adminCookie)
+      .send({ email: "luca@example.com", password: "lemons", role: "user" });
+    const luca = await request(app)
+      .post("/api/auth/login")
+      .send({ email: "luca@example.com", password: "lemons" });
+    const lucaCookie = luca.headers["set-cookie"][0].split(";")[0];
+    const member = await request(app)
+      .get("/api/auth/tenants")
+      .set("Cookie", lucaCookie);
+    expect((member.body as { slug: string }[]).map((t) => t.slug)).toEqual([
+      "novhora",
+    ]);
+  });
+
+  it("answers 401 to an outsider", async () => {
+    const app = await seededApp();
+    expect((await request(app).get("/api/auth/tenants")).status).toBe(401);
+  });
+});
+
 describe.skipIf(!existsSync(webDist))("the page gate", () => {
   it("redirects a page without a session to the login document", async () => {
     const app = await seededApp();

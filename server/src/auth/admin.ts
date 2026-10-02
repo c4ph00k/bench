@@ -4,14 +4,16 @@
  * app.ts mounts before the API gate - so this router carries its own check, and demands an
  * admin/owner whose password is not itself awaiting a change.
  *
- * The tenant is the one the admin is an owner or admin of. With one tenant, that is unambiguous;
- * the tenant switcher that lets a master admin pick among many arrives with the multi-tenant apps.
+ * The tenant is the one the request names (the switcher's X-Tenant-Id) or the user's first
+ * membership. A master admin manages whichever tenant they pick; everyone else must be an owner
+ * or admin of it.
  */
 import { Router } from "express";
 import type { Pool } from "pg";
 import * as db from "./db.js";
 import type { Role } from "./db.js";
 import { sessionUser } from "./session.js";
+import { resolveTenant } from "../tenant.js";
 
 const ROLES: readonly Role[] = ["owner", "admin", "user"] as const;
 
@@ -38,10 +40,17 @@ export function adminRouter(options: {
       res.status(403).json({ error: "Password change required" });
       return;
     }
-    const tenantId = await db.adminTenantId(pool, admin.id);
+    const tenantId = await resolveTenant(pool, admin, req);
     if (tenantId === null) {
-      res.status(403).json({ error: "Admin only" });
+      res.status(403).json({ error: "No access to that tenant" });
       return;
+    }
+    if (!admin.master_admin) {
+      const role = await db.membershipRole(pool, tenantId, admin.id);
+      if (role !== "owner" && role !== "admin") {
+        res.status(403).json({ error: "Admin only" });
+        return;
+      }
     }
     res.locals.admin = admin;
     res.locals.tenantId = tenantId;

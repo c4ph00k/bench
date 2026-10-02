@@ -81,6 +81,17 @@ export function authRouter(options: AuthOptions): Router {
     res.json(await sessionBody(pool, user));
   });
 
+  // The tenants this user may switch among. A master admin sees every tenant, so the nav strip
+  // can offer the switcher; a plain user sees just the ones they belong to.
+  router.get("/tenants", async (req, res) => {
+    const user = await sessionUser(pool, jwtSecret, req);
+    if (!user) {
+      res.status(401).json({ error: "Not signed in" });
+      return;
+    }
+    res.json(await db.listSelectableTenants(pool, user));
+  });
+
   // A signed-in user whose password was reset lands here and stays until the replacement is set.
   // No current password to confirm: the temporary one already opened the session, and it is the
   // thing being thrown away.

@@ -8,6 +8,10 @@ import { adminApi } from "./api";
 vi.mock("../shared/auth", () => ({
   useSession: vi.fn(),
   redirectTo: vi.fn(),
+  signOut: vi.fn(),
+  getTenants: vi.fn(() => Promise.resolve([])),
+  selectTenant: vi.fn(),
+  selectedTenantId: vi.fn(() => null),
 }));
 
 vi.mock("./api", () => ({

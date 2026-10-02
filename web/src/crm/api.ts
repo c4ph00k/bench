@@ -1,9 +1,9 @@
 /** Thin fetch helpers for the local API. */
-import { redirectTo } from "../shared/auth";
+import { redirectTo, tenantHeader } from "../shared/auth";
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(path, {
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...tenantHeader() },
     ...options,
   });
   // A 401 means the session is gone; the login page is where that is put right.

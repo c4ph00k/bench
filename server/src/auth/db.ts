@@ -211,16 +211,30 @@ export async function primaryRole(
   return result.rows[0]?.role;
 }
 
-/** The tenant this user administers as an owner or admin - first match until the switcher lands. */
-export async function adminTenantId(
+/** The tenants a user may switch among: all of them for a master admin, else their own. */
+export interface TenantInfo {
+  id: number;
+  name: string;
+  slug: string;
+}
+
+export async function listSelectableTenants(
   pool: Pool,
-  userId: number,
-): Promise<number | null> {
-  const result = await pool.query<{ tenant_id: number }>(
-    "SELECT tenant_id FROM memberships WHERE user_id = $1 AND role IN ('owner', 'admin') ORDER BY tenant_id LIMIT 1",
-    [userId],
+  user: UserRow,
+): Promise<TenantInfo[]> {
+  if (user.master_admin) {
+    const result = await pool.query<TenantInfo>(
+      "SELECT id, name, slug FROM tenants ORDER BY id",
+    );
+    return result.rows;
+  }
+  const result = await pool.query<TenantInfo>(
+    `SELECT t.id, t.name, t.slug FROM tenants t
+     JOIN memberships m ON m.tenant_id = t.id
+     WHERE m.user_id = $1 ORDER BY t.id`,
+    [user.id],
   );
-  return result.rows.length > 0 ? result.rows[0].tenant_id : null;
+  return result.rows;
 }
 
 export async function membershipRole(

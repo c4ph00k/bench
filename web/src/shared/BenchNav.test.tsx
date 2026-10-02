@@ -2,11 +2,14 @@ import { describe, expect, it, beforeEach, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import BenchNav from "./BenchNav";
-import { signOut, useSession } from "./auth";
+import { getTenants, signOut, useSession } from "./auth";
 
 vi.mock("./auth", () => ({
   signOut: vi.fn(),
   useSession: vi.fn(() => null),
+  getTenants: vi.fn(() => Promise.resolve([])),
+  selectTenant: vi.fn(),
+  selectedTenantId: vi.fn(() => null),
 }));
 
 const nav = () => within(screen.getByRole("navigation", { name: "Primary" }));
@@ -15,6 +18,7 @@ beforeEach(() => {
   localStorage.clear();
   delete document.documentElement.dataset.theme;
   vi.mocked(useSession).mockReturnValue(null);
+  vi.mocked(getTenants).mockResolvedValue([]);
 });
 
 describe("BenchNav", () => {
@@ -71,5 +75,24 @@ describe("BenchNav", () => {
     });
     render(<BenchNav active="home" />);
     expect(nav().getByRole("link", { name: "Admin" })).toBeInTheDocument();
+  });
+
+  it("offers a tenant switcher to a master admin, and not to others", async () => {
+    vi.mocked(useSession).mockReturnValue({
+      email: "marco@example.com",
+      role: "owner",
+      mustChangePassword: false,
+      masterAdmin: true,
+    });
+    vi.mocked(getTenants).mockResolvedValue([
+      { id: 1, name: "Novhora", slug: "novhora" },
+      { id: 2, name: "Second Co", slug: "second" },
+    ]);
+    render(<BenchNav active="home" />);
+    const select = await screen.findByRole("combobox", { name: "Tenant" });
+    expect(select).toBeInTheDocument();
+    expect(
+      within(select).getByRole("option", { name: "Second Co" }),
+    ).toBeInTheDocument();
   });
 });

@@ -2,7 +2,7 @@
  * The primary navigation, identical in every document. Each app is its own page, so these are
  * plain anchors rather than router links.
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   IconAdmin,
   IconCrm,
@@ -14,7 +14,14 @@ import {
   IconSun,
 } from "./AppIcons";
 import { currentTheme, toggleTheme, type Theme } from "./theme";
-import { signOut, useSession } from "./auth";
+import {
+  getTenants,
+  selectTenant,
+  selectedTenantId,
+  signOut,
+  useSession,
+  type Tenant,
+} from "./auth";
 import { BRAND } from "./brand";
 import "./nav.css";
 
@@ -38,6 +45,20 @@ const APPS: {
 export default function BenchNav({ active }: { active: AppKey }) {
   const [theme, setTheme] = useState<Theme>(currentTheme);
   const session = useSession();
+  const isMaster = session?.masterAdmin === true;
+  const [tenants, setTenants] = useState<Tenant[] | null>(null);
+
+  useEffect(() => {
+    if (!isMaster) return;
+    let cancelled = false;
+    void getTenants().then((list) => {
+      if (!cancelled) setTenants(list);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isMaster]);
+
   const links =
     session?.role === "admin" || session?.role === "owner"
       ? [
@@ -45,6 +66,12 @@ export default function BenchNav({ active }: { active: AppKey }) {
           { key: "admin", href: "/admin/", label: "Admin", Icon: IconAdmin },
         ]
       : APPS;
+
+  const switchTenant = (id: number | null) => {
+    selectTenant(id);
+    window.location.reload();
+  };
+
   return (
     <header className="bench-nav">
       <span className="bench-nav-brand">
@@ -64,6 +91,24 @@ export default function BenchNav({ active }: { active: AppKey }) {
           </a>
         ))}
       </nav>
+      {isMaster && tenants && tenants.length > 1 && (
+        <select
+          className="bench-nav-tenant"
+          aria-label="Tenant"
+          title="Tenant"
+          value={selectedTenantId() ?? ""}
+          onChange={(e) =>
+            switchTenant(e.target.value === "" ? null : Number(e.target.value))
+          }
+        >
+          <option value="">Default</option>
+          {tenants.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name}
+            </option>
+          ))}
+        </select>
+      )}
       <button
         type="button"
         className="bench-nav-theme"

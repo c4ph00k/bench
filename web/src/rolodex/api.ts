@@ -1,4 +1,4 @@
-import { redirectTo } from "../shared/auth";
+import { redirectTo, tenantHeader } from "../shared/auth";
 import type {
   Circle,
   ConnectionKind,
@@ -21,7 +21,7 @@ import type { UpcomingDate } from "./types";
 /** Paths are relative to the app's own namespace on the one Bench server. */
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`/api/rolodex${path}`, {
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...tenantHeader() },
     ...options,
   });
   // A 401 means the session is gone; the login page is where that is put right.

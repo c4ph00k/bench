@@ -23,7 +23,7 @@ describe("api client", () => {
     expect(tree).toEqual([{ id: "a" }]);
     expect(fetchMock).toHaveBeenCalledWith("/api/space/tree", {
       method: "GET",
-      headers: undefined,
+      headers: {},
       body: undefined,
     });
   });
