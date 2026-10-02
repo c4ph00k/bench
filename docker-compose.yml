@@ -1,6 +1,9 @@
 services:
   db:
     image: postgres:17-alpine
+    # Postgres listens on a non-standard port inside the container and is not published to the
+    # host, so it cannot clash with a Postgres already running on 5432.
+    command: ["postgres", "-p", "5433"]
     environment:
       POSTGRES_USER: bench
       POSTGRES_PASSWORD: bench
@@ -8,7 +11,7 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U bench -d bench"]
+      test: ["CMD-SHELL", "pg_isready -U bench -d bench -p 5433"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -17,7 +20,7 @@ services:
     build: .
     environment:
       # The in-compose host; DATABASE_URL in .env points at localhost for running without Docker.
-      DATABASE_URL: postgres://bench:bench@db:5432/bench
+      DATABASE_URL: postgres://bench:bench@db:5433/bench
       # JWT_SECRET comes from the developer's .env (docker compose reads it automatically).
       JWT_SECRET: ${JWT_SECRET:-}
       SEED_EMAIL: ${SEED_EMAIL:-marco@example.com}
