@@ -1,35 +1,42 @@
 import { describe, expect, it, beforeEach } from "vitest";
 import request from "supertest";
-import { openDb } from "../../src/space/db.js";
-import { appWithSpace } from "./app.js";
-import type Database from "better-sqlite3";
 import type express from "express";
+import { appWithSpace, sessionCookie } from "./app.js";
 import type { Page, SearchHit } from "./responses.js";
 
-let db: Database.Database;
 let app: express.Express;
+let cookie: string;
 
 const search = async (q: string) =>
-  (await request(app).get(`/api/space/search?q=${q}`)).body as SearchHit[];
+  (await request(app).get(`/api/space/search?q=${q}`).set("Cookie", cookie))
+    .body as SearchHit[];
 
 beforeEach(async () => {
-  db = openDb(":memory:");
-  app = await appWithSpace(db);
+  app = await appWithSpace();
+  cookie = await sessionCookie(app);
   const parent = (
-    await request(app)
-      .post("/api/space/pages")
-      .send({ title: "Travel", icon: "✈️" })
-  ).body as Page;
+    (
+      await request(app)
+        .post("/api/space/pages")
+        .set("Cookie", cookie)
+        .send({ title: "Travel", icon: "✈️" })
+    ).body as Page
+  ).id;
   await request(app)
     .post("/api/space/pages")
-    .send({ title: "Japan Trip", parentId: parent.id });
+    .set("Cookie", cookie)
+    .send({ title: "Japan Trip", parentId: parent });
   const dbPage = (
-    await request(app)
-      .post("/api/space/pages")
-      .send({ title: "Reading List", type: "database" })
-  ).body as Page;
+    (
+      await request(app)
+        .post("/api/space/pages")
+        .set("Cookie", cookie)
+        .send({ title: "Reading List", type: "database" })
+    ).body as Page
+  ).id;
   await request(app)
-    .post(`/api/space/databases/${dbPage.id}/rows`)
+    .post(`/api/space/databases/${dbPage}/rows`)
+    .set("Cookie", cookie)
     .send({ title: "Japanese Cooking" });
 });
 
@@ -54,7 +61,10 @@ describe("search API", () => {
   });
 
   it("ranks prefix matches first", async () => {
-    await request(app).post("/api/space/pages").send({ title: "About Japan" });
+    await request(app)
+      .post("/api/space/pages")
+      .set("Cookie", cookie)
+      .send({ title: "About Japan" });
     expect((await search("japan"))[0].title).toBe("Japan Trip");
   });
 

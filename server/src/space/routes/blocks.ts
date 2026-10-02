@@ -1,7 +1,8 @@
 import { Router } from "express";
-import type Database from "better-sqlite3";
+import type { Pool } from "pg";
 import { randomUUID } from "node:crypto";
 import type { BlockRow } from "../db.js";
+import { tenantIdOf } from "../../tenant.js";
 
 const BLOCK_TYPES = [
   "paragraph",
@@ -30,14 +31,16 @@ function withParsedContent(row: BlockRow) {
   return { ...row, content: JSON.parse(row.content) as unknown };
 }
 
-export function blocksRouter(db: Database.Database): Router {
+export function blocksRouter(pool: Pool): Router {
   const router = Router();
 
-  router.post("/pages/:pageId/blocks", (req, res) => {
-    const page = db
-      .prepare("SELECT id FROM pages WHERE id = ?")
-      .get(req.params.pageId);
-    if (!page) {
+  router.post("/pages/:pageId/blocks", async (req, res) => {
+    const tenantId = tenantIdOf(res);
+    const page = await pool.query(
+      "SELECT id FROM pages WHERE id = $1 AND tenant_id = $2",
+      [req.params.pageId, tenantId],
+    );
+    if (page.rows.length === 0) {
       res.status(404).json({ error: "page not found" });
       return;
     }
@@ -60,32 +63,47 @@ export function blocksRouter(db: Database.Database): Router {
       res.status(400).json({ error: "content must be an object" });
       return;
     }
-    const { count } = db
-      .prepare("SELECT COUNT(*) AS count FROM blocks WHERE page_id = ?")
-      .get(req.params.pageId) as { count: number };
+    const countResult = await pool.query<{ count: number }>(
+      "SELECT COUNT(*)::int AS count FROM blocks WHERE page_id = $1 AND tenant_id = $2",
+      [req.params.pageId, tenantId],
+    );
+    const count = countResult.rows[0].count;
     const at = Math.max(
       0,
       Math.min(typeof index === "number" ? index : count, count),
     );
-    db.transaction(() => {
-      db.prepare(
-        "UPDATE blocks SET position = position + 1 WHERE page_id = ? AND position >= ?",
-      ).run(req.params.pageId, at);
-      db.prepare(
-        "INSERT INTO blocks (id, page_id, type, content, position) VALUES (?, ?, ?, ?, ?)",
-      ).run(id, req.params.pageId, type, JSON.stringify(content), at);
-    })();
-    const row = db
-      .prepare("SELECT * FROM blocks WHERE id = ?")
-      .get(id) as BlockRow;
-    res.status(201).json(withParsedContent(row));
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query(
+        "UPDATE blocks SET position = position + 1 WHERE page_id = $1 AND tenant_id = $2 AND position >= $3",
+        [req.params.pageId, tenantId, at],
+      );
+      await client.query(
+        "INSERT INTO blocks (id, tenant_id, page_id, type, content, position) VALUES ($1, $2, $3, $4, $5, $6)",
+        [id, tenantId, req.params.pageId, type, JSON.stringify(content), at],
+      );
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+    const row = await pool.query<BlockRow>(
+      "SELECT * FROM blocks WHERE id = $1 AND tenant_id = $2",
+      [id, tenantId],
+    );
+    res.status(201).json(withParsedContent(row.rows[0]));
   });
 
-  router.patch("/blocks/:id", (req, res) => {
-    const block = db
-      .prepare("SELECT * FROM blocks WHERE id = ?")
-      .get(req.params.id) as BlockRow | undefined;
-    if (!block) {
+  router.patch("/blocks/:id", async (req, res) => {
+    const tenantId = tenantIdOf(res);
+    const block = await pool.query<BlockRow>(
+      "SELECT * FROM blocks WHERE id = $1 AND tenant_id = $2",
+      [req.params.id, tenantId],
+    );
+    if (block.rows.length === 0) {
       res.status(404).json({ error: "block not found" });
       return;
     }
@@ -98,9 +116,9 @@ export function blocksRouter(db: Database.Database): Router {
         res.status(400).json({ error: `unknown block type '${type}'` });
         return;
       }
-      db.prepare("UPDATE blocks SET type = ? WHERE id = ?").run(
-        type,
-        req.params.id,
+      await pool.query(
+        "UPDATE blocks SET type = $1 WHERE id = $2 AND tenant_id = $3",
+        [type, req.params.id, tenantId],
       );
     }
     if (content !== undefined) {
@@ -108,45 +126,62 @@ export function blocksRouter(db: Database.Database): Router {
         res.status(400).json({ error: "content must be an object" });
         return;
       }
-      db.prepare("UPDATE blocks SET content = ? WHERE id = ?").run(
-        JSON.stringify(content),
-        req.params.id,
+      await pool.query(
+        "UPDATE blocks SET content = $1 WHERE id = $2 AND tenant_id = $3",
+        [JSON.stringify(content), req.params.id, tenantId],
       );
     }
-    const row = db
-      .prepare("SELECT * FROM blocks WHERE id = ?")
-      .get(req.params.id) as BlockRow;
-    res.json(withParsedContent(row));
+    const row = await pool.query<BlockRow>(
+      "SELECT * FROM blocks WHERE id = $1 AND tenant_id = $2",
+      [req.params.id, tenantId],
+    );
+    res.json(withParsedContent(row.rows[0]));
   });
 
-  router.delete("/blocks/:id", (req, res) => {
-    const block = db
-      .prepare("SELECT page_id, position FROM blocks WHERE id = ?")
-      .get(req.params.id) as Pick<BlockRow, "page_id" | "position"> | undefined;
-    if (!block) {
+  router.delete("/blocks/:id", async (req, res) => {
+    const tenantId = tenantIdOf(res);
+    const block = await pool.query<Pick<BlockRow, "page_id" | "position">>(
+      "SELECT page_id, position FROM blocks WHERE id = $1 AND tenant_id = $2",
+      [req.params.id, tenantId],
+    );
+    if (block.rows.length === 0) {
       res.status(404).json({ error: "block not found" });
       return;
     }
-    db.transaction(() => {
-      db.prepare("DELETE FROM blocks WHERE id = ?").run(req.params.id);
-      db.prepare(
-        "UPDATE blocks SET position = position - 1 WHERE page_id = ? AND position > ?",
-      ).run(block.page_id, block.position);
-    })();
+    const { page_id, position } = block.rows[0];
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query(
+        "DELETE FROM blocks WHERE id = $1 AND tenant_id = $2",
+        [req.params.id, tenantId],
+      );
+      await client.query(
+        "UPDATE blocks SET position = position - 1 WHERE page_id = $1 AND tenant_id = $2 AND position > $3",
+        [page_id, tenantId, position],
+      );
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
     res.json({ ok: true });
   });
 
-  router.put("/pages/:pageId/blocks/order", (req, res) => {
+  router.put("/pages/:pageId/blocks/order", async (req, res) => {
+    const tenantId = tenantIdOf(res);
     // Shape asserted here, then checked below: it must be a permutation of the page's block ids.
     const { ids } = (req.body ?? {}) as { ids?: string[] };
-    const existing = (
-      db
-        .prepare("SELECT id FROM blocks WHERE page_id = ? ORDER BY position")
-        .all(req.params.pageId) as Pick<BlockRow, "id">[]
-    ).map((r) => r.id);
+    const existing = await pool.query<{ id: string }>(
+      "SELECT id FROM blocks WHERE page_id = $1 AND tenant_id = $2 ORDER BY position",
+      [req.params.pageId, tenantId],
+    );
+    const existingIds = existing.rows.map((r) => r.id);
     if (
       !Array.isArray(ids) ||
-      ids.length !== existing.length ||
+      ids.length !== existingIds.length ||
       new Set(ids).size !== ids.length
     ) {
       res
@@ -154,17 +189,29 @@ export function blocksRouter(db: Database.Database): Router {
         .json({ error: "ids must be a permutation of the page's block ids" });
       return;
     }
-    const existingSet = new Set(existing);
+    const existingSet = new Set(existingIds);
     if (!ids.every((id) => existingSet.has(id))) {
       res
         .status(400)
         .json({ error: "ids must be a permutation of the page's block ids" });
       return;
     }
-    const update = db.prepare("UPDATE blocks SET position = ? WHERE id = ?");
-    db.transaction(() => {
-      ids.forEach((id, i) => update.run(i, id));
-    })();
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      for (const [i, id] of ids.entries()) {
+        await client.query(
+          "UPDATE blocks SET position = $1 WHERE id = $2 AND tenant_id = $3",
+          [i, id, tenantId],
+        );
+      }
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
     res.json({ ok: true });
   });
 

@@ -1,8 +1,9 @@
 import { Router } from "express";
-import type Database from "better-sqlite3";
+import type { Pool } from "pg";
 import { randomUUID } from "node:crypto";
 import type { BlockRow } from "../db.js";
 import { asText } from "../text.js";
+import { tenantIdOf } from "../../tenant.js";
 
 export interface PageRow {
   id: string;
@@ -30,28 +31,28 @@ export function buildTree(pages: PageRow[]): TreeNode[] {
   return roots;
 }
 
-export function pagesRouter(db: Database.Database): Router {
+export function pagesRouter(pool: Pool): Router {
   const router = Router();
 
-  const nextPosition = (parentId: string | null): number => {
-    const row = db
-      .prepare(
-        "SELECT COALESCE(MAX(position), -1) + 1 AS pos FROM pages WHERE parent_id IS ?",
-      )
-      .get(parentId) as { pos: number };
-    return row.pos;
+  const nextPosition = async (parentId: string | null, tenantId: number) => {
+    const result = await pool.query<{ pos: number }>(
+      "SELECT COALESCE(MAX(position), -1) + 1 AS pos FROM pages WHERE parent_id IS NOT DISTINCT FROM $1 AND tenant_id = $2",
+      [parentId, tenantId],
+    );
+    return result.rows[0].pos;
   };
 
-  router.get("/tree", (_req, res) => {
-    const pages = db
-      .prepare(
-        "SELECT id, parent_id, type, title, icon, position FROM pages WHERE type != 'row' ORDER BY position",
-      )
-      .all() as PageRow[];
-    res.json(buildTree(pages));
+  router.get("/tree", async (_req, res) => {
+    const tenantId = tenantIdOf(res);
+    const result = await pool.query<PageRow>(
+      "SELECT id, parent_id, type, title, icon, position FROM pages WHERE type != 'row' AND tenant_id = $1 ORDER BY position",
+      [tenantId],
+    );
+    res.json(buildTree(result.rows));
   });
 
-  router.post("/pages", (req, res) => {
+  router.post("/pages", async (req, res) => {
+    const tenantId = tenantIdOf(res);
     const {
       parentId = null,
       title = "",
@@ -67,47 +68,66 @@ export function pagesRouter(db: Database.Database): Router {
       res.status(400).json({ error: "type must be 'page' or 'database'" });
       return;
     }
-    if (
-      parentId &&
-      !db.prepare("SELECT id FROM pages WHERE id = ?").get(parentId)
-    ) {
-      res.status(400).json({ error: "parent not found" });
-      return;
+    if (parentId) {
+      const parent = await pool.query(
+        "SELECT id FROM pages WHERE id = $1 AND tenant_id = $2",
+        [parentId, tenantId],
+      );
+      if (parent.rows.length === 0) {
+        res.status(400).json({ error: "parent not found" });
+        return;
+      }
     }
     const id = randomUUID();
-    db.prepare(
-      "INSERT INTO pages (id, parent_id, type, title, icon, position) VALUES (?, ?, ?, ?, ?, ?)",
-    ).run(id, parentId, type, asText(title), icon, nextPosition(parentId));
-    res
-      .status(201)
-      .json(db.prepare("SELECT * FROM pages WHERE id = ?").get(id));
+    await pool.query(
+      "INSERT INTO pages (id, tenant_id, parent_id, type, title, icon, position) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+      [
+        id,
+        tenantId,
+        parentId,
+        type,
+        asText(title),
+        icon,
+        await nextPosition(parentId, tenantId),
+      ],
+    );
+    const page = await pool.query(
+      "SELECT * FROM pages WHERE id = $1 AND tenant_id = $2",
+      [id, tenantId],
+    );
+    res.status(201).json(page.rows[0]);
   });
 
-  router.get("/pages/:id", (req, res) => {
-    const page = db
-      .prepare("SELECT * FROM pages WHERE id = ?")
-      .get(req.params.id) as PageRow | undefined;
-    if (!page) {
+  router.get("/pages/:id", async (req, res) => {
+    const tenantId = tenantIdOf(res);
+    const page = await pool.query<PageRow>(
+      "SELECT * FROM pages WHERE id = $1 AND tenant_id = $2",
+      [req.params.id, tenantId],
+    );
+    if (page.rows.length === 0) {
       res.status(404).json({ error: "page not found" });
       return;
     }
-    const blocks = db
-      .prepare(
-        "SELECT id, page_id, type, content, position FROM blocks WHERE page_id = ? ORDER BY position",
-      )
-      .all(req.params.id)
-      .map((b) => {
-        const block = b as BlockRow;
-        return { ...block, content: JSON.parse(block.content) as unknown };
-      });
-    res.json({ ...page, blocks });
+    const blocks = await pool.query<BlockRow>(
+      "SELECT id, page_id, type, content, position FROM blocks WHERE page_id = $1 AND tenant_id = $2 ORDER BY position",
+      [req.params.id, tenantId],
+    );
+    res.json({
+      ...page.rows[0],
+      blocks: blocks.rows.map((b) => ({
+        ...b,
+        content: JSON.parse(b.content) as unknown,
+      })),
+    });
   });
 
-  router.patch("/pages/:id", (req, res) => {
-    const page = db
-      .prepare("SELECT * FROM pages WHERE id = ?")
-      .get(req.params.id);
-    if (!page) {
+  router.patch("/pages/:id", async (req, res) => {
+    const tenantId = tenantIdOf(res);
+    const existing = await pool.query(
+      "SELECT id FROM pages WHERE id = $1 AND tenant_id = $2",
+      [req.params.id, tenantId],
+    );
+    if (existing.rows.length === 0) {
       res.status(404).json({ error: "page not found" });
       return;
     }
@@ -116,23 +136,31 @@ export function pagesRouter(db: Database.Database): Router {
       icon?: string | null;
     };
     if (title !== undefined) {
-      db.prepare(
-        "UPDATE pages SET title = ?, updated_at = datetime('now') WHERE id = ?",
-      ).run(asText(title), req.params.id);
+      await pool.query(
+        "UPDATE pages SET title = $1, updated_at = now()::text WHERE id = $2 AND tenant_id = $3",
+        [asText(title), req.params.id, tenantId],
+      );
     }
     if (icon !== undefined) {
-      db.prepare(
-        "UPDATE pages SET icon = ?, updated_at = datetime('now') WHERE id = ?",
-      ).run(icon, req.params.id);
+      await pool.query(
+        "UPDATE pages SET icon = $1, updated_at = now()::text WHERE id = $2 AND tenant_id = $3",
+        [icon, req.params.id, tenantId],
+      );
     }
-    res.json(db.prepare("SELECT * FROM pages WHERE id = ?").get(req.params.id));
+    const page = await pool.query(
+      "SELECT * FROM pages WHERE id = $1 AND tenant_id = $2",
+      [req.params.id, tenantId],
+    );
+    res.json(page.rows[0]);
   });
 
-  router.delete("/pages/:id", (req, res) => {
-    const result = db
-      .prepare("DELETE FROM pages WHERE id = ?")
-      .run(req.params.id);
-    if (result.changes === 0) {
+  router.delete("/pages/:id", async (req, res) => {
+    const tenantId = tenantIdOf(res);
+    const result = await pool.query(
+      "DELETE FROM pages WHERE id = $1 AND tenant_id = $2",
+      [req.params.id, tenantId],
+    );
+    if ((result.rowCount ?? 0) === 0) {
       res.status(404).json({ error: "page not found" });
       return;
     }

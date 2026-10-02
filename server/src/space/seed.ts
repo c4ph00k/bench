@@ -1,4 +1,4 @@
-import type Database from "better-sqlite3";
+import type { Pool } from "pg";
 import { randomUUID } from "node:crypto";
 
 interface BlockSpec {
@@ -9,115 +9,125 @@ interface BlockSpec {
 class Seeder {
   private positions = new Map<string | null, number>();
 
-  constructor(private db: Database.Database) {}
+  constructor(
+    private pool: Pool,
+    private tenantId: number,
+  ) {}
 
-  page(opts: {
+  async page(opts: {
     parent?: string | null;
     title: string;
     icon?: string;
     type?: string;
-  }): string {
+  }): Promise<string> {
     const parent = opts.parent ?? null;
     const pos = this.positions.get(parent) ?? 0;
     this.positions.set(parent, pos + 1);
     const id = randomUUID();
-    this.db
-      .prepare(
-        "INSERT INTO pages (id, parent_id, type, title, icon, position) VALUES (?, ?, ?, ?, ?, ?)",
-      )
-      .run(id, parent, opts.type ?? "page", opts.title, opts.icon ?? null, pos);
-    return id;
-  }
-
-  blocks(pageId: string, specs: BlockSpec[]): void {
-    const insert = this.db.prepare(
-      "INSERT INTO blocks (id, page_id, type, content, position) VALUES (?, ?, ?, ?, ?)",
+    await this.pool.query(
+      "INSERT INTO pages (id, tenant_id, parent_id, type, title, icon, position) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+      [
+        id,
+        this.tenantId,
+        parent,
+        opts.type ?? "page",
+        opts.title,
+        opts.icon ?? null,
+        pos,
+      ],
     );
-    specs.forEach(({ type, ...content }, i) => {
-      insert.run(randomUUID(), pageId, type, JSON.stringify(content), i);
-    });
-  }
-
-  property(databaseId: string, name: string, type: string): string {
-    const { pos } = this.db
-      .prepare(
-        "SELECT COALESCE(MAX(position), -1) + 1 AS pos FROM properties WHERE database_id = ?",
-      )
-      .get(databaseId) as { pos: number };
-    const id = randomUUID();
-    this.db
-      .prepare(
-        "INSERT INTO properties (id, database_id, name, type, position) VALUES (?, ?, ?, ?, ?)",
-      )
-      .run(id, databaseId, name, type, pos);
     return id;
   }
 
-  options(
+  async blocks(pageId: string, specs: BlockSpec[]): Promise<void> {
+    for (const [i, { type, ...content }] of specs.entries()) {
+      await this.pool.query(
+        "INSERT INTO blocks (id, tenant_id, page_id, type, content, position) VALUES ($1, $2, $3, $4, $5, $6)",
+        [randomUUID(), this.tenantId, pageId, type, JSON.stringify(content), i],
+      );
+    }
+  }
+
+  async property(
+    databaseId: string,
+    name: string,
+    type: string,
+  ): Promise<string> {
+    const pos = await this.pool.query<{ pos: number }>(
+      "SELECT COALESCE(MAX(position), -1) + 1 AS pos FROM properties WHERE database_id = $1 AND tenant_id = $2",
+      [databaseId, this.tenantId],
+    );
+    const id = randomUUID();
+    await this.pool.query(
+      "INSERT INTO properties (id, tenant_id, database_id, name, type, position) VALUES ($1, $2, $3, $4, $5, $6)",
+      [id, this.tenantId, databaseId, name, type, pos.rows[0].pos],
+    );
+    return id;
+  }
+
+  async options(
     propertyId: string,
     defs: [string, string][],
-  ): Record<string, string> {
+  ): Promise<Record<string, string>> {
     const ids: Record<string, string> = {};
-    defs.forEach(([name, color], i) => {
+    for (const [i, [name, color]] of defs.entries()) {
       const id = randomUUID();
-      this.db
-        .prepare(
-          "INSERT INTO property_options (id, property_id, name, color, position) VALUES (?, ?, ?, ?, ?)",
-        )
-        .run(id, propertyId, name, color, i);
+      await this.pool.query(
+        "INSERT INTO property_options (id, tenant_id, property_id, name, color, position) VALUES ($1, $2, $3, $4, $5, $6)",
+        [id, this.tenantId, propertyId, name, color, i],
+      );
       ids[name] = id;
-    });
+    }
     return ids;
   }
 
-  row(
+  async row(
     databaseId: string,
     title: string,
     values: Record<string, unknown>,
-  ): string {
-    const { pos } = this.db
-      .prepare(
-        "SELECT COALESCE(MAX(position), -1) + 1 AS pos FROM pages WHERE parent_id = ?",
-      )
-      .get(databaseId) as { pos: number };
+  ): Promise<string> {
+    const pos = await this.pool.query<{ pos: number }>(
+      "SELECT COALESCE(MAX(position), -1) + 1 AS pos FROM pages WHERE parent_id = $1 AND tenant_id = $2",
+      [databaseId, this.tenantId],
+    );
     const id = randomUUID();
-    this.db
-      .prepare(
-        "INSERT INTO pages (id, parent_id, type, title, position) VALUES (?, ?, 'row', ?, ?)",
-      )
-      .run(id, databaseId, title, pos);
-    const insert = this.db.prepare(
-      "INSERT INTO row_values (row_id, property_id, value) VALUES (?, ?, ?)",
+    await this.pool.query(
+      "INSERT INTO pages (id, tenant_id, parent_id, type, title, position) VALUES ($1, $2, $3, 'row', $4, $5)",
+      [id, this.tenantId, databaseId, title, pos.rows[0].pos],
     );
     for (const [propId, value] of Object.entries(values)) {
-      if (value !== undefined) insert.run(id, propId, JSON.stringify(value));
+      if (value !== undefined)
+        await this.pool.query(
+          "INSERT INTO row_values (tenant_id, row_id, property_id, value) VALUES ($1, $2, $3, $4)",
+          [this.tenantId, id, propId, JSON.stringify(value)],
+        );
     }
     return id;
   }
 
-  view(
+  async view(
     databaseId: string,
     kind: string,
     config: Record<string, unknown>,
-  ): void {
-    this.db
-      .prepare(
-        "INSERT INTO views (database_id, kind, config) VALUES (?, ?, ?) ON CONFLICT(database_id, kind) DO UPDATE SET config = excluded.config",
-      )
-      .run(databaseId, kind, JSON.stringify(config));
+  ): Promise<void> {
+    await this.pool.query(
+      "INSERT INTO views (tenant_id, database_id, kind, config) VALUES ($1, $2, $3, $4) ON CONFLICT (database_id, kind) DO UPDATE SET config = excluded.config",
+      [this.tenantId, databaseId, kind, JSON.stringify(config)],
+    );
   }
 }
 
-/** Populate a fresh database with the showcase workspace. No-op if pages exist. */
-export function seedIfEmpty(db: Database.Database): void {
-  const { c } = db.prepare("SELECT COUNT(*) AS c FROM pages").get() as {
-    c: number;
-  };
-  if (c > 0) return;
-  const s = new Seeder(db);
+/** Populate a fresh tenant with the showcase workspace. No-op if pages exist. */
+export async function seedIfEmpty(pool: Pool, tenantId: number): Promise<void> {
+  const count = await pool.query<{ c: number }>(
+    "SELECT COUNT(*)::int AS c FROM pages WHERE tenant_id = $1",
+    [tenantId],
+  );
+  if (count.rows[0].c > 0) return;
+  const s = new Seeder(pool, tenantId);
 
-  const home = s.page({ title: "Home", icon: "🏠" });
-  s.blocks(home, [
+  const home = await s.page({ title: "Home", icon: "🏠" });
+  await s.blocks(home, [
     { type: "heading1", text: "Welcome back, Marco" },
     {
       type: "paragraph",
@@ -161,8 +171,8 @@ export function seedIfEmpty(db: Database.Database): void {
     },
   ]);
 
-  const projects = s.page({ title: "Projects", icon: "🗂️" });
-  s.blocks(projects, [
+  const projects = await s.page({ title: "Projects", icon: "🗂️" });
+  await s.blocks(projects, [
     {
       type: "paragraph",
       text: "Anything with an outcome and more than one step lives here.",
@@ -172,12 +182,12 @@ export function seedIfEmpty(db: Database.Database): void {
     { type: "bulleted", text: "Writing — one essay at a time" },
   ]);
 
-  const garden = s.page({
+  const garden = await s.page({
     parent: projects,
     title: "Balcony Garden",
     icon: "🌱",
   });
-  s.blocks(garden, [
+  await s.blocks(garden, [
     { type: "heading2", text: "The plan" },
     {
       type: "paragraph",
@@ -196,12 +206,12 @@ export function seedIfEmpty(db: Database.Database): void {
     },
   ]);
 
-  const calendar = s.page({
+  const calendar = await s.page({
     parent: garden,
     title: "Planting Calendar",
     icon: "📅",
   });
-  s.blocks(calendar, [
+  await s.blocks(calendar, [
     { type: "heading3", text: "Sow" },
     {
       type: "bulleted",
@@ -223,12 +233,12 @@ export function seedIfEmpty(db: Database.Database): void {
     },
   ]);
 
-  const homelab = s.page({
+  const homelab = await s.page({
     parent: projects,
     title: "Home Lab Rebuild",
     icon: "🖥️",
   });
-  s.blocks(homelab, [
+  await s.blocks(homelab, [
     { type: "heading2", text: "Goal" },
     {
       type: "paragraph",
@@ -248,12 +258,12 @@ export function seedIfEmpty(db: Database.Database): void {
     },
   ]);
 
-  const parts = s.page({
+  const parts = await s.page({
     parent: homelab,
     title: "Parts Inventory",
     icon: "📦",
   });
-  s.blocks(parts, [
+  await s.blocks(parts, [
     {
       type: "paragraph",
       text: "What has actually arrived, not what was ordered.",
@@ -264,12 +274,12 @@ export function seedIfEmpty(db: Database.Database): void {
     { type: "todo", text: "Short patch cables x6", checked: false },
   ]);
 
-  const network = s.page({
+  const network = await s.page({
     parent: homelab,
     title: "Network Map",
     icon: "🕸️",
   });
-  s.blocks(network, [
+  await s.blocks(network, [
     {
       type: "paragraph",
       text: "One flat network was fine until the cameras arrived. Three VLANs now, and the rule is that anything cheap lives on 30.",
@@ -288,20 +298,24 @@ export function seedIfEmpty(db: Database.Database): void {
     },
   ]);
 
-  const writing = s.page({ parent: projects, title: "Writing", icon: "✍️" });
-  s.blocks(writing, [
+  const writing = await s.page({
+    parent: projects,
+    title: "Writing",
+    icon: "✍️",
+  });
+  await s.blocks(writing, [
     {
       type: "paragraph",
       text: "Drafts in progress. One piece at a time, shipped monthly.",
     },
   ]);
 
-  const blog = s.page({
+  const blog = await s.page({
     parent: writing,
     title: "Blog: Slow Tools",
     icon: "📝",
   });
-  s.blocks(blog, [
+  await s.blocks(blog, [
     { type: "heading2", text: "Thesis" },
     {
       type: "paragraph",
@@ -322,8 +336,12 @@ export function seedIfEmpty(db: Database.Database): void {
     { type: "paragraph", text: "Target: 1,400 words. Draft due Friday." },
   ]);
 
-  const essays = s.page({ parent: writing, title: "Essay Ideas", icon: "🗒️" });
-  s.blocks(essays, [
+  const essays = await s.page({
+    parent: writing,
+    title: "Essay Ideas",
+    icon: "🗒️",
+  });
+  await s.blocks(essays, [
     {
       type: "paragraph",
       text: "Nothing here is committed to. An idea earns its own page once it survives a month.",
@@ -335,12 +353,12 @@ export function seedIfEmpty(db: Database.Database): void {
     { type: "todo", text: "Pick one for September", checked: false },
   ]);
 
-  const bike = s.page({
+  const bike = await s.page({
     parent: projects,
     title: "Bike Restoration",
     icon: "🚲",
   });
-  s.blocks(bike, [
+  await s.blocks(bike, [
     { type: "heading2", text: "1987 tourer, bought for parts money" },
     {
       type: "paragraph",
@@ -360,16 +378,20 @@ export function seedIfEmpty(db: Database.Database): void {
     },
   ]);
 
-  const travel = s.page({ title: "Travel", icon: "✈️" });
-  s.blocks(travel, [
+  const travel = await s.page({ title: "Travel", icon: "✈️" });
+  await s.blocks(travel, [
     {
       type: "paragraph",
       text: "Trips being planned, and notes from ones taken.",
     },
   ]);
 
-  const japan = s.page({ parent: travel, title: "Japan 2026", icon: "🗾" });
-  s.blocks(japan, [
+  const japan = await s.page({
+    parent: travel,
+    title: "Japan 2026",
+    icon: "🗾",
+  });
+  await s.blocks(japan, [
     { type: "heading2", text: "Ten days, three stops" },
     {
       type: "paragraph",
@@ -390,12 +412,12 @@ export function seedIfEmpty(db: Database.Database): void {
     },
   ]);
 
-  const tokyoFood = s.page({
+  const tokyoFood = await s.page({
     parent: japan,
     title: "Tokyo Food Shortlist",
     icon: "🍜",
   });
-  s.blocks(tokyoFood, [
+  await s.blocks(tokyoFood, [
     {
       type: "bulleted",
       text: "Tsukemen at the place under the rail arches in Yūrakuchō",
@@ -411,8 +433,12 @@ export function seedIfEmpty(db: Database.Database): void {
     },
   ]);
 
-  const kyoto = s.page({ parent: japan, title: "Kyoto Notes", icon: "⛩️" });
-  s.blocks(kyoto, [
+  const kyoto = await s.page({
+    parent: japan,
+    title: "Kyoto Notes",
+    icon: "⛩️",
+  });
+  await s.blocks(kyoto, [
     { type: "heading3", text: "Mornings" },
     {
       type: "paragraph",
@@ -435,12 +461,12 @@ export function seedIfEmpty(db: Database.Database): void {
     },
   ]);
 
-  const points = s.page({
+  const points = await s.page({
     parent: travel,
     title: "Points and Miles",
     icon: "🎫",
   });
-  s.blocks(points, [
+  await s.blocks(points, [
     {
       type: "paragraph",
       text: "The only rule that has ever worked: earn on one alliance, burn on long haul, ignore everything else.",
@@ -459,12 +485,12 @@ export function seedIfEmpty(db: Database.Database): void {
     },
   ]);
 
-  const packing = s.page({
+  const packing = await s.page({
     parent: travel,
     title: "Packing Checklist",
     icon: "🧳",
   });
-  s.blocks(packing, [
+  await s.blocks(packing, [
     { type: "heading3", text: "Carry-on only" },
     { type: "todo", text: "Passport + rail pass voucher", checked: true },
     { type: "todo", text: "Universal adapter", checked: true },
@@ -477,16 +503,16 @@ export function seedIfEmpty(db: Database.Database): void {
     },
   ]);
 
-  const notes = s.page({ title: "Notes", icon: "🧠" });
-  s.blocks(notes, [
+  const notes = await s.page({ title: "Notes", icon: "🧠" });
+  await s.blocks(notes, [
     {
       type: "paragraph",
       text: "Loose thoughts land here before they earn a page of their own.",
     },
   ]);
 
-  const recipes = s.page({ parent: notes, title: "Recipes", icon: "🍝" });
-  s.blocks(recipes, [
+  const recipes = await s.page({ parent: notes, title: "Recipes", icon: "🍝" });
+  await s.blocks(recipes, [
     { type: "heading3", text: "Midweek ragù (45 min)" },
     { type: "numbered", text: "Brown 400g mince hard — don't crowd the pan" },
     {
@@ -500,12 +526,12 @@ export function seedIfEmpty(db: Database.Database): void {
     { type: "paragraph", text: "Freezes well. Double it or regret it." },
   ]);
 
-  const sourdough = s.page({
+  const sourdough = await s.page({
     parent: recipes,
     title: "Sourdough, Slowly",
     icon: "🍞",
   });
-  s.blocks(sourdough, [
+  await s.blocks(sourdough, [
     { type: "heading2", text: "The schedule that fits a working week" },
     {
       type: "paragraph",
@@ -531,8 +557,8 @@ export function seedIfEmpty(db: Database.Database): void {
     },
   ]);
 
-  const quotes = s.page({ parent: notes, title: "Quotes", icon: "💬" });
-  s.blocks(quotes, [
+  const quotes = await s.page({ parent: notes, title: "Quotes", icon: "💬" });
+  await s.blocks(quotes, [
     {
       type: "paragraph",
       text: "Kept because they changed something, not because they sounded clever.",
@@ -549,8 +575,12 @@ export function seedIfEmpty(db: Database.Database): void {
     { type: "quote", text: "Any fool can write code a computer understands." },
   ]);
 
-  const films = s.page({ parent: notes, title: "Films to Watch", icon: "🎬" });
-  s.blocks(films, [
+  const films = await s.page({
+    parent: notes,
+    title: "Films to Watch",
+    icon: "🎬",
+  });
+  await s.blocks(films, [
     { type: "heading3", text: "Queued" },
     {
       type: "todo",
@@ -565,8 +595,12 @@ export function seedIfEmpty(db: Database.Database): void {
     { type: "bulleted", text: "Chungking Express" },
   ]);
 
-  const ideas = s.page({ parent: notes, title: "Ideas Inbox", icon: "💡" });
-  s.blocks(ideas, [
+  const ideas = await s.page({
+    parent: notes,
+    title: "Ideas Inbox",
+    icon: "💡",
+  });
+  await s.blocks(ideas, [
     {
       type: "bulleted",
       text: "A tiny e-ink dashboard for the hallway: weather, calendar, one todo",
@@ -575,12 +609,12 @@ export function seedIfEmpty(db: Database.Database): void {
     { type: "bulleted", text: "Teach the niblings to solder something silly" },
   ]);
 
-  seedReadingList(s);
-  seedTripPlanner(s, travel);
-  seedProjectTracker(s, projects);
+  await seedReadingList(s);
+  await seedTripPlanner(s, travel);
+  await seedProjectTracker(s, projects);
 
-  const health = s.page({ title: "Health & Habits", icon: "💪" });
-  s.blocks(health, [
+  const health = await s.page({ title: "Health & Habits", icon: "💪" });
+  await s.blocks(health, [
     { type: "heading2", text: "The boring basics" },
     {
       type: "paragraph",
@@ -596,12 +630,12 @@ export function seedIfEmpty(db: Database.Database): void {
     },
   ]);
 
-  const training = s.page({
+  const training = await s.page({
     parent: health,
     title: "Training Plan",
     icon: "🏋️",
   });
-  s.blocks(training, [
+  await s.blocks(training, [
     { type: "heading3", text: "Week shape" },
     { type: "bulleted", text: "Monday — push, 45 minutes, no more" },
     { type: "bulleted", text: "Wednesday — pull, same" },
@@ -616,8 +650,12 @@ export function seedIfEmpty(db: Database.Database): void {
     },
   ]);
 
-  const sleep = s.page({ parent: health, title: "Sleep Log", icon: "😴" });
-  s.blocks(sleep, [
+  const sleep = await s.page({
+    parent: health,
+    title: "Sleep Log",
+    icon: "😴",
+  });
+  await s.blocks(sleep, [
     {
       type: "paragraph",
       text: "Kept for a fortnight to find the pattern, not forever. The pattern was obvious by day four.",
@@ -634,23 +672,23 @@ export function seedIfEmpty(db: Database.Database): void {
     },
   ]);
 
-  seedWork(s);
-  seedLearning(s);
+  await seedWork(s);
+  await seedLearning(s);
 
-  const archive = s.page({ title: "Archive", icon: "🗄️" });
-  s.blocks(archive, [
+  const archive = await s.page({ title: "Archive", icon: "🗄️" });
+  await s.blocks(archive, [
     {
       type: "paragraph",
       text: "Finished, abandoned, or simply over. Kept because deleting it would lose the reasoning.",
     },
   ]);
 
-  const retro = s.page({
+  const retro = await s.page({
     parent: archive,
     title: "2025 in Review",
     icon: "🧾",
   });
-  s.blocks(retro, [
+  await s.blocks(retro, [
     { type: "heading2", text: "What worked" },
     { type: "bulleted", text: "Writing monthly instead of weekly" },
     {
@@ -671,9 +709,9 @@ export function seedIfEmpty(db: Database.Database): void {
   ]);
 }
 
-function seedWork(s: Seeder): void {
-  const work = s.page({ title: "Work", icon: "💼" });
-  s.blocks(work, [
+async function seedWork(s: Seeder): Promise<void> {
+  const work = await s.page({ title: "Work", icon: "💼" });
+  await s.blocks(work, [
     { type: "heading1", text: "Work" },
     {
       type: "paragraph",
@@ -685,117 +723,45 @@ function seedWork(s: Seeder): void {
     },
   ]);
 
-  const review = s.page({ parent: work, title: "Weekly Review", icon: "🔁" });
-  s.blocks(review, [
-    { type: "heading2", text: "Friday, thirty minutes" },
-    { type: "numbered", text: "Empty the inbox to zero, or to a task" },
-    { type: "numbered", text: "Close anything that shipped" },
-    { type: "numbered", text: "Move what slipped, and say why in one line" },
-    { type: "numbered", text: "Pick the one thing that matters next week" },
-    { type: "divider" },
-    { type: "heading3", text: "This week" },
-    { type: "todo", text: "Rollout plan sent to the client", checked: true },
-    { type: "todo", text: "Interview notes written up", checked: true },
-    { type: "todo", text: "Q4 budget draft", checked: false },
-    {
-      type: "quote",
-      text: "A week reviewed is a week you can remember. The rest is a blur with meetings in it.",
-    },
-  ]);
-
-  const directory = s.page({
-    parent: work,
-    title: "Who Does What",
-    icon: "👥",
-  });
-  s.blocks(directory, [
-    {
-      type: "paragraph",
-      text: "Written down because asking twice is worse than writing it once.",
-    },
-    { type: "bulleted", text: "Anna — platform, owns anything that pages" },
-    { type: "bulleted", text: "Marcus — data, and the only one who likes SQL" },
-    {
-      type: "bulleted",
-      text: "Priya — design, reviews every flow before build",
-    },
-    {
-      type: "bulleted",
-      text: "Tom — contracts and procurement, slow but exact",
-    },
-  ]);
-
-  const meetings = s.page({
-    parent: work,
-    title: "Meeting Notes",
-    icon: "📓",
-  });
-  s.blocks(meetings, [
-    {
-      type: "paragraph",
-      text: "One page per meeting that mattered. Anything without a decision in it does not get a page.",
-    },
-    { type: "heading3", text: "Format" },
-    { type: "bulleted", text: "Decision — one line, at the top" },
-    { type: "bulleted", text: "Owner and date" },
-    { type: "bulleted", text: "Everything else, if there is time" },
-  ]);
-
-  const kickoff = s.page({
-    parent: meetings,
-    title: "Platform Kickoff",
-    icon: "🚀",
-  });
-  s.blocks(kickoff, [
-    {
-      type: "callout",
-      text: "Decision: phased rollout, warehouse first. Anna owns it, review in four weeks.",
-    },
-    { type: "heading3", text: "Notes" },
-    {
-      type: "paragraph",
-      text: "The warehouse team is the only group who will report a problem the day it happens, which is why they go first.",
-    },
-    { type: "todo", text: "Send the rollout plan", checked: true },
-    { type: "todo", text: "Book the four-week review", checked: false },
-  ]);
-
-  seedTasks(s, work);
+  await s.page({ parent: work, title: "Weekly Review", icon: "🔁" });
+  await s.page({ parent: work, title: "Who Does What", icon: "👥" });
+  await s.page({ parent: work, title: "Meeting Notes", icon: "📓" });
+  await seedTasks(s, work);
 }
 
-function seedTasks(s: Seeder, workId: string): void {
-  const dbId = s.page({
+async function seedTasks(s: Seeder, workId: string): Promise<void> {
+  const dbId = await s.page({
     parent: workId,
     title: "Tasks",
     icon: "📋",
     type: "database",
   });
-  const status = s.property(dbId, "Status", "select");
-  const st = s.options(status, [
+  const status = await s.property(dbId, "Status", "select");
+  const st = await s.options(status, [
     ["Todo", "gray"],
     ["Doing", "blue"],
     ["Waiting", "amber"],
     ["Done", "green"],
   ]);
-  const priority = s.property(dbId, "Priority", "select");
-  const pr = s.options(priority, [
+  const priority = await s.property(dbId, "Priority", "select");
+  const pr = await s.options(priority, [
     ["High", "red"],
     ["Medium", "amber"],
     ["Low", "gray"],
   ]);
-  const area = s.property(dbId, "Area", "multi_select");
-  const ar = s.options(area, [
+  const area = await s.property(dbId, "Area", "multi_select");
+  const ar = await s.options(area, [
     ["Client", "orange"],
     ["Deep work", "purple"],
     ["Admin", "teal"],
     ["Hiring", "pink"],
   ]);
-  const due = s.property(dbId, "Due", "date");
-  const hours = s.property(dbId, "Estimate (h)", "number");
-  const recurring = s.property(dbId, "Recurring", "checkbox");
-  const brief = s.property(dbId, "Brief", "url");
+  const due = await s.property(dbId, "Due", "date");
+  const hours = await s.property(dbId, "Estimate (h)", "number");
+  const recurring = await s.property(dbId, "Recurring", "checkbox");
+  const brief = await s.property(dbId, "Brief", "url");
 
-  const rollout = s.row(dbId, "Warehouse rollout plan", {
+  const rollout = await s.row(dbId, "Warehouse rollout plan", {
     [status]: st.Doing,
     [priority]: pr.High,
     [area]: [ar.Client, ar["Deep work"]],
@@ -804,14 +770,14 @@ function seedTasks(s: Seeder, workId: string): void {
     [recurring]: false,
     [brief]: "https://wiki.internal/rollout",
   });
-  s.blocks(rollout, [
+  await s.blocks(rollout, [
     { type: "heading3", text: "Shape" },
     { type: "numbered", text: "Warehouse, two weeks, watch the error rate" },
     { type: "numbered", text: "Stores, once warehouse is quiet" },
     { type: "numbered", text: "Everyone else, same day" },
     { type: "callout", text: "No rollout on a Friday. Ever." },
   ]);
-  s.row(dbId, "Q4 budget draft", {
+  await s.row(dbId, "Q4 budget draft", {
     [status]: st.Doing,
     [priority]: pr.High,
     [area]: [ar.Admin],
@@ -819,7 +785,7 @@ function seedTasks(s: Seeder, workId: string): void {
     [hours]: 4,
     [recurring]: false,
   });
-  s.row(dbId, "Interview loop for the data role", {
+  await s.row(dbId, "Interview loop for the data role", {
     [status]: st.Waiting,
     [priority]: pr.Medium,
     [area]: [ar.Hiring],
@@ -828,14 +794,14 @@ function seedTasks(s: Seeder, workId: string): void {
     [recurring]: false,
     [brief]: "https://wiki.internal/hiring-loop",
   });
-  s.row(dbId, "Rewrite the onboarding doc", {
+  await s.row(dbId, "Rewrite the onboarding doc", {
     [status]: st.Todo,
     [priority]: pr.Medium,
     [area]: [ar["Deep work"]],
     [hours]: 5,
     [recurring]: false,
   });
-  s.row(dbId, "Renew the SSL certificate", {
+  await s.row(dbId, "Renew the SSL certificate", {
     [status]: st.Todo,
     [priority]: pr.High,
     [area]: [ar.Admin],
@@ -843,7 +809,7 @@ function seedTasks(s: Seeder, workId: string): void {
     [hours]: 1,
     [recurring]: true,
   });
-  const invoices = s.row(dbId, "Chase the open invoices", {
+  const invoices = await s.row(dbId, "Chase the open invoices", {
     [status]: st.Waiting,
     [priority]: pr.Medium,
     [area]: [ar.Admin, ar.Client],
@@ -851,7 +817,7 @@ function seedTasks(s: Seeder, workId: string): void {
     [hours]: 1,
     [recurring]: true,
   });
-  s.blocks(invoices, [
+  await s.blocks(invoices, [
     { type: "todo", text: "Northwind — 30 days over", checked: false },
     { type: "todo", text: "Cobalt — paid, close it", checked: true },
     {
@@ -859,7 +825,7 @@ function seedTasks(s: Seeder, workId: string): void {
       text: "Both were sent to the wrong address. Fix the template, not the invoices.",
     },
   ]);
-  s.row(dbId, "Client review deck", {
+  await s.row(dbId, "Client review deck", {
     [status]: st.Todo,
     [priority]: pr.Low,
     [area]: [ar.Client],
@@ -867,14 +833,14 @@ function seedTasks(s: Seeder, workId: string): void {
     [hours]: 3,
     [recurring]: false,
   });
-  s.row(dbId, "Archive the 2025 project folders", {
+  await s.row(dbId, "Archive the 2025 project folders", {
     [status]: st.Todo,
     [priority]: pr.Low,
     [area]: [ar.Admin],
     [hours]: 2,
     [recurring]: false,
   });
-  s.row(dbId, "Weekly review", {
+  await s.row(dbId, "Weekly review", {
     [status]: st.Done,
     [priority]: pr.Medium,
     [area]: [ar.Admin],
@@ -882,7 +848,7 @@ function seedTasks(s: Seeder, workId: string): void {
     [hours]: 0.5,
     [recurring]: true,
   });
-  s.row(dbId, "Migrate the reporting job", {
+  await s.row(dbId, "Migrate the reporting job", {
     [status]: st.Done,
     [priority]: pr.High,
     [area]: [ar["Deep work"]],
@@ -890,7 +856,7 @@ function seedTasks(s: Seeder, workId: string): void {
     [hours]: 8,
     [recurring]: false,
   });
-  s.row(dbId, "Pick the analytics vendor", {
+  await s.row(dbId, "Pick the analytics vendor", {
     [status]: st.Done,
     [priority]: pr.Medium,
     [area]: [ar.Client, ar.Admin],
@@ -900,16 +866,16 @@ function seedTasks(s: Seeder, workId: string): void {
     [brief]: "https://wiki.internal/analytics-shortlist",
   });
 
-  s.view(dbId, "board", { groupBy: status });
-  s.view(dbId, "table", { sort: { propertyId: due, direction: "asc" } });
-  s.view(dbId, "list", {
+  await s.view(dbId, "board", { groupBy: status });
+  await s.view(dbId, "table", { sort: { propertyId: due, direction: "asc" } });
+  await s.view(dbId, "list", {
     filters: [{ propertyId: status, operator: "is_not", value: st.Done }],
   });
 }
 
-function seedLearning(s: Seeder): void {
-  const learning = s.page({ title: "Learning", icon: "🎓" });
-  s.blocks(learning, [
+async function seedLearning(s: Seeder): Promise<void> {
+  const learning = await s.page({ title: "Learning", icon: "🎓" });
+  await s.blocks(learning, [
     {
       type: "paragraph",
       text: "One thing at a time, finished before the next one starts. Notes here, progress in the course log.",
@@ -920,92 +886,51 @@ function seedLearning(s: Seeder): void {
     },
   ]);
 
-  const rust = s.page({ parent: learning, title: "Rust Notes", icon: "🦀" });
-  s.blocks(rust, [
-    { type: "heading2", text: "Ownership, finally" },
-    {
-      type: "paragraph",
-      text: "The borrow checker is not stopping you writing the program. It is stopping you writing the bug you were about to write.",
-    },
-    {
-      type: "code",
-      text: "fn longest<'a>(a: &'a str, b: &'a str) -> &'a str {\n    if a.len() > b.len() { a } else { b }\n}",
-    },
-    { type: "heading3", text: "Things that keep catching me" },
-    { type: "bulleted", text: "A move is not a copy, and Clone is not free" },
-    { type: "bulleted", text: "&mut is exclusive, not just mutable" },
-    {
-      type: "bulleted",
-      text: "Lifetimes describe the code, they do not change it",
-    },
-    {
-      type: "callout",
-      text: "When the compiler and I disagree, the compiler is right and the design is wrong.",
-    },
-  ]);
-
-  const shortcuts = s.page({
+  await s.page({ parent: learning, title: "Rust Notes", icon: "🦀" });
+  await s.page({
     parent: learning,
     title: "Shortcuts Worth Learning",
     icon: "⌨️",
   });
-  s.blocks(shortcuts, [
-    { type: "heading3", text: "Terminal" },
-    { type: "bulleted", text: "Ctrl-R — search the history, always" },
-    { type: "bulleted", text: "Ctrl-A / Ctrl-E — line start and end" },
-    { type: "heading3", text: "Editor" },
-    {
-      type: "bulleted",
-      text: "Multi-cursor beats find and replace for structure",
-    },
-    { type: "bulleted", text: "Go to symbol, never scroll to find a function" },
-    {
-      type: "todo",
-      text: "Stop reaching for the mouse to switch tabs",
-      checked: false,
-    },
-  ]);
-
-  seedCourseLog(s, learning);
+  await seedCourseLog(s, learning);
 }
 
-function seedCourseLog(s: Seeder, learningId: string): void {
-  const dbId = s.page({
+async function seedCourseLog(s: Seeder, learningId: string): Promise<void> {
+  const dbId = await s.page({
     parent: learningId,
     title: "Course Log",
     icon: "🎧",
     type: "database",
   });
-  const status = s.property(dbId, "Status", "select");
-  const st = s.options(status, [
+  const status = await s.property(dbId, "Status", "select");
+  const st = await s.options(status, [
     ["Wishlist", "gray"],
     ["Watching", "blue"],
     ["Finished", "green"],
     ["Abandoned", "red"],
   ]);
-  const source = s.property(dbId, "Source", "text");
-  const topics = s.property(dbId, "Topics", "multi_select");
-  const tp = s.options(topics, [
+  const source = await s.property(dbId, "Source", "text");
+  const topics = await s.property(dbId, "Topics", "multi_select");
+  const tp = await s.options(topics, [
     ["Systems", "teal"],
     ["Language", "purple"],
     ["Design", "pink"],
     ["Music", "orange"],
   ]);
-  const hours = s.property(dbId, "Hours", "number");
-  const started = s.property(dbId, "Started", "date");
-  const finished = s.property(dbId, "Certificate", "checkbox");
-  const link = s.property(dbId, "Link", "url");
+  const hours = await s.property(dbId, "Hours", "number");
+  const started = await s.property(dbId, "Started", "date");
+  const finished = await s.property(dbId, "Certificate", "checkbox");
+  await s.property(dbId, "Link", "url");
 
-  const rustCourse = s.row(dbId, "Rust in Practice", {
+  const rustCourse = await s.row(dbId, "Rust in Practice", {
     [source]: "Recorded lectures",
     [status]: st.Watching,
     [topics]: [tp.Language, tp.Systems],
     [hours]: 18,
     [started]: "2026-07-06",
     [finished]: false,
-    [link]: "https://doc.rust-lang.org/book/",
   });
-  s.blocks(rustCourse, [
+  await s.blocks(rustCourse, [
     {
       type: "paragraph",
       text: "Two chapters a week, exercises done properly. Notes go to the Rust page rather than in here.",
@@ -1017,7 +942,7 @@ function seedCourseLog(s: Seeder, learningId: string): void {
       checked: false,
     },
   ]);
-  s.row(dbId, "Designing Data-Intensive Systems", {
+  await s.row(dbId, "Designing Data-Intensive Systems", {
     [source]: "University series",
     [status]: st.Watching,
     [topics]: [tp.Systems],
@@ -1025,16 +950,15 @@ function seedCourseLog(s: Seeder, learningId: string): void {
     [started]: "2026-06-01",
     [finished]: false,
   });
-  s.row(dbId, "Typography for Screens", {
+  await s.row(dbId, "Typography for Screens", {
     [source]: "Workshop, two days",
     [status]: st.Finished,
     [topics]: [tp.Design],
     [hours]: 12,
     [started]: "2026-03-10",
     [finished]: true,
-    [link]: "https://practicaltypography.com",
   });
-  s.row(dbId, "Jazz Piano Fundamentals", {
+  await s.row(dbId, "Jazz Piano Fundamentals", {
     [source]: "Weekly lesson",
     [status]: st.Watching,
     [topics]: [tp.Music],
@@ -1042,7 +966,7 @@ function seedCourseLog(s: Seeder, learningId: string): void {
     [started]: "2026-01-08",
     [finished]: false,
   });
-  s.row(dbId, "Kubernetes the Hard Way", {
+  await s.row(dbId, "Kubernetes the Hard Way", {
     [source]: "Self-paced",
     [status]: st.Abandoned,
     [topics]: [tp.Systems],
@@ -1050,13 +974,13 @@ function seedCourseLog(s: Seeder, learningId: string): void {
     [started]: "2026-02-14",
     [finished]: false,
   });
-  s.row(dbId, "Colour and Contrast", {
+  await s.row(dbId, "Colour and Contrast", {
     [source]: "Reading group",
     [status]: st.Wishlist,
     [topics]: [tp.Design],
     [finished]: false,
   });
-  s.row(dbId, "Compilers, from Scratch", {
+  await s.row(dbId, "Compilers, from Scratch", {
     [source]: "Book plus exercises",
     [status]: st.Wishlist,
     [topics]: [tp.Language, tp.Systems],
@@ -1064,36 +988,42 @@ function seedCourseLog(s: Seeder, learningId: string): void {
     [finished]: false,
   });
 
-  s.view(dbId, "table", { sort: { propertyId: hours, direction: "desc" } });
-  s.view(dbId, "board", { groupBy: status });
-  s.view(dbId, "list", {
+  await s.view(dbId, "table", {
+    sort: { propertyId: hours, direction: "desc" },
+  });
+  await s.view(dbId, "board", { groupBy: status });
+  await s.view(dbId, "list", {
     filters: [{ propertyId: status, operator: "is", value: st.Watching }],
   });
 }
 
-function seedReadingList(s: Seeder): void {
-  const dbId = s.page({ title: "Reading List", icon: "📚", type: "database" });
-  const author = s.property(dbId, "Author", "text");
-  const status = s.property(dbId, "Status", "select");
-  const st = s.options(status, [
+async function seedReadingList(s: Seeder): Promise<void> {
+  const dbId = await s.page({
+    title: "Reading List",
+    icon: "📚",
+    type: "database",
+  });
+  const author = await s.property(dbId, "Author", "text");
+  const status = await s.property(dbId, "Status", "select");
+  const st = await s.options(status, [
     ["To read", "amber"],
     ["Reading", "blue"],
     ["Finished", "green"],
   ]);
-  const genre = s.property(dbId, "Genre", "multi_select");
-  const g = s.options(genre, [
+  const genre = await s.property(dbId, "Genre", "multi_select");
+  const g = await s.options(genre, [
     ["Sci-fi", "purple"],
     ["Non-fiction", "teal"],
     ["Classic", "brown"],
     ["Fantasy", "pink"],
     ["Essays", "orange"],
   ]);
-  const rating = s.property(dbId, "Rating", "number");
-  const finished = s.property(dbId, "Finished on", "date");
-  const owned = s.property(dbId, "Owned", "checkbox");
-  const link = s.property(dbId, "Link", "url");
+  const rating = await s.property(dbId, "Rating", "number");
+  const finished = await s.property(dbId, "Finished on", "date");
+  const owned = await s.property(dbId, "Owned", "checkbox");
+  const link = await s.property(dbId, "Link", "url");
 
-  const dune = s.row(dbId, "Dune", {
+  const dune = await s.row(dbId, "Dune", {
     [author]: "Frank Herbert",
     [status]: st.Finished,
     [genre]: [g["Sci-fi"], g.Classic],
@@ -1102,7 +1032,7 @@ function seedReadingList(s: Seeder): void {
     [owned]: true,
     [link]: "https://en.wikipedia.org/wiki/Dune_(novel)",
   });
-  s.blocks(dune, [
+  await s.blocks(dune, [
     { type: "quote", text: "Fear is the mind-killer." },
     {
       type: "paragraph",
@@ -1110,7 +1040,7 @@ function seedReadingList(s: Seeder): void {
     },
   ]);
 
-  s.row(dbId, "Project Hail Mary", {
+  await s.row(dbId, "Project Hail Mary", {
     [author]: "Andy Weir",
     [status]: st.Finished,
     [genre]: [g["Sci-fi"]],
@@ -1119,14 +1049,14 @@ function seedReadingList(s: Seeder): void {
     [owned]: false,
     [link]: "https://en.wikipedia.org/wiki/Project_Hail_Mary",
   });
-  s.row(dbId, "The Making of the Atomic Bomb", {
+  await s.row(dbId, "The Making of the Atomic Bomb", {
     [author]: "Richard Rhodes",
     [status]: st.Reading,
     [genre]: [g["Non-fiction"]],
     [owned]: true,
     [link]: "https://en.wikipedia.org/wiki/The_Making_of_the_Atomic_Bomb",
   });
-  const weeks = s.row(dbId, "Four Thousand Weeks", {
+  const weeks = await s.row(dbId, "Four Thousand Weeks", {
     [author]: "Oliver Burkeman",
     [status]: st.Finished,
     [genre]: [g["Non-fiction"], g.Essays],
@@ -1134,31 +1064,31 @@ function seedReadingList(s: Seeder): void {
     [finished]: "2026-01-20",
     [owned]: true,
   });
-  s.blocks(weeks, [
+  await s.blocks(weeks, [
     {
       type: "callout",
       text: "Re-read every January. The chapter on settling is the whole book.",
     },
   ]);
-  s.row(dbId, "Piranesi", {
+  await s.row(dbId, "Piranesi", {
     [author]: "Susanna Clarke",
     [status]: st["To read"],
     [genre]: [g.Fantasy],
     [owned]: false,
   });
-  s.row(dbId, "The Left Hand of Darkness", {
+  await s.row(dbId, "The Left Hand of Darkness", {
     [author]: "Ursula K. Le Guin",
     [status]: st["To read"],
     [genre]: [g["Sci-fi"], g.Classic],
     [owned]: true,
   });
-  s.row(dbId, "Middlemarch", {
+  await s.row(dbId, "Middlemarch", {
     [author]: "George Eliot",
     [status]: st["To read"],
     [genre]: [g.Classic],
     [owned]: false,
   });
-  s.row(dbId, "Slow Productivity", {
+  await s.row(dbId, "Slow Productivity", {
     [author]: "Cal Newport",
     [status]: st.Reading,
     [genre]: [g["Non-fiction"]],
@@ -1166,8 +1096,7 @@ function seedReadingList(s: Seeder): void {
     [owned]: false,
     [link]: "https://calnewport.com/books/slow-productivity/",
   });
-
-  const wolf = s.row(dbId, "Wolf Hall", {
+  const wolf = await s.row(dbId, "Wolf Hall", {
     [author]: "Hilary Mantel",
     [status]: st.Finished,
     [genre]: [g.Classic],
@@ -1175,19 +1104,19 @@ function seedReadingList(s: Seeder): void {
     [finished]: "2026-02-14",
     [owned]: true,
   });
-  s.blocks(wolf, [
+  await s.blocks(wolf, [
     {
       type: "paragraph",
       text: "Took eighty pages to work out who 'he' is, and then it was the best thing read all year.",
     },
   ]);
-  s.row(dbId, "The Dispossessed", {
+  await s.row(dbId, "The Dispossessed", {
     [author]: "Ursula K. Le Guin",
     [status]: st.Reading,
     [genre]: [g["Sci-fi"], g.Classic],
     [owned]: true,
   });
-  s.row(dbId, "Thinking in Systems", {
+  await s.row(dbId, "Thinking in Systems", {
     [author]: "Donella Meadows",
     [status]: st.Finished,
     [genre]: [g["Non-fiction"]],
@@ -1196,26 +1125,26 @@ function seedReadingList(s: Seeder): void {
     [owned]: false,
     [link]: "https://en.wikipedia.org/wiki/Donella_Meadows",
   });
-  s.row(dbId, "A Wizard of Earthsea", {
+  await s.row(dbId, "A Wizard of Earthsea", {
     [author]: "Ursula K. Le Guin",
     [status]: st["To read"],
     [genre]: [g.Fantasy, g.Classic],
     [owned]: true,
   });
-  s.row(dbId, "The Idea Factory", {
+  await s.row(dbId, "The Idea Factory", {
     [author]: "Jon Gertner",
     [status]: st["To read"],
     [genre]: [g["Non-fiction"]],
     [owned]: false,
   });
-  s.row(dbId, "Consider the Lobster", {
+  await s.row(dbId, "Consider the Lobster", {
     [author]: "David Foster Wallace",
     [status]: st.Reading,
     [genre]: [g.Essays],
     [rating]: 4,
     [owned]: true,
   });
-  s.row(dbId, "Station Eleven", {
+  await s.row(dbId, "Station Eleven", {
     [author]: "Emily St. John Mandel",
     [status]: st.Finished,
     [genre]: [g["Sci-fi"]],
@@ -1224,46 +1153,48 @@ function seedReadingList(s: Seeder): void {
     [owned]: false,
   });
 
-  s.view(dbId, "table", { sort: { propertyId: rating, direction: "desc" } });
-  s.view(dbId, "list", {
+  await s.view(dbId, "table", {
+    sort: { propertyId: rating, direction: "desc" },
+  });
+  await s.view(dbId, "list", {
     filters: [{ propertyId: status, operator: "is", value: st["To read"] }],
   });
-  s.view(dbId, "board", { groupBy: status });
+  await s.view(dbId, "board", { groupBy: status });
 }
 
-function seedTripPlanner(s: Seeder, travelId: string): void {
-  const dbId = s.page({
+async function seedTripPlanner(s: Seeder, travelId: string): Promise<void> {
+  const dbId = await s.page({
     parent: travelId,
     title: "Trip Planner",
     icon: "🧭",
     type: "database",
   });
-  const status = s.property(dbId, "Status", "select");
-  const st = s.options(status, [
+  const status = await s.property(dbId, "Status", "select");
+  const st = await s.options(status, [
     ["Dreaming", "gray"],
     ["Planning", "blue"],
     ["Booked", "green"],
     ["Done", "purple"],
   ]);
-  const region = s.property(dbId, "Region", "select");
-  const rg = s.options(region, [
+  const region = await s.property(dbId, "Region", "select");
+  const rg = await s.options(region, [
     ["Europe", "teal"],
     ["Asia", "pink"],
     ["Americas", "orange"],
   ]);
-  const vibes = s.property(dbId, "Vibes", "multi_select");
-  const vb = s.options(vibes, [
+  const vibes = await s.property(dbId, "Vibes", "multi_select");
+  const vb = await s.options(vibes, [
     ["Food", "amber"],
     ["Hiking", "green"],
     ["Culture", "purple"],
     ["Beach", "blue"],
   ]);
-  const budget = s.property(dbId, "Budget", "number");
-  const depart = s.property(dbId, "Depart", "date");
-  const flights = s.property(dbId, "Flights booked", "checkbox");
-  const guide = s.property(dbId, "Guide", "url");
+  const budget = await s.property(dbId, "Budget", "number");
+  const depart = await s.property(dbId, "Depart", "date");
+  const flights = await s.property(dbId, "Flights booked", "checkbox");
+  const guide = await s.property(dbId, "Guide", "url");
 
-  const japan = s.row(dbId, "Japan, ten days", {
+  const japan = await s.row(dbId, "Japan, ten days", {
     [status]: st.Booked,
     [region]: rg.Asia,
     [vibes]: [vb.Food, vb.Culture],
@@ -1272,7 +1203,7 @@ function seedTripPlanner(s: Seeder, travelId: string): void {
     [flights]: true,
     [guide]: "https://japan-guide.com",
   });
-  s.blocks(japan, [
+  await s.blocks(japan, [
     {
       type: "paragraph",
       text: "Flights on points, ryokan paid. Ground plan lives in the Japan 2026 page.",
@@ -1280,7 +1211,7 @@ function seedTripPlanner(s: Seeder, travelId: string): void {
     { type: "todo", text: "Reserve the cedar-bath ryokan", checked: true },
     { type: "todo", text: "Activate rail pass on day 2", checked: false },
   ]);
-  s.row(dbId, "Lisbon long weekend", {
+  await s.row(dbId, "Lisbon long weekend", {
     [status]: st.Planning,
     [region]: rg.Europe,
     [vibes]: [vb.Food, vb.Beach],
@@ -1288,7 +1219,7 @@ function seedTripPlanner(s: Seeder, travelId: string): void {
     [depart]: "2026-09-05",
     [flights]: false,
   });
-  s.row(dbId, "Dolomites hut to hut", {
+  await s.row(dbId, "Dolomites hut to hut", {
     [status]: st.Dreaming,
     [region]: rg.Europe,
     [vibes]: [vb.Hiking],
@@ -1296,14 +1227,14 @@ function seedTripPlanner(s: Seeder, travelId: string): void {
     [flights]: false,
     [guide]: "https://www.alta-badia.org",
   });
-  s.row(dbId, "Mexico City", {
+  await s.row(dbId, "Mexico City", {
     [status]: st.Dreaming,
     [region]: rg.Americas,
     [vibes]: [vb.Food, vb.Culture],
     [budget]: 1700,
     [flights]: false,
   });
-  s.row(dbId, "Scottish Highlands", {
+  await s.row(dbId, "Scottish Highlands", {
     [status]: st.Done,
     [region]: rg.Europe,
     [vibes]: [vb.Hiking],
@@ -1312,38 +1243,43 @@ function seedTripPlanner(s: Seeder, travelId: string): void {
     [flights]: true,
   });
 
-  s.view(dbId, "board", { groupBy: status });
-  s.view(dbId, "table", { sort: { propertyId: depart, direction: "asc" } });
+  await s.view(dbId, "board", { groupBy: status });
+  await s.view(dbId, "table", {
+    sort: { propertyId: depart, direction: "asc" },
+  });
 }
 
-function seedProjectTracker(s: Seeder, projectsId: string): void {
-  const dbId = s.page({
+async function seedProjectTracker(
+  s: Seeder,
+  projectsId: string,
+): Promise<void> {
+  const dbId = await s.page({
     parent: projectsId,
     title: "Project Tracker",
     icon: "🎯",
     type: "database",
   });
-  const status = s.property(dbId, "Status", "select");
-  const st = s.options(status, [
+  const status = await s.property(dbId, "Status", "select");
+  const st = await s.options(status, [
     ["Backlog", "gray"],
     ["In progress", "blue"],
     ["Blocked", "red"],
     ["Shipped", "green"],
   ]);
-  const owner = s.property(dbId, "Owner", "text");
-  const tags = s.property(dbId, "Tags", "multi_select");
-  const tg = s.options(tags, [
+  const owner = await s.property(dbId, "Owner", "text");
+  const tags = await s.property(dbId, "Tags", "multi_select");
+  const tg = await s.options(tags, [
     ["hardware", "orange"],
     ["software", "blue"],
     ["writing", "purple"],
     ["home", "teal"],
   ]);
-  const effort = s.property(dbId, "Effort (days)", "number");
-  const due = s.property(dbId, "Due", "date");
-  const funded = s.property(dbId, "Budgeted", "checkbox");
-  const spec = s.property(dbId, "Spec", "url");
+  const effort = await s.property(dbId, "Effort (days)", "number");
+  const due = await s.property(dbId, "Due", "date");
+  const funded = await s.property(dbId, "Budgeted", "checkbox");
+  const spec = await s.property(dbId, "Spec", "url");
 
-  const migrate = s.row(dbId, "Migrate home lab services", {
+  const migrate = await s.row(dbId, "Migrate home lab services", {
     [status]: st["In progress"],
     [owner]: "Marco",
     [tags]: [tg.hardware, tg.software],
@@ -1352,13 +1288,13 @@ function seedProjectTracker(s: Seeder, projectsId: string): void {
     [funded]: true,
     [spec]: "https://wiki.internal/homelab-plan",
   });
-  s.blocks(migrate, [
+  await s.blocks(migrate, [
     { type: "heading3", text: "Order of operations" },
     { type: "numbered", text: "DNS and reverse proxy last" },
     { type: "numbered", text: "Media server first, nobody notices downtime" },
     { type: "callout", text: "Snapshot before every move." },
   ]);
-  s.row(dbId, "Drip irrigation for the balcony", {
+  await s.row(dbId, "Drip irrigation for the balcony", {
     [status]: st.Shipped,
     [owner]: "Marco",
     [tags]: [tg.home],
@@ -1366,7 +1302,7 @@ function seedProjectTracker(s: Seeder, projectsId: string): void {
     [due]: "2026-05-15",
     [funded]: true,
   });
-  s.row(dbId, "Slow tools essay", {
+  await s.row(dbId, "Slow tools essay", {
     [status]: st["In progress"],
     [owner]: "Marco",
     [tags]: [tg.writing],
@@ -1374,21 +1310,21 @@ function seedProjectTracker(s: Seeder, projectsId: string): void {
     [due]: "2026-07-31",
     [funded]: false,
   });
-  s.row(dbId, "E-ink hallway dashboard", {
+  await s.row(dbId, "E-ink hallway dashboard", {
     [status]: st.Backlog,
     [owner]: "Marco",
     [tags]: [tg.hardware, tg.software],
     [effort]: 5,
     [funded]: false,
   });
-  s.row(dbId, "Fix the wobbly bookshelf", {
+  await s.row(dbId, "Fix the wobbly bookshelf", {
     [status]: st.Blocked,
     [owner]: "Anna",
     [tags]: [tg.home],
     [effort]: 1,
     [funded]: false,
   });
-  const restore = s.row(dbId, "Bike restoration", {
+  const restore = await s.row(dbId, "Bike restoration", {
     [status]: st["In progress"],
     [owner]: "Marco",
     [tags]: [tg.hardware, tg.home],
@@ -1396,13 +1332,13 @@ function seedProjectTracker(s: Seeder, projectsId: string): void {
     [due]: "2026-10-04",
     [funded]: true,
   });
-  s.blocks(restore, [
+  await s.blocks(restore, [
     {
       type: "paragraph",
       text: "Frame and hubs done. Cables next, then a decision about the shifters.",
     },
   ]);
-  s.row(dbId, "Sourdough schedule that survives a work week", {
+  await s.row(dbId, "Sourdough schedule that survives a work week", {
     [status]: st.Shipped,
     [owner]: "Marco",
     [tags]: [tg.home, tg.writing],
@@ -1410,14 +1346,14 @@ function seedProjectTracker(s: Seeder, projectsId: string): void {
     [due]: "2026-06-20",
     [funded]: false,
   });
-  s.row(dbId, "Photo backup, offsite copy", {
+  await s.row(dbId, "Photo backup, offsite copy", {
     [status]: st.Backlog,
     [owner]: "Marco",
     [tags]: [tg.software],
     [effort]: 3,
     [funded]: false,
   });
-  s.row(dbId, "Replace the hallway light switch", {
+  await s.row(dbId, "Replace the hallway light switch", {
     [status]: st.Blocked,
     [owner]: "Marco",
     [tags]: [tg.home],
@@ -1426,9 +1362,9 @@ function seedProjectTracker(s: Seeder, projectsId: string): void {
     [funded]: true,
   });
 
-  s.view(dbId, "board", { groupBy: status });
-  s.view(dbId, "table", { sort: { propertyId: due, direction: "asc" } });
-  s.view(dbId, "list", {
+  await s.view(dbId, "board", { groupBy: status });
+  await s.view(dbId, "table", { sort: { propertyId: due, direction: "asc" } });
+  await s.view(dbId, "list", {
     filters: [{ propertyId: status, operator: "is_not", value: st.Shipped }],
   });
 }

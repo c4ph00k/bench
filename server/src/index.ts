@@ -7,8 +7,7 @@ import { createPool } from "./db/pool.js";
 import { isSeeded, seed } from "./crm/seed.js";
 import { openDb as openRolodexDb } from "./rolodex/db/index.js";
 import { seedIfEmpty as seedRolodex } from "./rolodex/seed.js";
-import { openDb as openSpaceDb } from "./space/db.js";
-import { seedIfEmpty } from "./space/seed.js";
+import { seedIfEmpty as seedSpace } from "./space/seed.js";
 import { createApp } from "./app.js";
 import { seed as seedAuth } from "./auth/db.js";
 
@@ -29,9 +28,6 @@ if (!databaseUrl || !jwtSecret) {
 }
 
 mkdirSync(dataDir, { recursive: true });
-
-const space = openSpaceDb(path.join(dataDir, "personal-space.db"));
-seedIfEmpty(space);
 
 const rolodex = openRolodexDb(path.join(dataDir, "rolodex.sqlite"));
 seedRolodex(rolodex);
@@ -65,7 +61,8 @@ if (!(await isSeeded(pool, tenantId))) {
   await seed(pool, tenantId);
   console.log("Seeded the CRM database with sample data");
 }
+await seedSpace(pool, tenantId);
 
-createApp({ pool, jwtSecret, dbs: { space, rolodex } }).listen(port, () => {
+createApp({ pool, jwtSecret, dbs: { rolodex } }).listen(port, () => {
   console.log(`Novhora running at http://localhost:${port}`);
 });

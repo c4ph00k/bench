@@ -1,6 +1,5 @@
 import express from "express";
 import type { Pool } from "pg";
-import type Database from "better-sqlite3";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -22,7 +21,6 @@ const webDist = path.resolve(
 const APPS = ["crm", "space", "rolodex", "admin", "change-password"];
 
 interface Dbs {
-  space: Database.Database;
   rolodex: Repo;
 }
 
@@ -34,8 +32,8 @@ export interface AppOptions {
 }
 
 /**
- * Build the Express app around the shared Postgres pool. CRM's data has moved there, alongside
- * auth; Space and Rolodex hand their old SQLite handles until their own ports land.
+ * Build the Express app around the shared Postgres pool. CRM and Space have moved there, alongside
+ * auth; Rolodex hands its old SQLite handle until its own port lands.
  */
 export function createApp(options: AppOptions): express.Express {
   const { pool, jwtSecret, jwtTtl, dbs } = options;
@@ -79,7 +77,7 @@ export function createApp(options: AppOptions): express.Express {
   });
 
   app.use("/api/crm", crmRouter(pool));
-  app.use("/api/space", spaceRouter(dbs.space));
+  app.use("/api/space", spaceRouter(pool));
   app.use("/api/rolodex", rolodexRouter(dbs.rolodex));
 
   if (existsSync(webDist)) {

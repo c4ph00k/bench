@@ -1,16 +1,16 @@
 /** Space API: pages, blocks, databases and search. Mounted at /api/space. */
 import { Router } from "express";
-import type Database from "better-sqlite3";
+import type { Pool } from "pg";
 import { pagesRouter } from "./pages.js";
 import { blocksRouter } from "./blocks.js";
 import { databasesRouter } from "./databases.js";
 import { searchRouter } from "./search.js";
 
-export function spaceRouter(db: Database.Database): Router {
+export function spaceRouter(pool: Pool): Router {
   const router = Router();
-  router.use(pagesRouter(db));
-  router.use(blocksRouter(db));
-  router.use(databasesRouter(db));
-  router.use(searchRouter(db));
+  router.use(pagesRouter(pool));
+  router.use(blocksRouter(pool));
+  router.use(databasesRouter(pool));
+  router.use(searchRouter(pool));
   return router;
 }

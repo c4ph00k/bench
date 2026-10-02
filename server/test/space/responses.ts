@@ -88,8 +88,3 @@ export interface SearchHit {
 export interface Ok {
   ok: boolean;
 }
-
-/** `SELECT COUNT(*) AS c`, which several suites check directly against the database. */
-export interface Count {
-  c: number;
-}
