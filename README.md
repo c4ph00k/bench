@@ -116,6 +116,22 @@ apps and the theme toggle to confirm it works.
 
 Stop the server with `Ctrl+C`.
 
+### 1.6 Run it in containers
+
+`docker-compose.yml` runs the app and a Postgres database together, none of it on your host except
+the code. It builds the image, starts Postgres, then serves the whole suite on:
+
+**http://localhost:8100**
+
+```bash
+docker compose up --build
+```
+
+Docker compose reads `.env` for `JWT_SECRET` (and the optional seed credentials); the database
+connection inside the container is wired up automatically, so the `.env` `DATABASE_URL` is only
+used when you run `npm start` outside Docker. Stop it with `docker compose down`. The database
+lives in the `postgres-data` volume, so it survives `down` unless you add `-v` to remove the volume.
+
 ---
 
 # 2. Local testing

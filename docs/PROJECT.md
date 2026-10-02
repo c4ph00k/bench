@@ -87,7 +87,13 @@ lefthook.yml          pre-commit: format the staged files, then lint the tree
 npm ci          # once, at the root
 npm run dev     # API :8100 + Vite :8101 -> open http://localhost:8101
 npm start       # build, then serve everything from :8100
+docker compose up --build   # or run the app and Postgres entirely in containers
 ```
+
+The Docker route (see `Dockerfile` and `docker-compose.yml`) builds the frontend into the image and
+runs the server and a Postgres database together, exposed on :8100. `docker compose` reads `.env`
+for `JWT_SECRET` and the seed credentials; the in-container database connection is wired up
+automatically.
 
 **`npm ci`, not `npm install`.** npm drops optional platform packages often enough that a fresh
 `npm install` here leaves `@rolldown/binding-darwin-arm64` uninstalled on Apple Silicon, and the

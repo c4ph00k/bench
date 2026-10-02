@@ -1,0 +1,17 @@
+node_modules
+.git
+.env
+.env.*
+!.env.example
+data
+coverage
+test-results
+playwright-report
+e2e/.tmp
+*.sqlite*
+*.db
+docs
+logo
+Dockerfile
+docker-compose.yml
+.dockerignore
