@@ -1,7 +1,7 @@
 import { Router } from "express";
-import type { Pool } from "pg";
 import { randomUUID } from "node:crypto";
 import type { BlockRow } from "../db.js";
+import { requestDb } from "../../db/rls.js";
 import { asText } from "../text.js";
 import { tenantIdOf } from "../../tenant.js";
 
@@ -31,11 +31,15 @@ export function buildTree(pages: PageRow[]): TreeNode[] {
   return roots;
 }
 
-export function pagesRouter(pool: Pool): Router {
+export function pagesRouter(): Router {
   const router = Router();
 
-  const nextPosition = async (parentId: string | null, tenantId: number) => {
-    const result = await pool.query<{ pos: number }>(
+  const nextPosition = async (
+    db: ReturnType<typeof requestDb>,
+    parentId: string | null,
+    tenantId: number,
+  ) => {
+    const result = await db.query<{ pos: number }>(
       "SELECT COALESCE(MAX(position), -1) + 1 AS pos FROM pages WHERE parent_id IS NOT DISTINCT FROM $1 AND tenant_id = $2",
       [parentId, tenantId],
     );
@@ -44,7 +48,7 @@ export function pagesRouter(pool: Pool): Router {
 
   router.get("/tree", async (_req, res) => {
     const tenantId = tenantIdOf(res);
-    const result = await pool.query<PageRow>(
+    const result = await requestDb(res).query<PageRow>(
       "SELECT id, parent_id, type, title, icon, position FROM pages WHERE type != 'row' AND tenant_id = $1 ORDER BY position",
       [tenantId],
     );
@@ -53,6 +57,7 @@ export function pagesRouter(pool: Pool): Router {
 
   router.post("/pages", async (req, res) => {
     const tenantId = tenantIdOf(res);
+    const db = requestDb(res);
     const {
       parentId = null,
       title = "",
@@ -69,7 +74,7 @@ export function pagesRouter(pool: Pool): Router {
       return;
     }
     if (parentId) {
-      const parent = await pool.query(
+      const parent = await db.query(
         "SELECT id FROM pages WHERE id = $1 AND tenant_id = $2",
         [parentId, tenantId],
       );
@@ -79,7 +84,7 @@ export function pagesRouter(pool: Pool): Router {
       }
     }
     const id = randomUUID();
-    await pool.query(
+    await db.query(
       "INSERT INTO pages (id, tenant_id, parent_id, type, title, icon, position) VALUES ($1, $2, $3, $4, $5, $6, $7)",
       [
         id,
@@ -88,10 +93,10 @@ export function pagesRouter(pool: Pool): Router {
         type,
         asText(title),
         icon,
-        await nextPosition(parentId, tenantId),
+        await nextPosition(db, parentId, tenantId),
       ],
     );
-    const page = await pool.query(
+    const page = await db.query(
       "SELECT * FROM pages WHERE id = $1 AND tenant_id = $2",
       [id, tenantId],
     );
@@ -100,7 +105,8 @@ export function pagesRouter(pool: Pool): Router {
 
   router.get("/pages/:id", async (req, res) => {
     const tenantId = tenantIdOf(res);
-    const page = await pool.query<PageRow>(
+    const db = requestDb(res);
+    const page = await db.query<PageRow>(
       "SELECT * FROM pages WHERE id = $1 AND tenant_id = $2",
       [req.params.id, tenantId],
     );
@@ -108,7 +114,7 @@ export function pagesRouter(pool: Pool): Router {
       res.status(404).json({ error: "page not found" });
       return;
     }
-    const blocks = await pool.query<BlockRow>(
+    const blocks = await db.query<BlockRow>(
       "SELECT id, page_id, type, content, position FROM blocks WHERE page_id = $1 AND tenant_id = $2 ORDER BY position",
       [req.params.id, tenantId],
     );
@@ -123,7 +129,8 @@ export function pagesRouter(pool: Pool): Router {
 
   router.patch("/pages/:id", async (req, res) => {
     const tenantId = tenantIdOf(res);
-    const existing = await pool.query(
+    const db = requestDb(res);
+    const existing = await db.query(
       "SELECT id FROM pages WHERE id = $1 AND tenant_id = $2",
       [req.params.id, tenantId],
     );
@@ -136,18 +143,18 @@ export function pagesRouter(pool: Pool): Router {
       icon?: string | null;
     };
     if (title !== undefined) {
-      await pool.query(
+      await db.query(
         "UPDATE pages SET title = $1, updated_at = now()::text WHERE id = $2 AND tenant_id = $3",
         [asText(title), req.params.id, tenantId],
       );
     }
     if (icon !== undefined) {
-      await pool.query(
+      await db.query(
         "UPDATE pages SET icon = $1, updated_at = now()::text WHERE id = $2 AND tenant_id = $3",
         [icon, req.params.id, tenantId],
       );
     }
-    const page = await pool.query(
+    const page = await db.query(
       "SELECT * FROM pages WHERE id = $1 AND tenant_id = $2",
       [req.params.id, tenantId],
     );
@@ -156,7 +163,7 @@ export function pagesRouter(pool: Pool): Router {
 
   router.delete("/pages/:id", async (req, res) => {
     const tenantId = tenantIdOf(res);
-    const result = await pool.query(
+    const result = await requestDb(res).query(
       "DELETE FROM pages WHERE id = $1 AND tenant_id = $2",
       [req.params.id, tenantId],
     );

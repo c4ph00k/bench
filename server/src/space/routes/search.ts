@@ -1,9 +1,9 @@
 import { Router } from "express";
-import type { Pool } from "pg";
+import { requestDb } from "../../db/rls.js";
 import { asText } from "../text.js";
 import { tenantIdOf } from "../../tenant.js";
 
-export function searchRouter(pool: Pool): Router {
+export function searchRouter(): Router {
   const router = Router();
 
   router.get("/search", async (req, res) => {
@@ -16,7 +16,7 @@ export function searchRouter(pool: Pool): Router {
     const escaped = q.replace(/[%_\\]/g, "\\$&");
     const contains = `%${escaped}%`;
     const prefix = `${escaped}%`;
-    const result = await pool.query(
+    const result = await requestDb(res).query(
       `SELECT p.id, p.title, p.icon, p.type, parent.title AS parent_title, parent.type AS parent_type
        FROM pages p
        LEFT JOIN pages parent ON parent.id = p.parent_id

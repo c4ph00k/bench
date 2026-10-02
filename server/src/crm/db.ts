@@ -1,6 +1,6 @@
 /** CRM data layer: schema lives in migrations/0002_crm.sql, CRUD here. Every row is scoped to the
     tenant the request acts on, passed in from the gate. */
-import type { Pool } from "pg";
+import type { Db } from "../db/pool.js";
 
 export const DEAL_STAGES = [
   "New",
@@ -118,7 +118,7 @@ export function expectedValue(deal: {
 // --- Organizations ---
 
 export async function createOrganization(
-  pool: Pool,
+  pool: Db,
   tenantId: number,
   input: OrganizationInput,
 ): Promise<Organization> {
@@ -136,7 +136,7 @@ export async function createOrganization(
 }
 
 export async function getOrganization(
-  pool: Pool,
+  pool: Db,
   tenantId: number,
   id: number,
 ): Promise<Organization | undefined> {
@@ -148,7 +148,7 @@ export async function getOrganization(
 }
 
 export async function listOrganizations(
-  pool: Pool,
+  pool: Db,
   tenantId: number,
   q?: string,
 ): Promise<Organization[]> {
@@ -168,7 +168,7 @@ export async function listOrganizations(
 }
 
 export async function updateOrganization(
-  pool: Pool,
+  pool: Db,
   tenantId: number,
   id: number,
   input: OrganizationInput,
@@ -189,7 +189,7 @@ export async function updateOrganization(
 }
 
 export async function deleteOrganization(
-  pool: Pool,
+  pool: Db,
   tenantId: number,
   id: number,
 ): Promise<void> {
@@ -202,7 +202,7 @@ export async function deleteOrganization(
 // --- Contacts ---
 
 export async function createContact(
-  pool: Pool,
+  pool: Db,
   tenantId: number,
   input: ContactInput,
 ): Promise<Contact> {
@@ -222,7 +222,7 @@ export async function createContact(
 }
 
 export async function getContact(
-  pool: Pool,
+  pool: Db,
   tenantId: number,
   id: number,
 ): Promise<Contact | undefined> {
@@ -234,7 +234,7 @@ export async function getContact(
 }
 
 export async function listContacts(
-  pool: Pool,
+  pool: Db,
   tenantId: number,
   opts: { q?: string; status?: string; organization_id?: number } = {},
 ): Promise<Contact[]> {
@@ -258,7 +258,7 @@ export async function listContacts(
 }
 
 export async function updateContact(
-  pool: Pool,
+  pool: Db,
   tenantId: number,
   id: number,
   input: ContactInput,
@@ -281,7 +281,7 @@ export async function updateContact(
 }
 
 export async function deleteContact(
-  pool: Pool,
+  pool: Db,
   tenantId: number,
   id: number,
 ): Promise<void> {
@@ -294,7 +294,7 @@ export async function deleteContact(
 // --- Deals ---
 
 export async function createDeal(
-  pool: Pool,
+  pool: Db,
   tenantId: number,
   input: DealInput,
 ): Promise<Deal> {
@@ -318,7 +318,7 @@ export async function createDeal(
 }
 
 export async function getDeal(
-  pool: Pool,
+  pool: Db,
   tenantId: number,
   id: number,
 ): Promise<Deal | undefined> {
@@ -330,7 +330,7 @@ export async function getDeal(
 }
 
 export async function listDeals(
-  pool: Pool,
+  pool: Db,
   tenantId: number,
   opts: {
     q?: string;
@@ -366,7 +366,7 @@ export async function listDeals(
 }
 
 export async function updateDeal(
-  pool: Pool,
+  pool: Db,
   tenantId: number,
   id: number,
   input: DealInput,
@@ -395,7 +395,7 @@ export async function updateDeal(
  * card could not be moved without losing a probability set by hand.
  */
 export async function moveDeal(
-  pool: Pool,
+  pool: Db,
   tenantId: number,
   id: number,
   stage: DealStage,
@@ -425,7 +425,7 @@ export async function moveDeal(
 }
 
 export async function deleteDeal(
-  pool: Pool,
+  pool: Db,
   tenantId: number,
   id: number,
 ): Promise<void> {
@@ -438,7 +438,7 @@ export async function deleteDeal(
 // --- Activities ---
 
 export async function createActivity(
-  pool: Pool,
+  pool: Db,
   tenantId: number,
   input: ActivityInput,
 ): Promise<Activity> {
@@ -460,7 +460,7 @@ export async function createActivity(
 }
 
 export async function getActivity(
-  pool: Pool,
+  pool: Db,
   tenantId: number,
   id: number,
 ): Promise<Activity | undefined> {
@@ -472,7 +472,7 @@ export async function getActivity(
 }
 
 export async function listActivities(
-  pool: Pool,
+  pool: Db,
   tenantId: number,
   opts: { contact_id?: number; deal_id?: number; limit?: number } = {},
 ): Promise<Activity[]> {
@@ -494,7 +494,7 @@ export async function listActivities(
 }
 
 export async function updateActivity(
-  pool: Pool,
+  pool: Db,
   tenantId: number,
   id: number,
   fields: Partial<ActivityInput>,
@@ -524,7 +524,7 @@ export async function updateActivity(
 }
 
 export async function deleteActivity(
-  pool: Pool,
+  pool: Db,
   tenantId: number,
   id: number,
 ): Promise<void> {

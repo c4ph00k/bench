@@ -1,7 +1,7 @@
 /** Everything recorded against a person: interactions, dates, facts, news, reminders and gifts. */
 import { Router, type Response } from "express";
-import type { Pool } from "pg";
 import { createRepo } from "../db/index.js";
+import { requestDb } from "../../db/rls.js";
 import { tenantIdOf } from "../../tenant.js";
 import { todayISO } from "../dates.js";
 import type { GiftKind } from "../types.js";
@@ -18,9 +18,9 @@ import {
 
 const GIFT_KINDS: GiftKind[] = ["idea", "given", "received"];
 
-export function logRouter(pool: Pool): Router {
+export function logRouter(): Router {
   const router = Router();
-  const repoOf = (res: Response) => createRepo(pool, tenantIdOf(res));
+  const repoOf = (res: Response) => createRepo(requestDb(res), tenantIdOf(res));
 
   router.post("/people/:id/interactions", async (req, res) => {
     const repo = repoOf(res);

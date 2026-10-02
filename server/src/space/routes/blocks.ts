@@ -1,7 +1,7 @@
 import { Router } from "express";
-import type { Pool } from "pg";
 import { randomUUID } from "node:crypto";
 import type { BlockRow } from "../db.js";
+import { requestDb } from "../../db/rls.js";
 import { tenantIdOf } from "../../tenant.js";
 
 const BLOCK_TYPES = [
@@ -31,12 +31,13 @@ function withParsedContent(row: BlockRow) {
   return { ...row, content: JSON.parse(row.content) as unknown };
 }
 
-export function blocksRouter(pool: Pool): Router {
+export function blocksRouter(): Router {
   const router = Router();
 
   router.post("/pages/:pageId/blocks", async (req, res) => {
     const tenantId = tenantIdOf(res);
-    const page = await pool.query(
+    const db = requestDb(res);
+    const page = await db.query(
       "SELECT id FROM pages WHERE id = $1 AND tenant_id = $2",
       [req.params.pageId, tenantId],
     );
@@ -63,7 +64,7 @@ export function blocksRouter(pool: Pool): Router {
       res.status(400).json({ error: "content must be an object" });
       return;
     }
-    const countResult = await pool.query<{ count: number }>(
+    const countResult = await db.query<{ count: number }>(
       "SELECT COUNT(*)::int AS count FROM blocks WHERE page_id = $1 AND tenant_id = $2",
       [req.params.pageId, tenantId],
     );
@@ -72,25 +73,15 @@ export function blocksRouter(pool: Pool): Router {
       0,
       Math.min(typeof index === "number" ? index : count, count),
     );
-    const client = await pool.connect();
-    try {
-      await client.query("BEGIN");
-      await client.query(
-        "UPDATE blocks SET position = position + 1 WHERE page_id = $1 AND tenant_id = $2 AND position >= $3",
-        [req.params.pageId, tenantId, at],
-      );
-      await client.query(
-        "INSERT INTO blocks (id, tenant_id, page_id, type, content, position) VALUES ($1, $2, $3, $4, $5, $6)",
-        [id, tenantId, req.params.pageId, type, JSON.stringify(content), at],
-      );
-      await client.query("COMMIT");
-    } catch (error) {
-      await client.query("ROLLBACK");
-      throw error;
-    } finally {
-      client.release();
-    }
-    const row = await pool.query<BlockRow>(
+    await db.query(
+      "UPDATE blocks SET position = position + 1 WHERE page_id = $1 AND tenant_id = $2 AND position >= $3",
+      [req.params.pageId, tenantId, at],
+    );
+    await db.query(
+      "INSERT INTO blocks (id, tenant_id, page_id, type, content, position) VALUES ($1, $2, $3, $4, $5, $6)",
+      [id, tenantId, req.params.pageId, type, JSON.stringify(content), at],
+    );
+    const row = await db.query<BlockRow>(
       "SELECT * FROM blocks WHERE id = $1 AND tenant_id = $2",
       [id, tenantId],
     );
@@ -99,7 +90,8 @@ export function blocksRouter(pool: Pool): Router {
 
   router.patch("/blocks/:id", async (req, res) => {
     const tenantId = tenantIdOf(res);
-    const block = await pool.query<BlockRow>(
+    const db = requestDb(res);
+    const block = await db.query<BlockRow>(
       "SELECT * FROM blocks WHERE id = $1 AND tenant_id = $2",
       [req.params.id, tenantId],
     );
@@ -116,7 +108,7 @@ export function blocksRouter(pool: Pool): Router {
         res.status(400).json({ error: `unknown block type '${type}'` });
         return;
       }
-      await pool.query(
+      await db.query(
         "UPDATE blocks SET type = $1 WHERE id = $2 AND tenant_id = $3",
         [type, req.params.id, tenantId],
       );
@@ -126,12 +118,12 @@ export function blocksRouter(pool: Pool): Router {
         res.status(400).json({ error: "content must be an object" });
         return;
       }
-      await pool.query(
+      await db.query(
         "UPDATE blocks SET content = $1 WHERE id = $2 AND tenant_id = $3",
         [JSON.stringify(content), req.params.id, tenantId],
       );
     }
-    const row = await pool.query<BlockRow>(
+    const row = await db.query<BlockRow>(
       "SELECT * FROM blocks WHERE id = $1 AND tenant_id = $2",
       [req.params.id, tenantId],
     );
@@ -140,7 +132,8 @@ export function blocksRouter(pool: Pool): Router {
 
   router.delete("/blocks/:id", async (req, res) => {
     const tenantId = tenantIdOf(res);
-    const block = await pool.query<Pick<BlockRow, "page_id" | "position">>(
+    const db = requestDb(res);
+    const block = await db.query<Pick<BlockRow, "page_id" | "position">>(
       "SELECT page_id, position FROM blocks WHERE id = $1 AND tenant_id = $2",
       [req.params.id, tenantId],
     );
@@ -149,32 +142,23 @@ export function blocksRouter(pool: Pool): Router {
       return;
     }
     const { page_id, position } = block.rows[0];
-    const client = await pool.connect();
-    try {
-      await client.query("BEGIN");
-      await client.query(
-        "DELETE FROM blocks WHERE id = $1 AND tenant_id = $2",
-        [req.params.id, tenantId],
-      );
-      await client.query(
-        "UPDATE blocks SET position = position - 1 WHERE page_id = $1 AND tenant_id = $2 AND position > $3",
-        [page_id, tenantId, position],
-      );
-      await client.query("COMMIT");
-    } catch (error) {
-      await client.query("ROLLBACK");
-      throw error;
-    } finally {
-      client.release();
-    }
+    await db.query("DELETE FROM blocks WHERE id = $1 AND tenant_id = $2", [
+      req.params.id,
+      tenantId,
+    ]);
+    await db.query(
+      "UPDATE blocks SET position = position - 1 WHERE page_id = $1 AND tenant_id = $2 AND position > $3",
+      [page_id, tenantId, position],
+    );
     res.json({ ok: true });
   });
 
   router.put("/pages/:pageId/blocks/order", async (req, res) => {
     const tenantId = tenantIdOf(res);
+    const db = requestDb(res);
     // Shape asserted here, then checked below: it must be a permutation of the page's block ids.
     const { ids } = (req.body ?? {}) as { ids?: string[] };
-    const existing = await pool.query<{ id: string }>(
+    const existing = await db.query<{ id: string }>(
       "SELECT id FROM blocks WHERE page_id = $1 AND tenant_id = $2 ORDER BY position",
       [req.params.pageId, tenantId],
     );
@@ -196,21 +180,11 @@ export function blocksRouter(pool: Pool): Router {
         .json({ error: "ids must be a permutation of the page's block ids" });
       return;
     }
-    const client = await pool.connect();
-    try {
-      await client.query("BEGIN");
-      for (const [i, id] of ids.entries()) {
-        await client.query(
-          "UPDATE blocks SET position = $1 WHERE id = $2 AND tenant_id = $3",
-          [i, id, tenantId],
-        );
-      }
-      await client.query("COMMIT");
-    } catch (error) {
-      await client.query("ROLLBACK");
-      throw error;
-    } finally {
-      client.release();
+    for (const [i, id] of ids.entries()) {
+      await db.query(
+        "UPDATE blocks SET position = $1 WHERE id = $2 AND tenant_id = $3",
+        [i, id, tenantId],
+      );
     }
     res.json({ ok: true });
   });

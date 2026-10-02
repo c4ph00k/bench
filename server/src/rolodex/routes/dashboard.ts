@@ -1,8 +1,8 @@
 /** The read-only views: today, the calendar, the timeline and the charts behind them. */
 import { Router, type Response } from "express";
-import type { Pool } from "pg";
 import { format } from "date-fns";
 import { createRepo, type Repo } from "../db/index.js";
+import { requestDb } from "../../db/rls.js";
 import { tenantIdOf } from "../../tenant.js";
 import { CIRCLE_META } from "../cadence.js";
 import { daysBetweenISO, todayISO } from "../dates.js";
@@ -18,9 +18,9 @@ function overdueRank(p: PersonComputed, today: string): number {
   return p.next_due ? -daysBetweenISO(today, p.next_due) : 0;
 }
 
-export function dashboardRouter(pool: Pool): Router {
+export function dashboardRouter(): Router {
   const router = Router();
-  const repoOf = (res: Response) => createRepo(pool, tenantIdOf(res));
+  const repoOf = (res: Response) => createRepo(requestDb(res), tenantIdOf(res));
 
   router.get("/today", async (req, res) => {
     const repo = repoOf(res);

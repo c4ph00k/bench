@@ -1,7 +1,7 @@
 /** People and the connections between them. */
 import { Router, type Response } from "express";
-import type { Pool } from "pg";
 import { createRepo } from "../db/index.js";
+import { requestDb } from "../../db/rls.js";
 import { tenantIdOf } from "../../tenant.js";
 import { filterPeople } from "../search.js";
 import type { ConnectionKind, PersonInput } from "../types.js";
@@ -23,9 +23,9 @@ const CONNECTION_KINDS: ConnectionKind[] = [
   "other",
 ];
 
-export function peopleRouter(pool: Pool): Router {
+export function peopleRouter(): Router {
   const router = Router();
-  const repoOf = (res: Response) => createRepo(pool, tenantIdOf(res));
+  const repoOf = (res: Response) => createRepo(requestDb(res), tenantIdOf(res));
 
   router.get("/people", async (req, res) => {
     const repo = repoOf(res);

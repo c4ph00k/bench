@@ -1,5 +1,8 @@
 import { Pool, types } from "pg";
-import type { PoolConfig } from "pg";
+import type { PoolClient, PoolConfig } from "pg";
+
+/** A pooled connection or a request-scoped client; both answer `.query` the same way. */
+export type Db = Pool | PoolClient;
 
 let configured = false;
 

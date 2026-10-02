@@ -1,5 +1,5 @@
-import { Router } from "express";
-import type { Pool } from "pg";
+import { Router, type Response } from "express";
+import { requestDb } from "../../db/rls.js";
 import { randomUUID } from "node:crypto";
 import type { PropertyOptionRow, PropertyRow } from "../db.js";
 import { asText } from "../text.js";
@@ -49,59 +49,64 @@ function isViewKind(value: string): boolean {
   return (VIEW_KINDS as readonly string[]).includes(value);
 }
 
-interface Queries {
-  getDb: (id: string, tenantId: number) => Promise<DatabasePage | undefined>;
-  optionsOf: (propertyId: string, tenantId: number) => Promise<OptionSummary[]>;
-  propertiesOf: (
-    databaseId: string,
-    tenantId: number,
-  ) => Promise<PropertySummary[]>;
-  nextPosition: (sql: string, id: string, tenantId: number) => Promise<number>;
+async function getDb(
+  res: Response,
+  id: string,
+): Promise<DatabasePage | undefined> {
+  const result = await requestDb(res).query<DatabasePage>(
+    "SELECT id, title, icon FROM pages WHERE id = $1 AND tenant_id = $2 AND type = 'database'",
+    [id, tenantIdOf(res)],
+  );
+  return result.rows[0];
 }
 
-function queries(pool: Pool): Queries {
-  return {
-    getDb: async (id, tenantId) => {
-      const result = await pool.query<DatabasePage>(
-        "SELECT id, title, icon FROM pages WHERE id = $1 AND tenant_id = $2 AND type = 'database'",
-        [id, tenantId],
-      );
-      return result.rows[0];
-    },
-    optionsOf: async (propertyId, tenantId) => {
-      const result = await pool.query<OptionSummary>(
-        "SELECT id, name, color, position FROM property_options WHERE property_id = $1 AND tenant_id = $2 ORDER BY position",
-        [propertyId, tenantId],
-      );
-      return result.rows;
-    },
-    propertiesOf: async (databaseId, tenantId) => {
-      const result = await pool.query<PropertySummary>(
-        "SELECT id, name, type, position FROM properties WHERE database_id = $1 AND tenant_id = $2 ORDER BY position",
-        [databaseId, tenantId],
-      );
-      return result.rows;
-    },
-    nextPosition: async (sql, id, tenantId) => {
-      const result = await pool.query<{ pos: number }>(sql, [id, tenantId]);
-      return result.rows[0].pos;
-    },
-  };
+async function optionsOf(
+  res: Response,
+  propertyId: string,
+): Promise<OptionSummary[]> {
+  const result = await requestDb(res).query<OptionSummary>(
+    "SELECT id, name, color, position FROM property_options WHERE property_id = $1 AND tenant_id = $2 ORDER BY position",
+    [propertyId, tenantIdOf(res)],
+  );
+  return result.rows;
 }
 
-function databaseRoutes(router: Router, pool: Pool, q: Queries) {
+async function propertiesOf(
+  res: Response,
+  databaseId: string,
+): Promise<PropertySummary[]> {
+  const result = await requestDb(res).query<PropertySummary>(
+    "SELECT id, name, type, position FROM properties WHERE database_id = $1 AND tenant_id = $2 ORDER BY position",
+    [databaseId, tenantIdOf(res)],
+  );
+  return result.rows;
+}
+
+async function nextPosition(
+  res: Response,
+  sql: string,
+  id: string,
+): Promise<number> {
+  const result = await requestDb(res).query<{ pos: number }>(sql, [
+    id,
+    tenantIdOf(res),
+  ]);
+  return result.rows[0].pos;
+}
+
+function databaseRoutes(router: Router) {
   router.get("/databases/:id", async (req, res) => {
     const tenantId = tenantIdOf(res);
-    const page = await q.getDb(req.params.id, tenantId);
+    const page = await getDb(res, req.params.id);
     if (!page) {
       res.status(404).json({ error: "database not found" });
       return;
     }
-    const properties = await q.propertiesOf(req.params.id, tenantId);
+    const properties = await propertiesOf(res, req.params.id);
     const optionsByProp = new Map<string, OptionSummary[]>();
     for (const p of properties)
-      optionsByProp.set(p.id, await q.optionsOf(p.id, tenantId));
-    const rowResult = await pool.query<{
+      optionsByProp.set(p.id, await optionsOf(res, p.id));
+    const rowResult = await requestDb(res).query<{
       id: string;
       title: string;
       icon: string | null;
@@ -110,7 +115,7 @@ function databaseRoutes(router: Router, pool: Pool, q: Queries) {
       "SELECT id, title, icon, position FROM pages WHERE parent_id = $1 AND tenant_id = $2 AND type = 'row' ORDER BY position",
       [req.params.id, tenantId],
     );
-    const values = await pool.query<{
+    const values = await requestDb(res).query<{
       row_id: string;
       property_id: string;
       value: string | null;
@@ -128,7 +133,7 @@ function databaseRoutes(router: Router, pool: Pool, q: Queries) {
     }
     const views: Record<string, unknown> = {};
     for (const kind of VIEW_KINDS) {
-      const cur = await pool.query<{ config: string }>(
+      const cur = await requestDb(res).query<{ config: string }>(
         "SELECT config FROM views WHERE database_id = $1 AND kind = $2 AND tenant_id = $3",
         [req.params.id, kind, tenantId],
       );
@@ -154,10 +159,9 @@ function databaseRoutes(router: Router, pool: Pool, q: Queries) {
   });
 }
 
-function propertyRoutes(router: Router, pool: Pool, q: Queries) {
+function propertyRoutes(router: Router) {
   router.post("/databases/:id/properties", async (req, res) => {
-    const tenantId = tenantIdOf(res);
-    if (!(await q.getDb(req.params.id, tenantId))) {
+    if (!(await getDb(res, req.params.id))) {
       res.status(404).json({ error: "database not found" });
       return;
     }
@@ -169,15 +173,15 @@ function propertyRoutes(router: Router, pool: Pool, q: Queries) {
       res.status(400).json({ error: `unknown property type '${type}'` });
       return;
     }
-    const pos = await q.nextPosition(
+    const pos = await nextPosition(
+      res,
       "SELECT COALESCE(MAX(position), -1) + 1 AS pos FROM properties WHERE database_id = $1 AND tenant_id = $2",
       req.params.id,
-      tenantId,
     );
     const id = randomUUID();
-    await pool.query(
+    await requestDb(res).query(
       "INSERT INTO properties (id, tenant_id, database_id, name, type, position) VALUES ($1, $2, $3, $4, $5, $6)",
-      [id, tenantId, req.params.id, asText(name), type, pos],
+      [id, tenantIdOf(res), req.params.id, asText(name), type, pos],
     );
     res
       .status(201)
@@ -185,10 +189,9 @@ function propertyRoutes(router: Router, pool: Pool, q: Queries) {
   });
 
   router.patch("/properties/:id", async (req, res) => {
-    const tenantId = tenantIdOf(res);
-    const prop = await pool.query<PropertyRow>(
+    const prop = await requestDb(res).query<PropertyRow>(
       "SELECT * FROM properties WHERE id = $1 AND tenant_id = $2",
-      [req.params.id, tenantId],
+      [req.params.id, tenantIdOf(res)],
     );
     const current = prop.rows[0] as PropertyRow | undefined;
     if (!current) {
@@ -206,23 +209,22 @@ function propertyRoutes(router: Router, pool: Pool, q: Queries) {
       return;
     }
     if (name !== undefined) {
-      await pool.query(
+      await requestDb(res).query(
         "UPDATE properties SET name = $1 WHERE id = $2 AND tenant_id = $3",
-        [asText(name), req.params.id, tenantId],
+        [asText(name), req.params.id, tenantIdOf(res)],
       );
     }
-    const updated = await pool.query(
+    const updated = await requestDb(res).query(
       "SELECT * FROM properties WHERE id = $1 AND tenant_id = $2",
-      [req.params.id, tenantId],
+      [req.params.id, tenantIdOf(res)],
     );
     res.json(updated.rows[0]);
   });
 
   router.delete("/properties/:id", async (req, res) => {
-    const tenantId = tenantIdOf(res);
-    const result = await pool.query(
+    const result = await requestDb(res).query(
       "DELETE FROM properties WHERE id = $1 AND tenant_id = $2",
-      [req.params.id, tenantId],
+      [req.params.id, tenantIdOf(res)],
     );
     if ((result.rowCount ?? 0) === 0) {
       res.status(404).json({ error: "property not found" });
@@ -232,10 +234,9 @@ function propertyRoutes(router: Router, pool: Pool, q: Queries) {
   });
 
   router.post("/properties/:id/options", async (req, res) => {
-    const tenantId = tenantIdOf(res);
-    const prop = await pool.query<PropertyRow>(
+    const prop = await requestDb(res).query<PropertyRow>(
       "SELECT * FROM properties WHERE id = $1 AND tenant_id = $2",
-      [req.params.id, tenantId],
+      [req.params.id, tenantIdOf(res)],
     );
     const current = prop.rows[0] as PropertyRow | undefined;
     if (!current) {
@@ -260,25 +261,22 @@ function propertyRoutes(router: Router, pool: Pool, q: Queries) {
       res.status(400).json({ error: "option name required" });
       return;
     }
-    const pos = await q.nextPosition(
+    const pos = await nextPosition(
+      res,
       "SELECT COALESCE(MAX(position), -1) + 1 AS pos FROM property_options WHERE property_id = $1 AND tenant_id = $2",
       req.params.id,
-      tenantId,
     );
     const id = randomUUID();
-    await pool.query(
+    await requestDb(res).query(
       "INSERT INTO property_options (id, tenant_id, property_id, name, color, position) VALUES ($1, $2, $3, $4, $5, $6)",
-      [id, tenantId, req.params.id, name, chosen, pos],
+      [id, tenantIdOf(res), req.params.id, name, chosen, pos],
     );
     res.status(201).json({ id, name, color: chosen, position: pos });
   });
 
   router.put("/properties/:id/options/order", async (req, res) => {
-    const tenantId = tenantIdOf(res);
     const { ids } = (req.body ?? {}) as { ids?: string[] };
-    const existing = (await q.optionsOf(req.params.id, tenantId)).map(
-      (o) => o.id,
-    );
+    const existing = (await optionsOf(res, req.params.id)).map((o) => o.id);
     const existingSet = new Set(existing);
     if (
       !Array.isArray(ids) ||
@@ -291,30 +289,19 @@ function propertyRoutes(router: Router, pool: Pool, q: Queries) {
         .json({ error: "ids must be a permutation of the property's options" });
       return;
     }
-    const client = await pool.connect();
-    try {
-      await client.query("BEGIN");
-      for (const [i, id] of ids.entries()) {
-        await client.query(
-          "UPDATE property_options SET position = $1 WHERE id = $2 AND tenant_id = $3",
-          [i, id, tenantId],
-        );
-      }
-      await client.query("COMMIT");
-    } catch (error) {
-      await client.query("ROLLBACK");
-      throw error;
-    } finally {
-      client.release();
+    for (const [i, id] of ids.entries()) {
+      await requestDb(res).query(
+        "UPDATE property_options SET position = $1 WHERE id = $2 AND tenant_id = $3",
+        [i, id, tenantIdOf(res)],
+      );
     }
     res.json({ ok: true });
   });
 }
 
-function rowRoutes(router: Router, pool: Pool, q: Queries) {
+function rowRoutes(router: Router) {
   router.post("/databases/:id/rows", async (req, res) => {
-    const tenantId = tenantIdOf(res);
-    if (!(await q.getDb(req.params.id, tenantId))) {
+    if (!(await getDb(res, req.params.id))) {
       res.status(404).json({ error: "database not found" });
       return;
     }
@@ -322,20 +309,20 @@ function rowRoutes(router: Router, pool: Pool, q: Queries) {
       title?: unknown;
       values?: Record<string, unknown>;
     };
-    const pos = await q.nextPosition(
+    const pos = await nextPosition(
+      res,
       "SELECT COALESCE(MAX(position), -1) + 1 AS pos FROM pages WHERE parent_id = $1 AND tenant_id = $2",
       req.params.id,
-      tenantId,
     );
     const id = randomUUID();
-    await pool.query(
+    await requestDb(res).query(
       "INSERT INTO pages (id, tenant_id, parent_id, type, title, position) VALUES ($1, $2, $3, 'row', $4, $5)",
-      [id, tenantId, req.params.id, asText(title), pos],
+      [id, tenantIdOf(res), req.params.id, asText(title), pos],
     );
     for (const [propId, value] of Object.entries(values)) {
-      await pool.query(
+      await requestDb(res).query(
         "INSERT INTO row_values (tenant_id, row_id, property_id, value) VALUES ($1, $2, $3, $4) ON CONFLICT (row_id, property_id) DO UPDATE SET value = excluded.value",
-        [tenantId, id, propId, JSON.stringify(value)],
+        [tenantIdOf(res), id, propId, JSON.stringify(value)],
       );
     }
     res
@@ -344,11 +331,10 @@ function rowRoutes(router: Router, pool: Pool, q: Queries) {
   });
 
   router.put("/databases/:id/rows/order", async (req, res) => {
-    const tenantId = tenantIdOf(res);
     const { ids } = (req.body ?? {}) as { ids?: string[] };
-    const existingResult = await pool.query<{ id: string }>(
+    const existingResult = await requestDb(res).query<{ id: string }>(
       "SELECT id FROM pages WHERE parent_id = $1 AND tenant_id = $2 AND type = 'row' ORDER BY position",
-      [req.params.id, tenantId],
+      [req.params.id, tenantIdOf(res)],
     );
     const existing = existingResult.rows.map((r) => r.id);
     const existingSet = new Set(existing);
@@ -363,30 +349,19 @@ function rowRoutes(router: Router, pool: Pool, q: Queries) {
         .json({ error: "ids must be a permutation of the database's row ids" });
       return;
     }
-    const client = await pool.connect();
-    try {
-      await client.query("BEGIN");
-      for (const [i, id] of ids.entries()) {
-        await client.query(
-          "UPDATE pages SET position = $1 WHERE id = $2 AND tenant_id = $3",
-          [i, id, tenantId],
-        );
-      }
-      await client.query("COMMIT");
-    } catch (error) {
-      await client.query("ROLLBACK");
-      throw error;
-    } finally {
-      client.release();
+    for (const [i, id] of ids.entries()) {
+      await requestDb(res).query(
+        "UPDATE pages SET position = $1 WHERE id = $2 AND tenant_id = $3",
+        [i, id, tenantIdOf(res)],
+      );
     }
     res.json({ ok: true });
   });
 
   router.patch("/rows/:rowId/values", async (req, res) => {
-    const tenantId = tenantIdOf(res);
-    const row = await pool.query(
+    const row = await requestDb(res).query(
       "SELECT id FROM pages WHERE id = $1 AND tenant_id = $2 AND type = 'row'",
-      [req.params.rowId, tenantId],
+      [req.params.rowId, tenantIdOf(res)],
     );
     if (!row.rows[0]) {
       res.status(404).json({ error: "row not found" });
@@ -396,30 +371,34 @@ function rowRoutes(router: Router, pool: Pool, q: Queries) {
       propertyId?: string;
       value?: unknown;
     };
-    const prop = await pool.query(
+    const prop = await requestDb(res).query(
       "SELECT id FROM properties WHERE id = $1 AND tenant_id = $2",
-      [propertyId, tenantId],
+      [propertyId, tenantIdOf(res)],
     );
     if (!prop.rows[0]) {
       res.status(400).json({ error: "property not found" });
       return;
     }
-    await pool.query(
+    await requestDb(res).query(
       "INSERT INTO row_values (tenant_id, row_id, property_id, value) VALUES ($1, $2, $3, $4) ON CONFLICT (row_id, property_id) DO UPDATE SET value = excluded.value",
-      [tenantId, req.params.rowId, propertyId, JSON.stringify(value ?? null)],
+      [
+        tenantIdOf(res),
+        req.params.rowId,
+        propertyId,
+        JSON.stringify(value ?? null),
+      ],
     );
     res.json({ ok: true });
   });
 
   router.get("/rows/:rowId", async (req, res) => {
-    const tenantId = tenantIdOf(res);
-    const rowResult = await pool.query<{
+    const rowResult = await requestDb(res).query<{
       id: string;
       parent_id: string;
       title: string;
     }>(
       "SELECT id, parent_id, title FROM pages WHERE id = $1 AND tenant_id = $2 AND type = 'row'",
-      [req.params.rowId, tenantId],
+      [req.params.rowId, tenantIdOf(res)],
     );
     const row = rowResult.rows[0] as
       { id: string; parent_id: string; title: string } | undefined;
@@ -427,28 +406,28 @@ function rowRoutes(router: Router, pool: Pool, q: Queries) {
       res.status(404).json({ error: "row not found" });
       return;
     }
-    const properties = await q.propertiesOf(row.parent_id, tenantId);
+    const properties = await propertiesOf(res, row.parent_id);
     const withOptions = await Promise.all(
       properties.map(async (p) => ({
         ...p,
-        options: await q.optionsOf(p.id, tenantId),
+        options: await optionsOf(res, p.id),
       })),
     );
     const values: Record<string, unknown> = {};
-    const stored = await pool.query<{
+    const stored = await requestDb(res).query<{
       property_id: string;
       value: string | null;
     }>(
       "SELECT property_id, value FROM row_values WHERE row_id = $1 AND tenant_id = $2",
-      [row.id, tenantId],
+      [row.id, tenantIdOf(res)],
     );
     for (const v of stored.rows) {
       values[v.property_id] =
         v.value === null ? null : (JSON.parse(v.value) as unknown);
     }
-    const parent = await pool.query<{ title: string }>(
+    const parent = await requestDb(res).query<{ title: string }>(
       "SELECT title FROM pages WHERE id = $1 AND tenant_id = $2",
-      [row.parent_id, tenantId],
+      [row.parent_id, tenantIdOf(res)],
     );
     res.json({
       id: row.id,
@@ -461,10 +440,9 @@ function rowRoutes(router: Router, pool: Pool, q: Queries) {
   });
 }
 
-function viewRoutes(router: Router, pool: Pool, q: Queries) {
+function viewRoutes(router: Router) {
   router.patch("/databases/:id/views/:kind", async (req, res) => {
-    const tenantId = tenantIdOf(res);
-    if (!(await q.getDb(req.params.id, tenantId))) {
+    if (!(await getDb(res, req.params.id))) {
       res.status(404).json({ error: "database not found" });
       return;
     }
@@ -472,9 +450,9 @@ function viewRoutes(router: Router, pool: Pool, q: Queries) {
       res.status(400).json({ error: "unknown view kind" });
       return;
     }
-    const existing = await pool.query<{ config: string }>(
+    const existing = await requestDb(res).query<{ config: string }>(
       "SELECT config FROM views WHERE database_id = $1 AND kind = $2 AND tenant_id = $3",
-      [req.params.id, req.params.kind, tenantId],
+      [req.params.id, req.params.kind, tenantIdOf(res)],
     );
     const config = {
       ...DEFAULT_VIEW,
@@ -483,20 +461,19 @@ function viewRoutes(router: Router, pool: Pool, q: Queries) {
         : {}),
       ...((req.body ?? {}) as object),
     };
-    await pool.query(
+    await requestDb(res).query(
       "INSERT INTO views (tenant_id, database_id, kind, config) VALUES ($1, $2, $3, $4) ON CONFLICT (database_id, kind) DO UPDATE SET config = excluded.config",
-      [tenantId, req.params.id, req.params.kind, JSON.stringify(config)],
+      [tenantIdOf(res), req.params.id, req.params.kind, JSON.stringify(config)],
     );
     res.json(config);
   });
 }
 
-export function databasesRouter(pool: Pool): Router {
+export function databasesRouter(): Router {
   const router = Router();
-  const q = queries(pool);
-  databaseRoutes(router, pool, q);
-  propertyRoutes(router, pool, q);
-  rowRoutes(router, pool, q);
-  viewRoutes(router, pool, q);
+  databaseRoutes(router);
+  propertyRoutes(router);
+  rowRoutes(router);
+  viewRoutes(router);
   return router;
 }

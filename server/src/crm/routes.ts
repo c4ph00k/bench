@@ -1,12 +1,12 @@
 /** CRM API: organizations, contacts, deals and activities. Mounted at /api/crm. */
 import { Router } from "express";
-import type { Pool } from "pg";
 import * as db from "./db.js";
 import { tenantIdOf } from "../tenant.js";
+import { requestDb } from "../db/rls.js";
 
 const num = (v: unknown) => (v === undefined ? undefined : Number(v));
 
-export function crmRouter(pool: Pool): Router {
+export function crmRouter(): Router {
   const router = Router();
   const tenant = tenantIdOf;
 
@@ -14,7 +14,7 @@ export function crmRouter(pool: Pool): Router {
   router.get("/organizations", async (req, res) => {
     res.json(
       await db.listOrganizations(
-        pool,
+        requestDb(res),
         tenant(res),
         req.query.q as string | undefined,
       ),
@@ -25,7 +25,7 @@ export function crmRouter(pool: Pool): Router {
       .status(201)
       .json(
         await db.createOrganization(
-          pool,
+          requestDb(res),
           tenant(res),
           req.body as db.OrganizationInput,
         ),
@@ -33,7 +33,7 @@ export function crmRouter(pool: Pool): Router {
   });
   router.get("/organizations/:id", async (req, res) => {
     const org = await db.getOrganization(
-      pool,
+      requestDb(res),
       tenant(res),
       Number(req.params.id),
     );
@@ -46,7 +46,7 @@ export function crmRouter(pool: Pool): Router {
   router.put("/organizations/:id", async (req, res) => {
     res.json(
       await db.updateOrganization(
-        pool,
+        requestDb(res),
         tenant(res),
         Number(req.params.id),
         req.body as db.OrganizationInput,
@@ -54,14 +54,18 @@ export function crmRouter(pool: Pool): Router {
     );
   });
   router.delete("/organizations/:id", async (req, res) => {
-    await db.deleteOrganization(pool, tenant(res), Number(req.params.id));
+    await db.deleteOrganization(
+      requestDb(res),
+      tenant(res),
+      Number(req.params.id),
+    );
     res.status(204).end();
   });
 
   // Contacts
   router.get("/contacts", async (req, res) => {
     res.json(
-      await db.listContacts(pool, tenant(res), {
+      await db.listContacts(requestDb(res), tenant(res), {
         q: req.query.q as string | undefined,
         status: req.query.status as string | undefined,
         organization_id: num(req.query.organization_id),
@@ -72,12 +76,16 @@ export function crmRouter(pool: Pool): Router {
     res
       .status(201)
       .json(
-        await db.createContact(pool, tenant(res), req.body as db.ContactInput),
+        await db.createContact(
+          requestDb(res),
+          tenant(res),
+          req.body as db.ContactInput,
+        ),
       );
   });
   router.get("/contacts/:id", async (req, res) => {
     const contact = await db.getContact(
-      pool,
+      requestDb(res),
       tenant(res),
       Number(req.params.id),
     );
@@ -90,7 +98,7 @@ export function crmRouter(pool: Pool): Router {
   router.put("/contacts/:id", async (req, res) => {
     res.json(
       await db.updateContact(
-        pool,
+        requestDb(res),
         tenant(res),
         Number(req.params.id),
         req.body as db.ContactInput,
@@ -98,14 +106,14 @@ export function crmRouter(pool: Pool): Router {
     );
   });
   router.delete("/contacts/:id", async (req, res) => {
-    await db.deleteContact(pool, tenant(res), Number(req.params.id));
+    await db.deleteContact(requestDb(res), tenant(res), Number(req.params.id));
     res.status(204).end();
   });
 
   // Deals
   router.get("/deals", async (req, res) => {
     res.json(
-      await db.listDeals(pool, tenant(res), {
+      await db.listDeals(requestDb(res), tenant(res), {
         q: req.query.q as string | undefined,
         stage: req.query.stage as string | undefined,
         organization_id: num(req.query.organization_id),
@@ -116,10 +124,20 @@ export function crmRouter(pool: Pool): Router {
   router.post("/deals", async (req, res) => {
     res
       .status(201)
-      .json(await db.createDeal(pool, tenant(res), req.body as db.DealInput));
+      .json(
+        await db.createDeal(
+          requestDb(res),
+          tenant(res),
+          req.body as db.DealInput,
+        ),
+      );
   });
   router.get("/deals/:id", async (req, res) => {
-    const deal = await db.getDeal(pool, tenant(res), Number(req.params.id));
+    const deal = await db.getDeal(
+      requestDb(res),
+      tenant(res),
+      Number(req.params.id),
+    );
     if (!deal) {
       res.status(404).json({ error: "Not found" });
       return;
@@ -129,7 +147,7 @@ export function crmRouter(pool: Pool): Router {
   router.put("/deals/:id", async (req, res) => {
     res.json(
       await db.updateDeal(
-        pool,
+        requestDb(res),
         tenant(res),
         Number(req.params.id),
         req.body as db.DealInput,
@@ -143,18 +161,24 @@ export function crmRouter(pool: Pool): Router {
       index?: number;
     };
     res.json(
-      await db.moveDeal(pool, tenant(res), Number(req.params.id), stage, index),
+      await db.moveDeal(
+        requestDb(res),
+        tenant(res),
+        Number(req.params.id),
+        stage,
+        index,
+      ),
     );
   });
   router.delete("/deals/:id", async (req, res) => {
-    await db.deleteDeal(pool, tenant(res), Number(req.params.id));
+    await db.deleteDeal(requestDb(res), tenant(res), Number(req.params.id));
     res.status(204).end();
   });
 
   // Activities
   router.get("/activities", async (req, res) => {
     res.json(
-      await db.listActivities(pool, tenant(res), {
+      await db.listActivities(requestDb(res), tenant(res), {
         contact_id: num(req.query.contact_id),
         deal_id: num(req.query.deal_id),
         limit: num(req.query.limit),
@@ -166,7 +190,7 @@ export function crmRouter(pool: Pool): Router {
       .status(201)
       .json(
         await db.createActivity(
-          pool,
+          requestDb(res),
           tenant(res),
           req.body as db.ActivityInput,
         ),
@@ -175,7 +199,7 @@ export function crmRouter(pool: Pool): Router {
   router.patch("/activities/:id", async (req, res) => {
     res.json(
       await db.updateActivity(
-        pool,
+        requestDb(res),
         tenant(res),
         Number(req.params.id),
         req.body as Partial<db.ActivityInput>,
@@ -183,7 +207,7 @@ export function crmRouter(pool: Pool): Router {
     );
   });
   router.delete("/activities/:id", async (req, res) => {
-    await db.deleteActivity(pool, tenant(res), Number(req.params.id));
+    await db.deleteActivity(requestDb(res), tenant(res), Number(req.params.id));
     res.status(204).end();
   });
 

@@ -10,6 +10,7 @@ import { authRouter } from "./auth/routes.js";
 import { sessionUser } from "./auth/session.js";
 import { userCount } from "./auth/db.js";
 import { resolveTenant } from "./tenant.js";
+import { openTenantConnection } from "./db/rls.js";
 
 const webDist = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -61,6 +62,7 @@ export function createApp(options: AppOptions): express.Express {
           return;
         }
         res.locals.tenantId = tenantId;
+        await openTenantConnection(pool, res, tenantId);
       }
       next();
       return;
@@ -68,9 +70,9 @@ export function createApp(options: AppOptions): express.Express {
     res.status(401).json({ error: "Not signed in" });
   });
 
-  app.use("/api/crm", crmRouter(pool));
-  app.use("/api/space", spaceRouter(pool));
-  app.use("/api/rolodex", rolodexRouter(pool));
+  app.use("/api/crm", crmRouter());
+  app.use("/api/space", spaceRouter());
+  app.use("/api/rolodex", rolodexRouter());
 
   if (existsSync(webDist)) {
     // Pages are gated too: any GET without a session is sent to the login document, the one page

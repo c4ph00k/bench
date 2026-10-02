@@ -1,7 +1,7 @@
 /** Bringing people in from a CSV or vCard file: parse, remap the columns, then apply. */
 import { Router } from "express";
-import type { Pool } from "pg";
 import { createRepo, type Repo } from "../db/index.js";
+import { requestDb } from "../../db/rls.js";
 import { tenantIdOf } from "../../tenant.js";
 import {
   applyMapping,
@@ -29,12 +29,11 @@ const withDuplicates = (people: ParsedPerson[], existing: Existing) =>
     duplicate: checkDuplicates(person, existing),
   }));
 
-export function importRouter(pool: Pool): Router {
+export function importRouter(): Router {
   const router = Router();
 
   router.post("/parse", async (req, res) => {
-    const tenantId = tenantIdOf(res);
-    const repo = createRepo(pool, tenantId);
+    const repo = createRepo(requestDb(res), tenantIdOf(res));
     const { filename, content } = body(req);
     if (!isText(content)) return badRequest(res, "A file is required");
     const existing = await listExisting(repo);
@@ -64,7 +63,7 @@ export function importRouter(pool: Pool): Router {
 
   /** Re-run a CSV through a mapping the user corrected by hand. */
   router.post("/remap", async (req, res) => {
-    const repo = createRepo(pool, tenantIdOf(res));
+    const repo = createRepo(requestDb(res), tenantIdOf(res));
     const { headers, raw_rows, mapping } = body(req);
     if (
       !Array.isArray(headers) ||
@@ -89,19 +88,20 @@ export function importRouter(pool: Pool): Router {
 
   router.post("/apply", async (req, res) => {
     const tenantId = tenantIdOf(res);
+    const db = requestDb(res);
     const { people } = body(req);
     if (!Array.isArray(people) || people.length === 0)
       return badRequest(res, "No people to import");
 
-    const existing = await listExisting(createRepo(pool, tenantId));
+    const existing = await listExisting(createRepo(db, tenantId));
     const created: { id: number; name: string }[] = [];
     const skipped: DuplicateCheck[] = [];
 
-    // One transaction: a half-imported address book is worse than a failed import.
-    const client = await pool.connect();
+    // A savepoint inside the request's transaction: a half-imported address book is worse than a
+    // failed import, and this rolls back only the import, not the whole request.
+    await db.query("SAVEPOINT import_apply");
     try {
-      await client.query("BEGIN");
-      const repo = createRepo(client, tenantId);
+      const repo = createRepo(db, tenantId);
       for (const p of people as ParsedPerson[]) {
         const duplicate = checkDuplicates(p, existing);
         if (duplicate.isDuplicate) {
@@ -126,12 +126,10 @@ export function importRouter(pool: Pool): Router {
         });
         await addBirthday(repo, person.id, p.birthday);
       }
-      await client.query("COMMIT");
+      await db.query("RELEASE SAVEPOINT import_apply");
     } catch (error) {
-      await client.query("ROLLBACK");
+      await db.query("ROLLBACK TO SAVEPOINT import_apply");
       throw error;
-    } finally {
-      client.release();
     }
     res.status(201).json({ created, skipped: skipped.length });
   });
