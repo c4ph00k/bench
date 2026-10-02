@@ -44,7 +44,14 @@ test("logging a call resets that person's check-in clock", async ({ page }) => {
   await page
     .getByRole("textbox", { name: /What did you talk about/ })
     .fill("Coffee near the office");
+  const saved = page.waitForResponse(
+    (r) =>
+      /\/people\/\d+\/interactions$/.test(r.url()) &&
+      r.request().method() === "POST" &&
+      r.ok(),
+  );
   await page.getByRole("button", { name: "Save interaction" }).click();
+  await saved;
 
   await openPerson(page, name);
   await expect(page.getByText("In touch")).toBeVisible();
@@ -96,10 +103,9 @@ test("the timeline filters down to one person", async ({ page }) => {
   const all = await page.locator(".feed-item").count();
 
   await page.getByLabel("Person").selectOption({ label: "Maya Chen" });
-  await expect(page.locator(".feed-item").first()).toBeVisible();
-  const forMaya = await page.locator(".feed-item").count();
-  expect(forMaya).toBeLessThan(all);
   await expect(page.locator(".feed-person").first()).toHaveText("Maya Chen");
+  await expect.poll(() => page.locator(".feed-item").count()).toBeLessThan(all);
+  await expect(page.locator(".feed-item").first()).toBeVisible();
 });
 
 test("the calendar shows a month of dates and walks to the next one", async ({

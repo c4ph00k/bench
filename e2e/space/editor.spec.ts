@@ -7,13 +7,19 @@ test.beforeEach(async ({ page }) => {
 });
 
 /** The editor autosaves on a debounce, so specs wait for the write rather than for a duration. */
-const blockSaved = (page: Page) =>
-  page.waitForResponse(
-    (r) =>
-      r.url().includes("/api/space/blocks/") &&
-      r.request().method() === "PATCH" &&
-      r.ok(),
-  );
+const blockSaved = (page: Page, content: Record<string, unknown>) =>
+  page.waitForResponse(async (r) => {
+    if (
+      !r.url().includes("/api/space/blocks/") ||
+      r.request().method() !== "PATCH" ||
+      !r.ok()
+    )
+      return false;
+    const block = (await r.json()) as { content: Record<string, unknown> };
+    return Object.entries(content).every(
+      ([key, value]) => block.content[key] === value,
+    );
+  });
 
 /** Create a fresh page and focus its first (auto-created) empty block. */
 async function freshPage(page: Page, title: string) {
@@ -30,7 +36,7 @@ test("typing into a page autosaves and survives a refresh", async ({
 }) => {
   const title = `Editor Typing ${Date.now()}`;
   await freshPage(page, title);
-  const saved = blockSaved(page);
+  const saved = blockSaved(page, { text: "Hello, autosaved world" });
   await page.keyboard.type("Hello, autosaved world");
   await expect(page.locator(".block-text").first()).toHaveText(
     "Hello, autosaved world",
@@ -70,7 +76,7 @@ test("slash menu inserts a heading using the keyboard alone", async ({
   await page.keyboard.press("Enter");
   await expect(page.getByRole("listbox")).toHaveCount(0);
 
-  const saved = blockSaved(page);
+  const saved = blockSaved(page, { text: "Section title" });
   await page.keyboard.type("Section title");
   await expect(page.locator(".b-h2")).toHaveText("Section title");
   await saved;
@@ -95,7 +101,7 @@ test("to-do checkboxes toggle and persist", async ({ page }) => {
   await page.keyboard.type("Ship phase two");
   const checkbox = page.getByRole("checkbox", { name: "Ship phase two" });
   await expect(checkbox).not.toBeChecked();
-  const saved = blockSaved(page);
+  const saved = blockSaved(page, { text: "Ship phase two", checked: true });
   await checkbox.check();
   await saved;
 
@@ -137,6 +143,9 @@ test("blocks drag to a new position and the order survives a refresh", async ({
   await page.mouse.up();
 
   await expect.poll(async () => rowTexts()).toEqual(["Gamma", "Alpha", "Beta"]);
+  await expect
+    .poll(() => savedBlockTexts(page))
+    .toEqual(["Gamma", "Alpha", "Beta"]);
 
   await page.reload();
   await expect.poll(async () => rowTexts()).toEqual(["Gamma", "Alpha", "Beta"]);

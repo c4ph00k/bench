@@ -63,6 +63,7 @@ export function createApp(options: AppOptions): express.Express {
         }
         res.locals.tenantId = tenantId;
         await openTenantConnection(pool, res, tenantId);
+        if (res.destroyed) return;
       }
       next();
       return;

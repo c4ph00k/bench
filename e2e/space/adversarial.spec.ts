@@ -16,6 +16,12 @@ async function freshPage(page: Page, title: string) {
 }
 
 async function deletePage(page: Page, label: string | RegExp) {
+  const deleted = page.waitForResponse(
+    (r) =>
+      /\/api\/space\/pages\/[^/]+$/.test(r.url()) &&
+      r.request().method() === "DELETE" &&
+      r.ok(),
+  );
   await page.getByRole("treeitem", { name: label }).hover();
   await page
     .getByRole("button", { name: /Page options for/ })
@@ -26,6 +32,7 @@ async function deletePage(page: Page, label: string | RegExp) {
     .getByRole("dialog")
     .getByRole("button", { name: "Delete" })
     .click();
+  await deleted;
 }
 
 test("script-looking titles and block text render inert", async ({ page }) => {

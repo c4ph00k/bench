@@ -76,9 +76,11 @@ Le policy di lettura e scrittura confrontano `tenant_id` con
 `current_setting('app.tenant_id', true)::bigint`. Un id di tenant è numerico, non UUID;
 sono invece UUID gli id di pagine e blocchi di Space.
 
-La transazione viene confermata alla conclusione di una risposta con stato inferiore a 500,
-oppure annullata in caso di errore 5xx o connessione interrotta. L'importazione Rolodex usa un
-savepoint nella transazione della richiesta per evitare importazioni parziali.
+La transazione viene confermata prima di inviare una risposta con stato inferiore a 500,
+incluse le risposte 204. Un errore nel commit produce una risposta 500. La transazione viene
+annullata in caso di errore 5xx o connessione interrotta, anche durante l'apertura della
+connessione. L'importazione Rolodex usa un savepoint nella transazione della richiesta per
+evitare importazioni parziali.
 
 RLS protegge le query eseguite come `app_rls`; non sostituisce i filtri nel data layer.
 Le connessioni globali e di bootstrap usano il pool senza questa restrizione.

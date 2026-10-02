@@ -174,7 +174,15 @@ test("a deal detail page lists its activities and accepts a new note", async ({
   await page.getByRole("button", { name: "Log activity" }).click();
   const dialog = page.getByRole("dialog", { name: "Log activity" });
   await dialog.getByLabel("Description").fill(note);
+  const saved = page.waitForResponse(
+    (r) =>
+      r.url().endsWith("/api/crm/activities") &&
+      r.request().method() === "POST" &&
+      r.ok(),
+  );
   await dialog.getByRole("button", { name: "Save" }).click();
+  await saved;
+  await expect(dialog).toHaveCount(0);
 
   await expect(page.getByText(note)).toBeVisible();
   await page.reload();

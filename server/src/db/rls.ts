@@ -20,18 +20,49 @@ export async function openTenantConnection(
   // SET accepts no bind parameters, and tenantId is a number already, so inlining is safe.
   await client.query(`SET LOCAL app.tenant_id = '${tenantId}'`);
   res.locals.db = client;
-  res.once("finish", () => endTenantConnection(res, res.statusCode < 500));
-  res.once("close", () => endTenantConnection(res, false));
+  res.once("finish", () => {
+    void endTenantConnection(res, res.statusCode < 500).catch(() => undefined);
+  });
+  res.once("close", () => {
+    void endTenantConnection(res, false).catch(() => undefined);
+  });
+  // Navigation can close the response while connect/BEGIN is still awaiting the database.
+  // In that case the close event has already fired before these listeners were installed.
+  if (res.destroyed) {
+    await endTenantConnection(res, false);
+    return;
+  }
+
+  // The client can read again as soon as it receives JSON. Commit before sending it,
+  // otherwise that next request can observe the state from before this write.
+  const send = res.send.bind(res);
+  res.send = (body: unknown) => {
+    void endTenantConnection(res, res.statusCode < 500)
+      .then(() => {
+        if (!res.destroyed) send(body);
+      })
+      .catch(() => {
+        if (!res.destroyed) {
+          res.status(500);
+          send({ error: "Database transaction failed" });
+        }
+      });
+    return res;
+  };
 }
 
-function endTenantConnection(res: Response, commit: boolean): void {
+async function endTenantConnection(
+  res: Response,
+  commit: boolean,
+): Promise<void> {
   const client = res.locals.db as PoolClient | undefined;
   if (!client) return;
   res.locals.db = undefined;
-  void client
-    .query(commit ? "COMMIT" : "ROLLBACK")
-    .catch(() => undefined)
-    .finally(() => client.release());
+  try {
+    await client.query(commit ? "COMMIT" : "ROLLBACK");
+  } finally {
+    client.release();
+  }
 }
 
 /** The request's scoped connection, handed to the routers mounted below the gate. */

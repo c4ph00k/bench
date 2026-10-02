@@ -326,7 +326,15 @@ export default function BoardView({
       // Cards are found by the pointer; columns fall back to their centres, which is what makes
       // a column slide out of the way while another one is dragged over it.
       collisionDetection={
-        dragging && isColumn(dragging) ? closestCenter : pointerWithin
+        dragging && isColumn(dragging)
+          ? (args) =>
+              closestCenter({
+                ...args,
+                droppableContainers: args.droppableContainers.filter(
+                  (container) => isColumn(String(container.id)),
+                ),
+              })
+          : pointerWithin
       }
       onDragStart={onDragStart}
       onDragOver={onDragOver}

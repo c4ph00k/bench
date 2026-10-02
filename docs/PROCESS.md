@@ -88,6 +88,9 @@ Rules that keep this suite reliable:
   `dealInStage` in `e2e/crm/revenue.spec.ts`.
 - **Wait for data before asserting on it.** Figures render as `$0` until the fetch resolves; assert
   on a card being visible, or poll, before capturing a "before" value.
+- **Wait for the intended save before reloading or navigating.** Optimistic UI changes can precede
+  the API write. An editor action can also flush an earlier change on blur: match the saved block's
+  content, not just any successful PATCH, then verify the value after a refresh.
 - **Run at 1440x900** (already set). At Playwright's 1280 default a board card sits partly outside
   the viewport and dnd-kit drags never activate.
 - **Drag with the keyboard where the library supports it.** CRM's pipeline uses

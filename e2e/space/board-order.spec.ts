@@ -44,6 +44,12 @@ test("a card can be dragged above another in the same column and the order persi
     .locator(`.board-col[data-column="${column}"] .board-card`);
   const from = (await cards.nth(0).boundingBox())!;
   const to = (await cards.nth(1).boundingBox())!;
+  const saved = page.waitForResponse(
+    (r) =>
+      r.url().endsWith("/rows/order") &&
+      r.request().method() === "PUT" &&
+      r.ok(),
+  );
   await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
   await page.mouse.down();
   await page.mouse.move(to.x + to.width / 2, to.y + to.height - 4, {
@@ -55,6 +61,7 @@ test("a card can be dragged above another in the same column and the order persi
   await expect
     .poll(() => titles(page, column), { timeout: 5000 })
     .toEqual(swapped);
+  await saved;
 
   await page.reload();
   await page.getByRole("tab", { name: "Board" }).click();
@@ -107,6 +114,13 @@ test("a column can be dragged to a new position and the order persists", async (
     .getByTestId("board")
     .locator(`.board-col[data-column="${before[1]}"]`);
 
+  const saved = page.waitForResponse(
+    (r) =>
+      r.url().endsWith("/options/order") &&
+      r.request().method() === "PUT" &&
+      r.ok(),
+  );
+
   await grip.hover();
   await page.mouse.down();
   const box = (await target.boundingBox())!;
@@ -114,11 +128,12 @@ test("a column can be dragged to a new position and the order persists", async (
   await page.mouse.move(box.x + box.width / 2, box.y + 20, { steps: 12 });
   await page.mouse.up();
 
+  await expect.poll(columns).not.toEqual(before);
   const after = await columns();
-  expect(after).not.toEqual(before);
   const sorted = (names: string[]) =>
     [...names].sort((a, b) => a.localeCompare(b));
   expect(sorted(after)).toEqual(sorted(before));
+  await saved;
 
   await page.reload();
   await page.getByTestId("board").waitFor();

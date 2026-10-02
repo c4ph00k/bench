@@ -59,7 +59,7 @@ export function crmRouter(): Router {
       tenant(res),
       Number(req.params.id),
     );
-    res.status(204).end();
+    res.status(204).send();
   });
 
   // Contacts
@@ -107,7 +107,7 @@ export function crmRouter(): Router {
   });
   router.delete("/contacts/:id", async (req, res) => {
     await db.deleteContact(requestDb(res), tenant(res), Number(req.params.id));
-    res.status(204).end();
+    res.status(204).send();
   });
 
   // Deals
@@ -172,7 +172,7 @@ export function crmRouter(): Router {
   });
   router.delete("/deals/:id", async (req, res) => {
     await db.deleteDeal(requestDb(res), tenant(res), Number(req.params.id));
-    res.status(204).end();
+    res.status(204).send();
   });
 
   // Activities
@@ -208,7 +208,7 @@ export function crmRouter(): Router {
   });
   router.delete("/activities/:id", async (req, res) => {
     await db.deleteActivity(requestDb(res), tenant(res), Number(req.params.id));
-    res.status(204).end();
+    res.status(204).send();
   });
 
   return router;

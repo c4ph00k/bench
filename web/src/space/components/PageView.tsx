@@ -36,14 +36,22 @@ export default function PageView({ onTreeChange }: Props) {
 
   useEffect(() => {
     if (!pageId) return;
+    let current = true;
     api
       .getPage(pageId)
       .then((p) => {
+        if (!current) return;
         setLoaded({ id: pageId, page: p, missing: false });
         if ((location.state as { isNew?: boolean } | null)?.isNew)
           titleRef.current?.focus();
       })
-      .catch(() => setLoaded({ id: pageId, page: null, missing: true }));
+      .catch(() => {
+        if (current) setLoaded({ id: pageId, page: null, missing: true });
+      });
+    // A slower response from the previous route must not replace the page just opened.
+    return () => {
+      current = false;
+    };
   }, [pageId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const saveTitle = useCallback(

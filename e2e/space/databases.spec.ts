@@ -50,10 +50,15 @@ test("create a database, add properties, rows, edit cells, and reopen after refr
 
   await page.getByLabel("Stage for Review the report").click();
   await expect(page.getByRole("dialog").getByText("Drafting")).toBeVisible();
+  const stageSaved = page.waitForResponse(
+    (r) =>
+      r.url().endsWith("/values") && r.request().method() === "PATCH" && r.ok(),
+  );
   await page.getByRole("dialog").getByText("Drafting").click();
   await expect(
     page.getByLabel("Stage for Review the report").getByText("Drafting"),
   ).toBeVisible();
+  await stageSaved;
 
   // everything survives a refresh
   await page.reload();
@@ -79,10 +84,20 @@ test("seeded Reading List: edit cells in place, values persist", async ({
   ).toBeVisible();
 
   const rating = page.getByLabel("Rating for Piranesi");
+  const ratingSaved = page.waitForResponse(
+    (r) =>
+      r.url().endsWith("/values") && r.request().method() === "PATCH" && r.ok(),
+  );
   await rating.fill("4");
   await rating.press("Enter");
+  await ratingSaved;
   const owned = page.getByLabel("Owned for Piranesi");
+  const ownedSaved = page.waitForResponse(
+    (r) =>
+      r.url().endsWith("/values") && r.request().method() === "PATCH" && r.ok(),
+  );
   await owned.check();
+  await ownedSaved;
 
   await page.reload();
   await expect(page.getByLabel("Rating for Piranesi")).toHaveValue("4");
@@ -128,8 +143,13 @@ test("a row opens as a page with properties on top and editable blocks below", a
   await expect(page.locator(".block-text").last()).toContainText("Still true.");
 
   // restore
+  const restored = page.waitForResponse(
+    (r) =>
+      r.url().endsWith("/values") && r.request().method() === "PATCH" && r.ok(),
+  );
   await page.getByLabel("Author for Dune").fill("Frank Herbert");
   await page.getByLabel("Author for Dune").press("Enter");
+  await restored;
 });
 
 test("date and checkbox editors fit their types", async ({ page }) => {

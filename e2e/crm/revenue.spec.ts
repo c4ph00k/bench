@@ -32,10 +32,17 @@ async function waitForCard(page: Page, name: string) {
 }
 
 async function dragToNextStage(page: Page, name: string) {
+  const saved = page.waitForResponse(
+    (r) =>
+      /\/api\/crm\/deals\/\d+\/stage$/.test(r.url()) &&
+      r.request().method() === "PATCH" &&
+      r.ok(),
+  );
   await page.getByRole("button", { name: new RegExp(`^${name}`) }).focus();
   await page.keyboard.press("Space");
   await page.keyboard.press("ArrowRight");
   await page.keyboard.press("Space");
+  await saved;
 }
 
 /**

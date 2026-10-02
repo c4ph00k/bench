@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, Route, Routes } from "react-router";
+import { Link, MemoryRouter, Route, Routes } from "react-router";
 import PageView from "./PageView";
 import { api } from "../api";
 import { pageData } from "../test/helpers";
@@ -35,6 +35,46 @@ beforeEach(() => {
 });
 
 describe("PageView", () => {
+  it.each([false, true])(
+    "keeps the current page when an earlier load settles late (failure: %s)",
+    async (failure) => {
+      let resolve!: (value: ReturnType<typeof pageData>) => void;
+      let reject!: (reason: Error) => void;
+      const earlier = new Promise<ReturnType<typeof pageData>>((ok, fail) => {
+        resolve = ok;
+        reject = fail;
+      });
+      vi.mocked(api.getPage).mockImplementation((id) =>
+        id === "p1"
+          ? earlier
+          : Promise.resolve(pageData({ id: "p2", title: "Current page" })),
+      );
+      render(
+        <MemoryRouter initialEntries={["/p/p1"]}>
+          <Link to="/p/p2">Open current page</Link>
+          <Routes>
+            <Route
+              path="/p/:pageId"
+              element={<PageView onTreeChange={vi.fn()} />}
+            />
+          </Routes>
+        </MemoryRouter>,
+      );
+      await userEvent.click(
+        screen.getByRole("link", { name: "Open current page" }),
+      );
+      expect(
+        await screen.findByDisplayValue("Current page"),
+      ).toBeInTheDocument();
+      await act(async () => {
+        if (failure) reject(new Error("Earlier page unavailable"));
+        else resolve(pageData({ id: "p1", title: "Earlier page" }));
+        await earlier.catch(() => undefined);
+      });
+      expect(screen.getByDisplayValue("Current page")).toBeInTheDocument();
+    },
+  );
+
   it("loads and shows the page title and icon", async () => {
     vi.mocked(api.getPage).mockResolvedValue(
       pageData({ id: "p1", title: "Garden", icon: "🌱" }),

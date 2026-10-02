@@ -152,11 +152,18 @@ test("a card dropped higher up its column stays there", async ({
     ).slice(-2);
   await expect.poll(lastTwo).toEqual(names);
 
+  const saved = page.waitForResponse(
+    (r) =>
+      /\/api\/crm\/deals\/\d+\/stage$/.test(r.url()) &&
+      r.request().method() === "PATCH" &&
+      r.ok(),
+  );
   await card(page, names[1]).focus();
   await page.keyboard.press("Space");
   await page.keyboard.press("ArrowUp");
   await page.keyboard.press("Space");
   await expect.poll(lastTwo).toEqual([names[1], names[0]]);
+  await saved;
 
   await page.reload();
   await expect.poll(lastTwo).toEqual([names[1], names[0]]);
