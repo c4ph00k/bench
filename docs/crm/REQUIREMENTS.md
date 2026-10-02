@@ -1,3 +1,8 @@
+> Architecture update: this is the historical standalone product brief. Its SQLite, no-login
+> and single-user constraints are superseded by Bench's shared PostgreSQL database, login,
+> membership roles and tenant isolation. See [PROJECT.md](../PROJECT.md) and
+> [SAAS-MULTITENANCY.md](../SAAS-MULTITENANCY.md) for the current architecture.
+
 > The original product brief for the CRM, kept for intent and scope. The phased plan below
 > describes a build that is **complete** - history, not outstanding work. Reconciled against the
 > implementation on 2026-08-14: every feature and success criterion below is built. For how the

@@ -1,7 +1,8 @@
 # CRM
 
 A personal sales CRM at `/crm`. Organizations, contacts, deals, a drag-and-drop pipeline,
-activities with follow-ups, and a dashboard. Backed by `data/crm.sqlite`.
+activities with follow-ups, and a dashboard. Data lives in the shared PostgreSQL database,
+scoped by `tenant_id` and protected by Row-Level Security.
 
 - Frontend: `web/src/crm/` - `pages/`, `components/`, `types.ts`, `api.ts`, `styles.css`
 - Backend: `server/src/crm/` - `db.ts`, `routes.ts`, `seed.ts`
@@ -9,13 +10,14 @@ activities with follow-ups, and a dashboard. Backed by `data/crm.sqlite`.
 
 ## Data model
 
-Four tables in `server/src/crm/db.ts`: `organizations`, `contacts`, `deals`, `activities`.
+Four tables defined in `server/migrations/0002_crm.sql`, with asynchronous queries in
+`server/src/crm/db.ts`: `organizations`, `contacts`, `deals`, `activities`.
 Contacts and deals link to an organization; deals and activities link to a contact. Deleting an
 organization sets those links null rather than cascading.
 
-`deals.board_order` is the card's position within its own pipeline column. Existing databases get
-it added and backfilled by `migrate`, numbering each column by id; a new deal lands at the end of
-its column, and `moveDeal` renumbers a column when a card is dropped into it.
+`deals.board_order` is the card's position within its own pipeline column. It is part of the versioned PostgreSQL schema; a new deal lands at the end of its
+column, and `moveDeal` renumbers a column when a card is dropped into it. Schema changes belong
+in numbered SQL migrations, applied by `server/src/db/migrate.ts`.
 
 Deal stages, in order: **New, Qualified, Proposal, Negotiation, Won, Lost.**
 Contact statuses: lead, qualified, customer. Activity types: note, call, email.

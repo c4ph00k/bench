@@ -32,10 +32,11 @@ which is what makes running the checks locally a requirement rather than a court
 
 Work from the data outwards, because each layer can be validated on its own:
 
-1. **Schema and data layer** (`server/src/<app>/db.ts`). Existing databases are migrated in place -
-   see the migration in `server/src/crm/db.ts` for the pattern: check `PRAGMA table_info`, add the
-   column, backfill.
-2. **API routes** (`server/src/<app>/routes*.ts`), under `/api/crm` or `/api/space`.
+1. **Schema and data layer** (`server/migrations/`, `server/src/<app>/db.ts` or `db/`). Add
+   numbered PostgreSQL SQL migrations; `server/src/db/migrate.ts` applies them under an advisory
+   lock and records them in `schema_migrations`. Every operational table needs `tenant_id`,
+   tenant-scoped queries and an RLS policy.
+2. **API routes** (`server/src/<app>/routes*.ts`), under `/api/crm`, `/api/space` or `/api/rolodex`.
 3. **Types and helpers** (`web/src/<app>/types.ts`). Derived values belong in one place that both
    the tables and the charts read from.
 4. **UI**.
@@ -79,7 +80,8 @@ Rules that keep this suite reliable:
 - Each worker runs its own server and database, and **the server readiness probe accepts any
   answer under 500**: with the auth gate on, the API answers 401 until a spec signs in, which
   still proves the server is listening. `e2e/fixtures.ts` spawns the API on
-  `8150 + workerIndex` with its own `DATA_DIR` under `e2e/.tmp/w<n>`; `e2e/global-setup.ts` builds
+  `8150 + workerIndex` with its own PostgreSQL container and `DATABASE_URL`, migrated and seeded
+  at startup; `e2e/global-setup.ts` builds
   `web/dist` once. There is no `webServer` block in `playwright.config.ts` - do not add one back.
 - **Tests within a worker share a database, and retries re-run against it.** Set up your own state
   at the start of a test rather than depending on the seed or on another test's leftovers. See

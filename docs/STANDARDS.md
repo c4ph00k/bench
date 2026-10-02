@@ -99,7 +99,7 @@ The exception, kept deliberately: the small conic-gradient brand mark.
 
 ## CSS
 
-- Each app owns one global `styles.css`. They are **not** scoped, and class names across the four
+- Each app owns one global `styles.css`. They are **not** scoped, and class names across the three
   apps genuinely collide - see [PROJECT.md](./PROJECT.md).
 - Reuse the palette variables in `:root`. Do not introduce a new colour without a reason.
 - **Every colour goes through a variable, and every variable has a dark value.** A literal in a

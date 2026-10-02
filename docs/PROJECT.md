@@ -1,14 +1,20 @@
 # Novhora (Bench) - project overview
 
-Three local-first apps, merged from four separate repos into one project with **one frontend
-server and one backend server**, branded for Novhora. Everything runs on your own machine: one
-login at the door, no external services. Auth, CRM, Space and Rolodex all live in Postgres, each
-row carrying the tenant it belongs to (see [SAAS-MULTITENANCY.md](./SAAS-MULTITENANCY.md)).
+Three apps, merged from four separate repos into one **multi-tenant application** with one
+frontend server and one backend server, branded for Novhora. It can run locally or on your own
+infrastructure, with one login and a shared PostgreSQL database.
+
+PostgreSQL replaced the previous separate SQLite files to support multiple tenants and concurrent
+access through a database server. Users, tenants and memberships form the global identity domain;
+every operational row in CRM, Space and Rolodex carries a `tenant_id`. Application-level query
+scoping and PostgreSQL Row-Level Security isolate each tenant
+(see [SAAS-MULTITENANCY.md](./SAAS-MULTITENANCY.md)). Running locally is a deployment option,
+not a single-user architectural constraint.
 
 | App         | Path       | What it is                                                                                                                      | Backend  |
 | ----------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------- | -------- |
 | **CRM**     | `/crm`     | Personal sales CRM: organizations, contacts, deals, drag-and-drop pipeline, activities, dashboard                               | Postgres |
-| **Space**   | `/space`   | Personal knowledge manager, a single-user Notion: pages and blocks, databases with table/board/list views, search               | Postgres |
+| **Space**   | `/space`   | Knowledge manager in the style of Notion: pages and blocks, databases with table/board/list views, search                       | Postgres |
 | **Rolodex** | `/rolodex` | Personal CRM for your own people: check-in cadences, circles, birthdays, a timeline of every conversation, CSV and vCard import | Postgres |
 
 A launcher at `/` links to all three, and every page carries the same navigation strip: the
@@ -16,8 +22,8 @@ Novhora mark, then Home, CRM, Space and Rolodex, each with the icon that identif
 own app too, one theme toggle and one sign-out button on the right.
 
 A login gate sits in front of all of it: one seeded owner account (`marco@example.com`, password
-`bench`, printed on first run), scrypt-hashed in Postgres, with JWT sessions whose `token_version`
-revokes every earlier token on logout or password change. Every page without a session redirects
+`bench`, configurable through seed environment variables), scrypt-hashed in Postgres. JWT sessions
+carry a `token_version` that revokes every earlier token on logout or password change. Every page without a session redirects
 to the login document at `/login`, every `/api` route except `/api/auth` answers 401, and the three
 app api helpers in `web/src/*/api.ts` send the browser to `/login` when they see that 401. Sign out
 from the strip ends the session server-side.
@@ -60,10 +66,10 @@ web/                ONE Vite project, multi-page (MPA)
   src/shared/         the brand, the navigation strip, the theme and the session sign-out - the
                       code all five documents share
 server/             ONE Express app
-  src/index.ts        opens the four DBs, listens on :8100
+  src/index.ts        opens the Postgres pool, migrates and seeds, listens on :8100
   src/app.ts          mounts routers, gates pages and API behind the session, serves web/dist
                       with per-prefix SPA fallback
-  src/auth/           login/logout/whoami + forced password change, the users and sessions db,
+  src/auth/           login/logout/whoami + forced password change, the global users, tenants and memberships,
                       the admin panel's user-management routes
   src/crm/            crm routes + db + seed
   src/space/          space routes + db + seed

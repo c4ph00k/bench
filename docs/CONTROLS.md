@@ -113,8 +113,8 @@ it reads the directive, so the warning is reported either way. That was measured
 
 **`eslint-plugin-unicorn` is not installed.** Three of its rules fight this codebase directly.
 `prevent-abbreviations` would rename `db` (185 uses), `(req, res)` (39 Express handlers), `(e) =>`
-(73 handlers) and `Props` (32 files). `no-null` hits 301 `null`s, which is not a style habit: SQLite
-stores NULL, the columns are nullable, and `better-sqlite3` binds `null` and rejects `undefined`.
+(73 handlers) and `Props` (32 files). `no-null` hits 301 `null`s, which is not a style habit: PostgreSQL
+columns can be nullable, and the data layer represents SQL NULL with JavaScript `null`.
 `filename-case` defaults to kebab-case against PascalCase components. What remains once those are
 off overlaps heavily with `strictTypeChecked` and SonarJS.
 

@@ -12,12 +12,15 @@ test-results/
 playwright-report/
 e2e/.tmp/
 
-# Local data (SQLite, seeded on first run)
+# Legacy local database files
 data/
 *.sqlite*
 *.db
 *.db-shm
 *.db-wal
+
+# Experimental product and market documents
+/docs/market&product/
 
 # Environment / secrets
 .env

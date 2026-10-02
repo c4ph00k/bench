@@ -1,6 +1,11 @@
+> Architecture update: this is the historical standalone product brief. Its SQLite, no-login
+> and single-user constraints are superseded by Bench's shared PostgreSQL database, login,
+> membership roles and tenant isolation. See [PROJECT.md](../PROJECT.md) and
+> [SAAS-MULTITENANCY.md](../SAAS-MULTITENANCY.md) for the current architecture.
+
 > The original product brief for Rolodex, kept for intent and scope. It was written for a
 > standalone repo, so it describes its own server, ports and commands; inside Bench the app is
-> one of four, served by the shared server on :8100. The phased plan below describes a build that
+> one of three, served by the shared server on :8100. The phased plan below describes a build that
 > is **complete** - history, not outstanding work. For how Rolodex is actually built, read
 > [IMPLEMENTATION.md](./IMPLEMENTATION.md).
 

@@ -1,8 +1,9 @@
 # Novhora
 
-Three local-first apps behind one server, branded for Novhora. One login at the door, no cloud -
-everything runs on your machine, with the data in Postgres. Light and dark, one toggle for all
-three.
+Three apps behind one server, branded for Novhora, with one login and a shared PostgreSQL
+database. The application supports multiple tenants with scoped queries and Row-Level Security;
+it can run locally or on your own infrastructure. PostgreSQL replaces the previous SQLite files.
+Light and dark, one toggle for all three.
 
 |             |            |                                                                                                                     |
 | ----------- | ---------- | ------------------------------------------------------------------------------------------------------------------- |

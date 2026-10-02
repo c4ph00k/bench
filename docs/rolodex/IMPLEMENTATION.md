@@ -1,24 +1,26 @@
 # Rolodex
 
 A personal CRM at `/rolodex`: the people in your life, when you last spoke, and when you are
-overdue a catch-up. Five sections - Today, People, Circles, Calendar, Timeline. Backed by
-`data/rolodex.sqlite`.
+overdue a catch-up. Five sections - Today, People, Circles, Calendar, Timeline. Data lives in
+the shared PostgreSQL database, scoped by `tenant_id` and protected by Row-Level Security.
 
 - Frontend: `web/src/rolodex/` - `pages/`, `components/`, `types.ts`, `api.ts`, `styles.css`
 - Backend: `server/src/rolodex/` - `db/`, `routes/`, `seed.ts`, and the pure modules beside them
 - Tests: `server/test/rolodex/`, `web/src/rolodex/**/*.test.tsx`, `e2e/rolodex/`
 
-It arrived from its own repo (`projects/rolodex`) and was adapted rather than rewritten: same
-schema, same screens, same seed. What changed is listed under [The port](#the-port).
+It arrived from its own repo (`projects/rolodex`) and was adapted rather than rewritten: the same
+product screens and sample data, with its storage now ported to PostgreSQL. What changed is
+listed under [The port](#the-port).
 
 ## Data model
 
-Eight tables in `server/src/rolodex/db/schema.ts`: `people`, plus `interactions`,
+Nine tables defined in `server/migrations/0004_rolodex.sql`: `people`, plus `interactions`,
 `important_dates`, `facts`, `news`, `reminders`, `gifts` and `connections`, each hanging off a
-person and cascading on delete. There is no migration history: the schema is created if absent.
+person and cascading on delete. Numbered SQL migrations are applied by
+`server/src/db/migrate.ts` and recorded in `schema_migrations`.
 
-`people.tags` is a JSON array in a text column, and `checkins_off` is 0 or 1 - SQLite has neither
-a list nor a boolean, and `personFromRow` is the one place that converts both back.
+`people.tags` remains a JSON array serialized into a text column; `personFromRow` parses it.
+`checkins_off` and the other boolean flags are native PostgreSQL booleans.
 
 ## Check-in status is derived, never stored
 
@@ -84,8 +86,9 @@ page reads (`useStore`) and the toast stack (`useToast`). Pages fetch their own 
 Bench's checks are stricter than the original repo's, so the code changed shape on the way in.
 Anything below is a difference from `projects/rolodex`, not a decision to revisit lightly.
 
-- **`node:sqlite` to `better-sqlite3`.** One driver in the process, matching CRM and Space. The
-  APIs are near-identical; the ported tests are what proved it.
+- **PostgreSQL via `pg`.** Rolodex now shares the pool with CRM, Space and auth. Its repositories
+  use asynchronous queries and receive the tenant id and the request-scoped connection. The
+  earlier SQLite driver adaptation has been superseded.
 - **One 777-line `db.ts` became `db/`**, a module per table composed by `createRepo`, because 500
   lines and 200 lines-per-function are hard limits here. `createDate` and `createConnection` grew
   an object parameter for the same reason: `max-params` is 5.
@@ -121,5 +124,5 @@ Anything below is a difference from `projects/rolodex`, not a decision to revisi
 ## Related documents
 
 - [REQUIREMENTS.md](./REQUIREMENTS.md) - the original brief, kept for intent
-- [PROJECT.md](../PROJECT.md) - how the four apps fit together
+- [PROJECT.md](../PROJECT.md) - how the three apps fit together
 - [PROCESS.md](../PROCESS.md) - how to make a change here

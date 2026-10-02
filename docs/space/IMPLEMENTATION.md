@@ -1,8 +1,8 @@
 # Space
 
-A personal knowledge manager at `/space` - a single-user Notion. Pages and blocks, databases with
-table, board and list views, quick-find search. Backed by
-`data/personal-space.db`.
+A knowledge manager at `/space` in the style of Notion. Pages and blocks, databases with
+table, board and list views, quick-find search. Data lives in the shared PostgreSQL database,
+scoped by `tenant_id` and protected by Row-Level Security.
 
 - Frontend: `web/src/space/` - `components/`, `editor/`, `database/`, `api.ts`
 - Backend: `server/src/space/` - `db.ts`, `routes/`, `seed.ts`
@@ -13,7 +13,8 @@ including an adversarial spec.
 
 ## Data model
 
-Six tables in `server/src/space/db.ts`:
+Six tables defined in `server/migrations/0003_space.sql`, with asynchronous queries in
+`server/src/space/db.ts`:
 
 - `pages` - the tree. A row's `type` is `page`, `database` or `row`; `parent_id` self-references,
   and `position` orders siblings. Database rows are pages of type `row` whose parent is the
@@ -27,7 +28,7 @@ Ids are UUID strings, not integers.
 
 ## The seeded workspace
 
-`server/src/space/seed.ts` fills an empty database with a worked example rather than a stub: nine
+`server/src/space/seed.ts` fills an empty tenant workspace with a worked example rather than a stub: nine
 top-level sections (Home, Projects, Travel, Notes, Reading List, Health & Habits, Work, Learning,
 Archive), three levels deep in places, and **five databases** - Reading List, Trip Planner, Project
 Tracker, Tasks and Course Log. Between them they use every property type, every block type and all

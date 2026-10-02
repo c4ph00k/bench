@@ -1,6 +1,6 @@
 # Bench - agent instructions
 
-Three local-first apps (CRM, Space, Rolodex) behind one Express server, all behind a
+Three apps in one multi-tenant application (CRM, Space, Rolodex) behind one Express server, all behind a
 login gate (email + password, seeded on first run - see `server/src/auth/`). The suite is
 branded for Novhora - name, mark and favicon come from `web/src/shared/brand.ts` and
 `web/public/novhora.svg`. One npm workspace
