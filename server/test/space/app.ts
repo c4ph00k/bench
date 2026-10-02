@@ -6,7 +6,6 @@ import request from "supertest";
 import type express from "express";
 import type { Pool } from "pg";
 import { createApp } from "../../src/app.js";
-import { openDb as openRolodexDb } from "../../src/rolodex/db/index.js";
 import {
   JWT_SECRET,
   SEED_EMAIL,
@@ -28,7 +27,6 @@ export async function appWithSpace(): Promise<express.Express> {
   return createApp({
     pool,
     jwtSecret: JWT_SECRET,
-    dbs: { rolodex: openRolodexDb(":memory:") },
   });
 }
 

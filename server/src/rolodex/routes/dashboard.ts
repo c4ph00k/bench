@@ -1,7 +1,9 @@
 /** The read-only views: today, the calendar, the timeline and the charts behind them. */
-import { Router } from "express";
+import { Router, type Response } from "express";
+import type { Pool } from "pg";
 import { format } from "date-fns";
-import type { Repo } from "../db/index.js";
+import { createRepo, type Repo } from "../db/index.js";
+import { tenantIdOf } from "../../tenant.js";
 import { CIRCLE_META } from "../cadence.js";
 import { daysBetweenISO, todayISO } from "../dates.js";
 import { datesInMonth, upcomingDates } from "../importantDates.js";
@@ -16,13 +18,14 @@ function overdueRank(p: PersonComputed, today: string): number {
   return p.next_due ? -daysBetweenISO(today, p.next_due) : 0;
 }
 
-export function dashboardRouter(repo: Repo): Router {
+export function dashboardRouter(pool: Pool): Router {
   const router = Router();
+  const repoOf = (res: Response) => createRepo(pool, tenantIdOf(res));
 
-  router.get("/today", (_req, res) => {
+  router.get("/today", async (req, res) => {
+    const repo = repoOf(res);
     const today = todayISO();
-    const toContact = repo
-      .listPeople()
+    const toContact = (await repo.listPeople())
       .filter((p) => p.status === "overdue" || p.status === "due_soon")
       .sort(
         (a, b) =>
@@ -46,21 +49,25 @@ export function dashboardRouter(repo: Repo): Router {
     res.json({
       today,
       to_contact: toContact,
-      upcoming_dates: upcomingDates(repo.listAllDates(), UPCOMING_WINDOW_DAYS),
-      reminders: repo.listOpenReminders().map((r) => ({
+      upcoming_dates: upcomingDates(
+        await repo.listAllDates(),
+        UPCOMING_WINDOW_DAYS,
+      ),
+      reminders: (await repo.listOpenReminders()).map((r) => ({
         ...r,
         overdue: r.due_date < today,
         due_today: r.due_date === today,
       })),
-      recent: repo.timeline(null, null).slice(0, 30),
+      recent: (await repo.timeline(null, null)).slice(0, 30),
     });
   });
 
-  router.get("/calendar", (req, res) => {
+  router.get("/calendar", async (req, res) => {
+    const repo = repoOf(res);
     const now = new Date();
     const year = Number(req.query.year) || now.getFullYear();
     const month = Number(req.query.month) || now.getMonth() + 1;
-    const all = repo.listAllDates();
+    const all = await repo.listAllDates();
     res.json({
       year,
       month,
@@ -69,35 +76,39 @@ export function dashboardRouter(repo: Repo): Router {
     });
   });
 
-  router.get("/timeline", (req, res) => {
+  router.get("/timeline", async (req, res) => {
+    const repo = repoOf(res);
     const { person, kind } = req.query;
     res.json(
-      repo.timeline(
+      await repo.timeline(
         person ? Number(person) : null,
         typeof kind === "string" && kind !== "all" ? kind : null,
       ),
     );
   });
 
-  router.get("/stats", (_req, res) => {
-    res.json({ months: interactionsByMonth(repo), circles: byCircle(repo) });
+  router.get("/stats", async (req, res) => {
+    const repo = repoOf(res);
+    res.json({
+      months: await interactionsByMonth(repo),
+      circles: await byCircle(repo),
+    });
   });
 
-  router.get("/tags", (_req, res) => {
-    res.json(repo.allTags());
+  router.get("/tags", async (req, res) => {
+    const repo = repoOf(res);
+    res.json(await repo.allTags());
   });
 
   return router;
 }
 
 /** Interactions per month for the last year, including the months with none. */
-function interactionsByMonth(repo: Repo) {
-  const rows = repo.db.prepare("SELECT date FROM interactions").all() as {
-    date: string;
-  }[];
+async function interactionsByMonth(repo: Repo) {
+  const dates = await repo.interactionDates();
   const counts = new Map<string, number>();
-  for (const r of rows) {
-    const key = r.date.slice(0, 7);
+  for (const date of dates) {
+    const key = date.slice(0, 7);
     counts.set(key, (counts.get(key) ?? 0) + 1);
   }
   const now = new Date();
@@ -108,8 +119,8 @@ function interactionsByMonth(repo: Repo) {
   });
 }
 
-function byCircle(repo: Repo) {
-  const people = repo.listPeople();
+async function byCircle(repo: Repo) {
+  const people = await repo.listPeople();
   return (Object.keys(CIRCLE_META) as Circle[]).map((circle) => {
     const inCircle = people.filter((p) => p.circle === circle);
     const count = (status: PersonComputed["status"]) =>

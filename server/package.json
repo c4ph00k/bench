@@ -10,7 +10,6 @@
     "coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "better-sqlite3": "^12.11.1",
     "date-fns": "^4.4.0",
     "dotenv": "^18.0.5",
     "express": "^5.2.1",
@@ -21,7 +20,6 @@
   },
   "devDependencies": {
     "@testcontainers/postgresql": "^12.2.0",
-    "@types/better-sqlite3": "^7.6.13",
     "@types/express": "^5.0.6",
     "@types/node": "^26.1.0",
     "@types/papaparse": "^5.5.2",

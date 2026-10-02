@@ -1,6 +1,8 @@
 /** People and the connections between them. */
-import { Router } from "express";
-import type { Repo } from "../db/index.js";
+import { Router, type Response } from "express";
+import type { Pool } from "pg";
+import { createRepo } from "../db/index.js";
+import { tenantIdOf } from "../../tenant.js";
 import { filterPeople } from "../search.js";
 import type { ConnectionKind, PersonInput } from "../types.js";
 import { CIRCLES } from "../types.js";
@@ -21,13 +23,15 @@ const CONNECTION_KINDS: ConnectionKind[] = [
   "other",
 ];
 
-export function peopleRouter(repo: Repo): Router {
+export function peopleRouter(pool: Pool): Router {
   const router = Router();
+  const repoOf = (res: Response) => createRepo(pool, tenantIdOf(res));
 
-  router.get("/people", (req, res) => {
+  router.get("/people", async (req, res) => {
+    const repo = repoOf(res);
     const { search, circle, tag } = req.query;
     res.json(
-      filterPeople(repo.listPeople(), {
+      filterPeople(await repo.listPeople(), {
         query: typeof search === "string" ? search : undefined,
         circle: isOneOf(CIRCLES, circle) ? circle : undefined,
         tag: typeof tag === "string" ? tag : undefined,
@@ -35,58 +39,63 @@ export function peopleRouter(repo: Repo): Router {
     );
   });
 
-  router.get("/people/:id", (req, res) => {
-    const p = repo.getPerson(Number(req.params.id));
+  router.get("/people/:id", async (req, res) => {
+    const repo = repoOf(res);
+    const p = await repo.getPerson(Number(req.params.id));
     if (!p) return notFound(res);
     res.json({
       person: p,
-      interactions: repo.listInteractions(p.id),
-      dates: repo.listDates(p.id),
-      facts: repo.listFacts(p.id),
-      news: repo.listNews(p.id),
-      reminders: repo.listReminders(p.id),
-      gifts: repo.listGifts(p.id),
-      connections: repo.listConnections(p.id),
+      interactions: await repo.listInteractions(p.id),
+      dates: await repo.listDates(p.id),
+      facts: await repo.listFacts(p.id),
+      news: await repo.listNews(p.id),
+      reminders: await repo.listReminders(p.id),
+      gifts: await repo.listGifts(p.id),
+      connections: await repo.listConnections(p.id),
     });
   });
 
-  router.post("/people", (req, res) => {
+  router.post("/people", async (req, res) => {
+    const repo = repoOf(res);
     const input = body(req);
     if (!isText(input.name)) return badRequest(res, "Name is required");
     res.status(201).json(
-      repo.createPerson({
+      await repo.createPerson({
         ...(input as Partial<PersonInput>),
         name: input.name.trim(),
       }),
     );
   });
 
-  router.patch("/people/:id", (req, res) => {
+  router.patch("/people/:id", async (req, res) => {
+    const repo = repoOf(res);
     const id = Number(req.params.id);
-    if (!repo.getPerson(id)) return notFound(res);
+    if (!(await repo.getPerson(id))) return notFound(res);
     // id and created_at belong to the record, not to the edit: drop them rather than trust them.
     const patch = body(req);
     delete patch.id;
     delete patch.created_at;
-    res.json(repo.updatePerson(id, patch));
+    res.json(await repo.updatePerson(id, patch));
   });
 
-  router.delete("/people/:id", (req, res) => {
-    if (!repo.deletePerson(Number(req.params.id))) return notFound(res);
+  router.delete("/people/:id", async (req, res) => {
+    const repo = repoOf(res);
+    if (!(await repo.deletePerson(Number(req.params.id)))) return notFound(res);
     res.json({ ok: true });
   });
 
-  router.post("/people/:id/connections", (req, res) => {
+  router.post("/people/:id/connections", async (req, res) => {
+    const repo = repoOf(res);
     const a = Number(req.params.id);
-    if (!repo.getPerson(a)) return notFound(res);
+    if (!(await repo.getPerson(a))) return notFound(res);
     const input = body(req);
     const b = Number(input.other_id);
-    if (!b || !repo.getPerson(b) || a === b)
+    if (!b || !(await repo.getPerson(b)) || a === b)
       return badRequest(res, "A valid other person is required");
     if (!isOneOf(CONNECTION_KINDS, input.kind))
       return badRequest(res, "Invalid connection kind");
     res.status(201).json(
-      repo.createConnection(a, b, {
+      await repo.createConnection(a, b, {
         kind: input.kind,
         a_is_parent: input.a_is_parent === true,
         label: optionalText(input.label),
@@ -96,8 +105,9 @@ export function peopleRouter(repo: Repo): Router {
     );
   });
 
-  router.delete("/connections/:id", (req, res) => {
-    res.json({ ok: repo.deleteConnection(Number(req.params.id)) });
+  router.delete("/connections/:id", async (req, res) => {
+    const repo = repoOf(res);
+    res.json({ ok: await repo.deleteConnection(Number(req.params.id)) });
   });
 
   return router;

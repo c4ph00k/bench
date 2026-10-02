@@ -1,8 +1,8 @@
 # Novhora
 
 Three local-first apps behind one server, branded for Novhora. One login at the door, no cloud -
-everything runs on your machine. The apps' data lives in local SQLite files; auth runs on Postgres.
-Light and dark, one toggle for all three.
+everything runs on your machine, with the data in Postgres. Light and dark, one toggle for all
+three.
 
 |             |            |                                                                                                                     |
 | ----------- | ---------- | ------------------------------------------------------------------------------------------------------------------- |
@@ -111,8 +111,8 @@ before anything appears**, which is normal, not a hang. Then open:
 **http://localhost:8100**
 
 The first run migrates Postgres, seeds an owner account (see `.env.example`, default
-`marco@example.com` / `bench`) and seeds the three app SQLite databases under `data/` with sample
-data. Click through all three apps and the theme toggle to confirm it works.
+`marco@example.com` / `bench`) and seeds sample data into all three apps. Click through all three
+apps and the theme toggle to confirm it works.
 
 Stop the server with `Ctrl+C`.
 
@@ -198,8 +198,8 @@ and the shared theme toggle. It takes about a minute.
 What it does under the hood, which explains the wait and the ports:
 
 - It **builds the frontend once** before the first test, so it exercises the real production bundle.
-- **Each parallel worker starts its own API server with its own Postgres and SQLite databases**, on
-  ports from 8150 up. Tests never share state with each other or with your `npm start` data.
+- **Each parallel worker starts its own API server with its own Postgres**, on ports from 8150 up.
+  Tests never share state with each other or with your `npm start` data.
 - It runs at 1440x900, because at a narrower viewport the drag-and-drop boards fall outside the
   window and drags never activate.
 

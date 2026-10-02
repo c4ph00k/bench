@@ -1,6 +1,7 @@
-import type { Repo } from "./db/index.js";
+import type { Pool } from "pg";
+import { createRepo, type Repo } from "./db/index.js";
 import { addDaysISO, todayISO } from "./dates.js";
-import type { Circle, InteractionType } from "./types.js";
+import type { Circle, ImportantDateType, InteractionType } from "./types.js";
 
 function mulberry32(seed: number) {
   let a = seed;
@@ -117,13 +118,13 @@ function pickType(roll: number): InteractionType {
 }
 
 /** A person's history, walking backwards from the last time you spoke. */
-function addInteractions(
+async function addInteractions(
   repo: Repo,
   personId: number,
   p: PersonSeed,
   rand: Rand,
   today: string,
-): void {
+): Promise<void> {
   if (p.lastContactedDaysAgo == null) return;
   let daysAgo = p.lastContactedDaysAgo;
   const used = new Set<string>();
@@ -132,7 +133,7 @@ function addInteractions(
     if (!used.has(date)) {
       const type = pickType(rand());
       const pool = NOTE_POOLS[type];
-      repo.createInteraction(
+      await repo.createInteraction(
         personId,
         type,
         date,
@@ -145,15 +146,15 @@ function addInteractions(
 }
 
 /** Insert everyone, returning their ids by name so the rest of the seed can refer to them. */
-function insertPeople(
+async function insertPeople(
   repo: Repo,
   people: PersonSeed[],
   rand: Rand,
   today: string,
-): Map<string, number> {
+): Promise<Map<string, number>> {
   const ids = new Map<string, number>();
   for (const p of people) {
-    const created = repo.createPerson({
+    const created = await repo.createPerson({
       name: p.name,
       email: p.email ?? slugEmail(p.name, "example.com"),
       phone: p.phone ?? null,
@@ -172,17 +173,18 @@ function insertPeople(
       tags: p.tags,
     });
     ids.set(p.name, created.id);
-    addInteractions(repo, created.id, p, rand, today);
+    await addInteractions(repo, created.id, p, rand, today);
     if (p.birthday) {
       const [month, day, year] = p.birthday;
-      repo.createDate(created.id, "birthday", null, { month, day, year });
+      await repo.createDate(created.id, "birthday", null, { month, day, year });
     }
   }
   return ids;
 }
 
-export function seedIfEmpty(repo: Repo): void {
-  if (repo.personCount() > 0) return;
+export async function seedIfEmpty(pool: Pool, tenantId: number): Promise<void> {
+  const repo = createRepo(pool, tenantId);
+  if ((await repo.personCount()) > 0) return;
   const rand = mulberry32(20260814);
   const today = todayISO();
 
@@ -820,29 +822,39 @@ export function seedIfEmpty(repo: Repo): void {
     },
   ];
 
-  const ids = insertPeople(repo, PEOPLE, rand, today);
+  const ids = await insertPeople(repo, PEOPLE, rand, today);
 
   // Extra important dates beyond birthdays
-  const date = (
+  const date = async (
     name: string,
-    type: Parameters<Repo["createDate"]>[1],
+    type: ImportantDateType,
     label: string | null,
     mdY: [number, number, number | null],
   ) => {
     const id = ids.get(name);
     if (id)
-      repo.createDate(id, type, label, {
+      await repo.createDate(id, type, label, {
         month: mdY[0],
         day: mdY[1],
         year: mdY[2],
       });
   };
-  date("James Whitfield", "anniversary", "Wedding anniversary", [6, 14, 2018]);
-  date("Maya Chen", "work_anniversary", "Joined Figma", [3, 15, 2021]);
-  date("Lena Weber", "work_anniversary", "At Fabrikam", [10, 1, 2015]);
-  date("Clara Dubois", "child_birthday", "Louise", [4, 17, 2019]);
-  date("Ruth Kelly", "anniversary", "Mum and Dad’s anniversary", [6, 26, 1983]);
-  date(
+  await date(
+    "James Whitfield",
+    "anniversary",
+    "Wedding anniversary",
+    [6, 14, 2018],
+  );
+  await date("Maya Chen", "work_anniversary", "Joined Figma", [3, 15, 2021]);
+  await date("Lena Weber", "work_anniversary", "At Fabrikam", [10, 1, 2015]);
+  await date("Clara Dubois", "child_birthday", "Louise", [4, 17, 2019]);
+  await date(
+    "Ruth Kelly",
+    "anniversary",
+    "Mum and Dad’s anniversary",
+    [6, 26, 1983],
+  );
+  await date(
     "Michael Byrne",
     "other",
     "Dissertation deadline (the one I missed)",
@@ -850,80 +862,121 @@ export function seedIfEmpty(repo: Repo): void {
   );
 
   // Facts
-  const fact = (name: string, text: string) => {
+  const fact = async (name: string, text: string) => {
     const id = ids.get(name);
-    if (id) repo.createFact(id, text);
+    if (id) await repo.createFact(id, text);
   };
-  fact("Maya Chen", "Allergic to shellfish — check the menu before booking");
-  fact("Maya Chen", "Runs a life-drawing class on Tuesday evenings");
-  fact("Maya Chen", "Hates surprise parties");
-  fact("Sam Okafor", "Partner is Priya");
-  fact("Sam Okafor", "Supports Arsenal, tragically");
-  fact("Sam Okafor", "Allergic to penicillin");
-  fact(
+  await fact(
+    "Maya Chen",
+    "Allergic to shellfish — check the menu before booking",
+  );
+  await fact("Maya Chen", "Runs a life-drawing class on Tuesday evenings");
+  await fact("Maya Chen", "Hates surprise parties");
+  await fact("Sam Okafor", "Partner is Priya");
+  await fact("Sam Okafor", "Supports Arsenal, tragically");
+  await fact("Sam Okafor", "Allergic to penicillin");
+  await fact(
     "Priya Sharma",
     "Vegetarian, but makes an exception for her mum’s biryani",
   );
-  fact("Priya Sharma", "Collects first editions of travel writing");
-  fact("Daniel Rousseau", "Allergic to cats");
-  fact(
+  await fact("Priya Sharma", "Collects first editions of travel writing");
+  await fact("Daniel Rousseau", "Allergic to cats");
+  await fact(
     "Daniel Rousseau",
     "Speaks French, Portuguese, English and a little Basque",
   );
-  fact("Joseph Kelly", "Deaf in his left ear — sit on his right");
-  fact("Joseph Kelly", "Loves Munster rugby; hates the referee, whoever it is");
-  fact("Ruth Kelly", "Prefers letters to email. Print the photos.");
-  fact("Grace Liu", "Avoids caffeine — order her a rooibos");
-  fact("James Whitfield", "Twin girls, born spring 2024");
-  fact("Alex Kim", "Learning the cello; it is going… slowly");
-  fact(
+  await fact("Joseph Kelly", "Deaf in his left ear — sit on his right");
+  await fact(
+    "Joseph Kelly",
+    "Loves Munster rugby; hates the referee, whoever it is",
+  );
+  await fact("Ruth Kelly", "Prefers letters to email. Print the photos.");
+  await fact("Grace Liu", "Avoids caffeine — order her a rooibos");
+  await fact("James Whitfield", "Twin girls, born spring 2024");
+  await fact("Alex Kim", "Learning the cello; it is going… slowly");
+  await fact(
     "Nadia Haddad",
     "Files copy late on Fridays — don’t call before noon Saturday",
   );
-  fact("Clara Dubois", "Daughter is Louise, born 2019");
-  fact("Marco Petrelli", "Sends wine at Christmas; always send something back");
-  fact("Hannah Cohen", "Fluent in Hebrew, English and French");
+  await fact("Clara Dubois", "Daughter is Louise, born 2019");
+  await fact(
+    "Marco Petrelli",
+    "Sends wine at Christmas; always send something back",
+  );
+  await fact("Hannah Cohen", "Fluent in Hebrew, English and French");
 
   // News (dated; newest is the person's latest news)
-  const news = (name: string, text: string, daysAgo: number) => {
+  const news = async (name: string, text: string, daysAgo: number) => {
     const id = ids.get(name);
-    if (id) repo.createNews(id, text, addDaysISO(today, -daysAgo));
+    if (id) await repo.createNews(id, text, addDaysISO(today, -daysAgo));
   };
-  news("Maya Chen", "Promoted to Senior Product Designer at Figma", 21);
-  news("Maya Chen", "Moved to a flat in the Mission with a roof terrace", 120);
-  news("Sam Okafor", "Moved to London — the Stripe office opened in March", 60);
-  news("Sam Okafor", "Training for the Berlin half-marathon", 12);
-  news("Priya Sharma", "Passed her FRCEM exams — is now a registrar", 90);
-  news("James Whitfield", "Twin girls born — Eleanor and Iris", 420);
-  news("James Whitfield", "Promoted to Engineering Manager at Monzo", 150);
-  news("Clara Dubois", "Second baby due in March", 40);
-  news("Clara Dubois", "Moved the studio to the eleventh arrondissement", 200);
-  news("Inês Baptista", "Her practice won the Cais do Sodré competition", 75);
-  news("Nadia Haddad", "Posted to Berlin for the Guardian for two years", 55);
-  news(
+  await news("Maya Chen", "Promoted to Senior Product Designer at Figma", 21);
+  await news(
+    "Maya Chen",
+    "Moved to a flat in the Mission with a roof terrace",
+    120,
+  );
+  await news(
+    "Sam Okafor",
+    "Moved to London — the Stripe office opened in March",
+    60,
+  );
+  await news("Sam Okafor", "Training for the Berlin half-marathon", 12);
+  await news("Priya Sharma", "Passed her FRCEM exams — is now a registrar", 90);
+  await news("James Whitfield", "Twin girls born — Eleanor and Iris", 420);
+  await news(
+    "James Whitfield",
+    "Promoted to Engineering Manager at Monzo",
+    150,
+  );
+  await news("Clara Dubois", "Second baby due in March", 40);
+  await news(
+    "Clara Dubois",
+    "Moved the studio to the eleventh arrondissement",
+    200,
+  );
+  await news(
+    "Inês Baptista",
+    "Her practice won the Cais do Sodré competition",
+    75,
+  );
+  await news(
+    "Nadia Haddad",
+    "Posted to Berlin for the Guardian for two years",
+    55,
+  );
+  await news(
     "Daniel Rousseau",
     "Restaurant got its second toque in the Gault & Millau",
     30,
   );
-  news("Alex Kim", "Moved to Stockholm for the Spotify job", 200);
-  news("Hannah Cohen", "Started a paediatric nursing degree in Tel Aviv", 340);
-  news(
+  await news("Alex Kim", "Moved to Stockholm for the Spotify job", 200);
+  await news(
+    "Hannah Cohen",
+    "Started a paediatric nursing degree in Tel Aviv",
+    340,
+  );
+  await news(
     "Yuki Tanaka",
     "Her translation of “The Woman in the Dunes” was shortlisted",
     110,
   );
-  news("Marco Petrelli", "The 2025 Sangiovese won a regional medal", 55);
-  news("Michael Byrne", "Stepping down as head of department next summer", 400);
-  news(
+  await news("Marco Petrelli", "The 2025 Sangiovese won a regional medal", 55);
+  await news(
+    "Michael Byrne",
+    "Stepping down as head of department next summer",
+    400,
+  );
+  await news(
     "Victor Almeida",
     "Exhibition of Patagonia work opening in São Paulo",
     8,
   );
-  news("Elena Petrova", "Started teaching evening Catalan classes", 260);
-  news("Grace Liu", "Opening a second clinic in North Vancouver", 150);
+  await news("Elena Petrova", "Started teaching evening Catalan classes", 260);
+  await news("Grace Liu", "Opening a second clinic in North Vancouver", 150);
 
   // Reminders
-  const reminder = (
+  const reminder = async (
     name: string,
     text: string,
     dueInDays: number,
@@ -931,25 +984,51 @@ export function seedIfEmpty(repo: Repo): void {
   ) => {
     const id = ids.get(name);
     if (!id) return;
-    const r = repo.createReminder(id, text, addDaysISO(today, dueInDays));
-    if (done) repo.setReminderDone(r.id, true);
+    const r = await repo.createReminder(id, text, addDaysISO(today, dueInDays));
+    if (done) await repo.setReminderDone(r.id, true);
   };
-  reminder("Maya Chen", `Book a table for Maya's birthday dinner`, 5);
-  reminder(
+  await reminder("Maya Chen", `Book a table for Maya's birthday dinner`, 5);
+  await reminder(
     "Joseph Kelly",
     "Post the birthday parcel to Cork (before he leaves)",
     3,
   );
-  reminder("James Whitfield", "Ask about the twins’ christening plans", -2); // overdue
-  reminder("Grace Liu", "Send the physio referral letter Grace offered", -9); // overdue
-  reminder("Michael Byrne", "Write to Michael for his birthday — today!", 0);
-  reminder("Inês Baptista", "Find out Inês’s actual exhibition dates", 14);
-  reminder("Sam Okafor", "Send Berlin half-marathon training plan", 8);
-  reminder("Victor Almeida", "Reply about the exhibition opening", -1, true); // done
-  reminder("Sofia Marino", "Add Sofia’s birthday to the calendar", 2, true); // done
+  await reminder(
+    "James Whitfield",
+    "Ask about the twins’ christening plans",
+    -2,
+  ); // overdue
+  await reminder(
+    "Grace Liu",
+    "Send the physio referral letter Grace offered",
+    -9,
+  ); // overdue
+  await reminder(
+    "Michael Byrne",
+    "Write to Michael for his birthday — today!",
+    0,
+  );
+  await reminder(
+    "Inês Baptista",
+    "Find out Inês’s actual exhibition dates",
+    14,
+  );
+  await reminder("Sam Okafor", "Send Berlin half-marathon training plan", 8);
+  await reminder(
+    "Victor Almeida",
+    "Reply about the exhibition opening",
+    -1,
+    true,
+  ); // done
+  await reminder(
+    "Sofia Marino",
+    "Add Sofia’s birthday to the calendar",
+    2,
+    true,
+  ); // done
 
   // Gifts
-  const gift = (
+  const gift = async (
     name: string,
     gname: string,
     kind: "idea" | "given" | "received",
@@ -958,66 +1037,72 @@ export function seedIfEmpty(repo: Repo): void {
   ) => {
     const id = ids.get(name);
     if (id)
-      repo.createGift(id, gname, kind, occasion, addDaysISO(today, -daysAgo));
+      await repo.createGift(
+        id,
+        gname,
+        kind,
+        occasion,
+        addDaysISO(today, -daysAgo),
+      );
   };
-  gift(
+  await gift(
     "Maya Chen",
     "Ceramic ramen bowl set from the Lisbon potters",
     "idea",
     "Birthday",
     30,
   );
-  gift(
+  await gift(
     "Maya Chen",
     "Charcoal sketch of her old flat",
     "given",
     "Birthday",
     165,
   );
-  gift(
+  await gift(
     "Maya Chen",
     "Hand-knitted scarf (slightly wonky)",
     "received",
     "Christmas",
     230,
   );
-  gift("Sam Okafor", "Cycling GPS computer", "idea", "Birthday", 45);
-  gift(
+  await gift("Sam Okafor", "Cycling GPS computer", "idea", "Birthday", 45);
+  await gift(
     "Sam Okafor",
     "Vintage Arsenal programme from 1971",
     "given",
     "Birthday",
     300,
   );
-  gift(
+  await gift(
     "Priya Sharma",
     "Box of Turkish delight from Istanbul",
     "given",
     "No reason",
     80,
   );
-  gift(
+  await gift(
     "Joseph Kelly",
     "Large-print Wodehouse collection",
     "idea",
     "Birthday",
     60,
   );
-  gift(
+  await gift(
     "Yuki Tanaka",
     "Ukiyo-e print from the flea market",
     "given",
     "New flat",
     150,
   );
-  gift(
+  await gift(
     "Clara Dubois",
     "The Very Hungry Caterpillar, French edition",
     "given",
     "Louise’s birthday",
     140,
   );
-  gift(
+  await gift(
     "Inês Baptista",
     "Tile-painted nameplate",
     "received",
@@ -1026,7 +1111,7 @@ export function seedIfEmpty(repo: Repo): void {
   );
 
   // Connections between people
-  const connect = (
+  const connect = async (
     a: string,
     b: string,
     kind: "partner" | "parent_child" | "sibling" | "colleague" | "other",
@@ -1040,7 +1125,7 @@ export function seedIfEmpty(repo: Repo): void {
     const aid = ids.get(a);
     const bid = ids.get(b);
     if (aid && bid) {
-      repo.createConnection(aid, bid, {
+      await repo.createConnection(aid, bid, {
         kind,
         a_is_parent: opts.aIsParent === true,
         label: opts.label ?? null,
@@ -1049,44 +1134,46 @@ export function seedIfEmpty(repo: Repo): void {
       });
     }
   };
-  connect("Ruth Kelly", "Maya Chen", "parent_child", { aIsParent: true });
-  connect("Joseph Kelly", "Ruth Kelly", "parent_child", { aIsParent: true });
-  connect("Sam Okafor", "Priya Sharma", "partner");
-  connect("James Whitfield", "Aisha Mbelu", "colleague", {
+  await connect("Ruth Kelly", "Maya Chen", "parent_child", { aIsParent: true });
+  await connect("Joseph Kelly", "Ruth Kelly", "parent_child", {
+    aIsParent: true,
+  });
+  await connect("Sam Okafor", "Priya Sharma", "partner");
+  await connect("James Whitfield", "Aisha Mbelu", "colleague", {
     note: "at Fabrikam, years ago",
   });
-  connect("Daniel Rousseau", "Marco Petrelli", "sibling");
-  connect("Maya Chen", "Hannah Cohen", "other", {
+  await connect("Daniel Rousseau", "Marco Petrelli", "sibling");
+  await connect("Maya Chen", "Hannah Cohen", "other", {
     label: "Cousin of Hannah",
     inverseLabel: "Cousin of Maya",
   });
-  connect("Peter Novak", "Elena Petrova", "other", {
+  await connect("Peter Novak", "Elena Petrova", "other", {
     label: "Introduced me to Elena",
     inverseLabel: "Introduced me to Peter",
   });
-  connect("Sam Okafor", "Tom Becker", "other", {
+  await connect("Sam Okafor", "Tom Becker", "other", {
     label: "University friends with Tom",
     inverseLabel: "University friends with Sam",
   });
-  connect("Maya Chen", "Fatima Zahra", "other", {
+  await connect("Maya Chen", "Fatima Zahra", "other", {
     label: "Friends with Fatima",
     inverseLabel: "Friends with Maya",
   });
-  connect("Daniel Rousseau", "Grace Liu", "other", {
+  await connect("Daniel Rousseau", "Grace Liu", "other", {
     label: "Met on the Lyon ride with Grace",
     inverseLabel: "Met Daniel on the Lyon ride",
   });
 
   // A hand-crafted recent interaction so Today's feed looks alive
   const mayaId = ids.get("Maya Chen")!;
-  repo.createInteraction(
+  await repo.createInteraction(
     mayaId,
     "met",
     addDaysISO(today, -5),
     "Video call that turned into a three-hour catch-up — she showed me the roof terrace",
   );
   const samId = ids.get("Sam Okafor")!;
-  repo.createInteraction(
+  await repo.createInteraction(
     samId,
     "call",
     addDaysISO(today, -12),

@@ -1,13 +1,8 @@
 /** How two people are connected, and how that reads from either end. */
 import { nowISO } from "../dates.js";
 import type { Connection, ConnectionKind, ConnectionView } from "../types.js";
-import {
-  connectionFromRow,
-  deleteRow,
-  readRow,
-  type DB,
-  type Row,
-} from "./rows.js";
+import { connectionFromRow, type Row } from "./rows.js";
+import type { Queryable } from "./index.js";
 
 export interface ConnectionInput {
   kind: ConnectionKind;
@@ -18,9 +13,13 @@ export interface ConnectionInput {
 }
 
 export interface ConnectionsRepo {
-  listConnections(personId: number): ConnectionView[];
-  createConnection(a: number, b: number, input: ConnectionInput): Connection;
-  deleteConnection(id: number): boolean;
+  listConnections(personId: number): Promise<ConnectionView[]>;
+  createConnection(
+    a: number,
+    b: number,
+    input: ConnectionInput,
+  ): Promise<Connection>;
+  deleteConnection(id: number): Promise<boolean>;
 }
 
 /** The same row reads differently from each end: A is B's parent, so B is A's child. */
@@ -49,19 +48,20 @@ function describeConnection(
   }
 }
 
-export function connectionsRepo(db: DB): ConnectionsRepo {
+export function connectionsRepo(
+  db: Queryable,
+  tenantId: number,
+): ConnectionsRepo {
   return {
-    listConnections: (personId) =>
-      (
-        db
-          .prepare(
-            `SELECT c.*, pa.name AS a_name, pb.name AS b_name FROM connections c
-             JOIN people pa ON pa.id = c.person_a
-             JOIN people pb ON pb.id = c.person_b
-             WHERE c.person_a = ? OR c.person_b = ?`,
-          )
-          .all(personId, personId) as Row[]
-      ).map((r) => {
+    listConnections: async (personId) => {
+      const result = await db.query<Row>(
+        `SELECT c.*, pa.name AS a_name, pb.name AS b_name FROM connections c
+         JOIN people pa ON pa.id = c.person_a
+         JOIN people pb ON pb.id = c.person_b
+         WHERE c.tenant_id = $1 AND (c.person_a = $2 OR c.person_b = $2)`,
+        [tenantId, personId],
+      );
+      return result.rows.map((r) => {
         const c = connectionFromRow(r);
         const isA = c.person_a === personId;
         const otherName = (isA ? r.b_name : r.a_name) as string;
@@ -73,29 +73,34 @@ export function connectionsRepo(db: DB): ConnectionsRepo {
           description: describeConnection(personId, c, otherName),
           note: c.note,
         };
-      }),
+      });
+    },
 
-    createConnection: (a, b, input) => {
-      const info = db
-        .prepare(
-          `INSERT INTO connections (person_a, person_b, kind, a_is_parent, label, inverse_label, note, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        )
-        .run(
+    createConnection: async (a, b, input) => {
+      const result = await db.query<Row>(
+        `INSERT INTO connections (tenant_id, person_a, person_b, kind, a_is_parent, label, inverse_label, note, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+        [
+          tenantId,
           a,
           b,
           input.kind,
-          input.a_is_parent ? 1 : 0,
+          input.a_is_parent,
           input.label,
           input.inverse_label,
           input.note,
           nowISO(),
-        );
-      return connectionFromRow(
-        readRow(db, "connections", info.lastInsertRowid),
+        ],
       );
+      return connectionFromRow(result.rows[0]);
     },
 
-    deleteConnection: (id) => deleteRow(db, "connections", id),
+    deleteConnection: async (id) => {
+      const result = await db.query(
+        "DELETE FROM connections WHERE id = $1 AND tenant_id = $2",
+        [id, tenantId],
+      );
+      return (result.rowCount ?? 0) > 0;
+    },
   };
 }

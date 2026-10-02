@@ -1,114 +1,122 @@
 /** Reminders and gifts: the two things attached to a person that have a state of their own. */
 import { nowISO } from "../dates.js";
 import type { Gift, GiftKind, Reminder } from "../types.js";
-import {
-  deleteRow,
-  giftFromRow,
-  readRow,
-  reminderFromRow,
-  type DB,
-  type Row,
-} from "./rows.js";
+import { giftFromRow, reminderFromRow, type Row } from "./rows.js";
+import type { Queryable } from "./index.js";
 
 export interface RemindersRepo {
-  listReminders(personId: number): Reminder[];
-  listOpenReminders(): (Reminder & { person_name: string })[];
-  createReminder(personId: number, text: string, dueDate: string): Reminder;
-  setReminderDone(id: number, done: boolean): Reminder | null;
-  deleteReminder(id: number): boolean;
+  listReminders(personId: number): Promise<Reminder[]>;
+  listOpenReminders(): Promise<(Reminder & { person_name: string })[]>;
+  createReminder(
+    personId: number,
+    text: string,
+    dueDate: string,
+  ): Promise<Reminder>;
+  setReminderDone(id: number, done: boolean): Promise<Reminder | null>;
+  deleteReminder(id: number): Promise<boolean>;
 
-  listGifts(personId: number): Gift[];
+  listGifts(personId: number): Promise<Gift[]>;
   createGift(
     personId: number,
     name: string,
     kind: GiftKind,
     occasion: string | null,
     date: string,
-  ): Gift;
+  ): Promise<Gift>;
   updateGift(
     id: number,
     patch: Partial<Pick<Gift, "kind" | "occasion" | "date">>,
-  ): Gift | null;
-  deleteGift(id: number): boolean;
+  ): Promise<Gift | null>;
+  deleteGift(id: number): Promise<boolean>;
 }
 
-export function remindersRepo(db: DB): RemindersRepo {
-  const gift = (id: number): Gift | null => {
-    const row = db.prepare("SELECT * FROM gifts WHERE id = ?").get(id) as
-      Row | undefined;
-    return row ? giftFromRow(row) : null;
+export function remindersRepo(db: Queryable, tenantId: number): RemindersRepo {
+  const gift = async (id: number): Promise<Gift | null> => {
+    const result = await db.query<Row>(
+      "SELECT * FROM gifts WHERE id = $1 AND tenant_id = $2",
+      [id, tenantId],
+    );
+    return result.rows[0] ? giftFromRow(result.rows[0]) : null;
   };
 
   return {
-    listReminders: (personId) =>
-      (
-        db
-          .prepare(
-            "SELECT * FROM reminders WHERE person_id = ? ORDER BY due_date",
-          )
-          .all(personId) as Row[]
-      ).map(reminderFromRow),
+    listReminders: async (personId) => {
+      const result = await db.query<Row>(
+        "SELECT * FROM reminders WHERE person_id = $1 AND tenant_id = $2 ORDER BY due_date",
+        [personId, tenantId],
+      );
+      return result.rows.map(reminderFromRow);
+    },
 
-    listOpenReminders: () =>
-      (
-        db
-          .prepare(
-            `SELECT r.*, p.name AS person_name FROM reminders r
-             JOIN people p ON p.id = r.person_id WHERE r.done = 0 ORDER BY r.due_date`,
-          )
-          .all() as Row[]
-      ).map((r) => ({
+    listOpenReminders: async () => {
+      const result = await db.query<Row>(
+        `SELECT r.*, p.name AS person_name FROM reminders r
+         JOIN people p ON p.id = r.person_id WHERE r.done = false AND r.tenant_id = $1 ORDER BY r.due_date`,
+        [tenantId],
+      );
+      return result.rows.map((r) => ({
         ...reminderFromRow(r),
         person_name: r.person_name as string,
-      })),
-
-    createReminder: (personId, text, dueDate) => {
-      const info = db
-        .prepare(
-          "INSERT INTO reminders (person_id, text, due_date, done, created_at) VALUES (?, ?, ?, 0, ?)",
-        )
-        .run(personId, text, dueDate, nowISO());
-      return reminderFromRow(readRow(db, "reminders", info.lastInsertRowid));
+      }));
     },
 
-    setReminderDone: (id, done) => {
-      const info = db
-        .prepare("UPDATE reminders SET done = ?, done_at = ? WHERE id = ?")
-        .run(done ? 1 : 0, done ? nowISO() : null, id);
-      if (info.changes === 0) return null;
-      return reminderFromRow(readRow(db, "reminders", id));
+    createReminder: async (personId, text, dueDate) => {
+      const result = await db.query<Row>(
+        "INSERT INTO reminders (tenant_id, person_id, text, due_date, done, created_at) VALUES ($1, $2, $3, $4, false, $5) RETURNING *",
+        [tenantId, personId, text, dueDate, nowISO()],
+      );
+      return reminderFromRow(result.rows[0]);
     },
 
-    deleteReminder: (id) => deleteRow(db, "reminders", id),
-
-    listGifts: (personId) =>
-      (
-        db
-          .prepare(
-            "SELECT * FROM gifts WHERE person_id = ? ORDER BY date DESC, id DESC",
-          )
-          .all(personId) as Row[]
-      ).map(giftFromRow),
-
-    createGift: (personId, name, kind, occasion, date) => {
-      const info = db
-        .prepare(
-          "INSERT INTO gifts (person_id, name, kind, occasion, date, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-        )
-        .run(personId, name, kind, occasion, date, nowISO());
-      return giftFromRow(readRow(db, "gifts", info.lastInsertRowid));
+    setReminderDone: async (id, done) => {
+      const result = await db.query<Row>(
+        "UPDATE reminders SET done = $1, done_at = $2 WHERE id = $3 AND tenant_id = $4 RETURNING *",
+        [done, done ? nowISO() : null, id, tenantId],
+      );
+      return result.rows[0] ? reminderFromRow(result.rows[0]) : null;
     },
 
-    updateGift: (id, patch) => {
-      const current = gift(id);
+    deleteReminder: async (id) => {
+      const result = await db.query(
+        "DELETE FROM reminders WHERE id = $1 AND tenant_id = $2",
+        [id, tenantId],
+      );
+      return (result.rowCount ?? 0) > 0;
+    },
+
+    listGifts: async (personId) => {
+      const result = await db.query<Row>(
+        "SELECT * FROM gifts WHERE person_id = $1 AND tenant_id = $2 ORDER BY date DESC, id DESC",
+        [personId, tenantId],
+      );
+      return result.rows.map(giftFromRow);
+    },
+
+    createGift: async (personId, name, kind, occasion, date) => {
+      const result = await db.query<Row>(
+        "INSERT INTO gifts (tenant_id, person_id, name, kind, occasion, date, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *",
+        [tenantId, personId, name, kind, occasion, date, nowISO()],
+      );
+      return giftFromRow(result.rows[0]);
+    },
+
+    updateGift: async (id, patch) => {
+      const current = await gift(id);
       if (!current) return null;
       const merged = { ...current, ...patch };
-      db.prepare(
-        "UPDATE gifts SET kind = ?, occasion = ?, date = ? WHERE id = ?",
-      ).run(merged.kind, merged.occasion, merged.date, id);
-      return giftFromRow(readRow(db, "gifts", id));
+      await db.query(
+        "UPDATE gifts SET kind = $1, occasion = $2, date = $3 WHERE id = $4 AND tenant_id = $5",
+        [merged.kind, merged.occasion, merged.date, id, tenantId],
+      );
+      return gift(id);
     },
 
-    deleteGift: (id) => deleteRow(db, "gifts", id),
+    deleteGift: async (id) => {
+      const result = await db.query(
+        "DELETE FROM gifts WHERE id = $1 AND tenant_id = $2",
+        [id, tenantId],
+      );
+      return (result.rowCount ?? 0) > 0;
+    },
   };
 }

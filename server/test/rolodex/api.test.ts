@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import request from "supertest";
-import type express from "express";
 import { appWithRolodex } from "./app.js";
-import { makePerson, testRepo } from "./helpers.js";
+import { makePerson } from "./helpers.js";
 import type { Repo } from "../../src/rolodex/db/index.js";
 import { todayISO, addDaysISO } from "../../src/rolodex/dates.js";
+import { SEED_EMAIL, SEED_PASSWORD } from "../helpers/postgres.js";
 import type {
   Gift,
   ImportantDate,
@@ -72,16 +72,20 @@ interface Failure {
 }
 
 let repo: Repo;
-let app: express.Express;
+let agent: ReturnType<typeof request.agent>;
 
 beforeEach(async () => {
-  repo = testRepo();
-  app = await appWithRolodex(repo);
+  const ctx = await appWithRolodex();
+  repo = ctx.repo;
+  agent = request.agent(ctx.app);
+  await agent
+    .post("/api/auth/login")
+    .send({ email: SEED_EMAIL, password: SEED_PASSWORD });
 });
 
 const post = (path: string, body: object) =>
-  request(app).post(`/api/rolodex${path}`).send(body);
-const get = (path: string) => request(app).get(`/api/rolodex${path}`);
+  agent.post(`/api/rolodex${path}`).send(body);
+const get = (path: string) => agent.get(`/api/rolodex${path}`);
 
 describe("people", () => {
   it("creates a person and reads them back with their derived status", async () => {
@@ -114,8 +118,11 @@ describe("people", () => {
   });
 
   it("filters the list by search, circle and tag", async () => {
-    makePerson(repo, "Maya Chen", { company: "Figma", tags: ["design"] });
-    makePerson(repo, "Ben Foster", { circle: "inner", tags: ["university"] });
+    await makePerson(repo, "Maya Chen", { company: "Figma", tags: ["design"] });
+    await makePerson(repo, "Ben Foster", {
+      circle: "inner",
+      tags: ["university"],
+    });
 
     const found = async (query: string) =>
       ((await get(`/people${query}`)).body as PersonComputed[]).length;
@@ -132,7 +139,7 @@ describe("people", () => {
   });
 
   it("returns everything logged about a person in one reply", async () => {
-    const p = makePerson(repo);
+    const p = await makePerson(repo);
     const res = await get(`/people/${p.id}`);
     expect(
       Object.keys(res.body as PersonPage).sort((a, b) => a.localeCompare(b)),
@@ -149,8 +156,8 @@ describe("people", () => {
   });
 
   it("edits a person but ignores an id or created_at sent with the edit", async () => {
-    const p = makePerson(repo, "Maya Chen");
-    const res = await request(app)
+    const p = await makePerson(repo, "Maya Chen");
+    const res = await agent
       .patch(`/api/rolodex/people/${p.id}`)
       .send({ company: "Figma", id: 999, created_at: "1999-01-01" });
     const updated = res.body as Person;
@@ -159,19 +166,19 @@ describe("people", () => {
   });
 
   it("deletes a person, once", async () => {
-    const p = makePerson(repo);
-    expect(
-      (await request(app).delete(`/api/rolodex/people/${p.id}`)).status,
-    ).toBe(200);
-    expect(
-      (await request(app).delete(`/api/rolodex/people/${p.id}`)).status,
-    ).toBe(404);
+    const p = await makePerson(repo);
+    expect((await agent.delete(`/api/rolodex/people/${p.id}`)).status).toBe(
+      200,
+    );
+    expect((await agent.delete(`/api/rolodex/people/${p.id}`)).status).toBe(
+      404,
+    );
   });
 });
 
 describe("what gets logged against a person", () => {
   it("logs an interaction, which resets the check-in clock", async () => {
-    const p = makePerson(repo, "Maya Chen", { circle: "inner" });
+    const p = await makePerson(repo, "Maya Chen", { circle: "inner" });
     const res = await post(`/people/${p.id}/interactions`, {
       type: "call",
       date: todayISO(),
@@ -186,7 +193,7 @@ describe("what gets logged against a person", () => {
   });
 
   it("refuses an interaction of an unknown kind, or with a bad date", async () => {
-    const p = makePerson(repo);
+    const p = await makePerson(repo);
     expect(
       (
         await post(`/people/${p.id}/interactions`, {
@@ -206,7 +213,7 @@ describe("what gets logged against a person", () => {
   });
 
   it("records an important date, and rejects one that never happens", async () => {
-    const p = makePerson(repo);
+    const p = await makePerson(repo);
     const ok = await post(`/people/${p.id}/dates`, {
       type: "birthday",
       month: 3,
@@ -232,7 +239,7 @@ describe("what gets logged against a person", () => {
   });
 
   it("keeps facts and news, and dates news today when none is given", async () => {
-    const p = makePerson(repo);
+    const p = await makePerson(repo);
     expect(
       (await post(`/people/${p.id}/facts`, { text: "Allergic to shellfish" }))
         .status,
@@ -250,14 +257,14 @@ describe("what gets logged against a person", () => {
   });
 
   it("carries a reminder through to done and back off the list", async () => {
-    const p = makePerson(repo);
+    const p = await makePerson(repo);
     const created = await post(`/people/${p.id}/reminders`, {
       text: "Book a table",
       due_date: addDaysISO(todayISO(), 3),
     });
     expect(created.status).toBe(201);
 
-    const done = await request(app)
+    const done = await agent
       .patch(`/api/rolodex/reminders/${(created.body as Reminder).id}`)
       .send({ done: true });
     expect(done.body as Reminder).toMatchObject({ done: true });
@@ -268,27 +275,27 @@ describe("what gets logged against a person", () => {
   });
 
   it("moves a gift from idea to given", async () => {
-    const p = makePerson(repo);
+    const p = await makePerson(repo);
     const gift = await post(`/people/${p.id}/gifts`, {
       name: "Ceramic bowls",
       kind: "idea",
     });
     expect((gift.body as Gift).date).toBe(todayISO());
 
-    const given = await request(app)
+    const given = await agent
       .patch(`/api/rolodex/gifts/${(gift.body as Gift).id}`)
       .send({ kind: "given" });
     expect(given.body as Gift).toMatchObject({
       kind: "given",
       name: "Ceramic bowls",
     });
-    expect(
-      (await request(app).patch("/api/rolodex/gifts/999").send({})).status,
-    ).toBe(404);
+    expect((await agent.patch("/api/rolodex/gifts/999").send({})).status).toBe(
+      404,
+    );
   });
 
   it("refuses a gift of an unknown kind", async () => {
-    const p = makePerson(repo);
+    const p = await makePerson(repo);
     expect(
       (await post(`/people/${p.id}/gifts`, { name: "Socks", kind: "borrowed" }))
         .body as Failure,
@@ -296,8 +303,8 @@ describe("what gets logged against a person", () => {
   });
 
   it("connects two people, reading correctly from each side", async () => {
-    const kate = makePerson(repo, "Kate Marsh");
-    const sam = makePerson(repo, "Sam Fielding");
+    const kate = await makePerson(repo, "Kate Marsh");
+    const sam = await makePerson(repo, "Sam Fielding");
     const res = await post(`/people/${kate.id}/connections`, {
       other_id: sam.id,
       kind: "parent_child",
@@ -313,7 +320,7 @@ describe("what gets logged against a person", () => {
   });
 
   it("will not connect someone to themselves, or to nobody", async () => {
-    const kate = makePerson(repo, "Kate Marsh");
+    const kate = await makePerson(repo, "Kate Marsh");
     expect(
       (
         await post(`/people/${kate.id}/connections`, {
@@ -335,10 +342,15 @@ describe("what gets logged against a person", () => {
 
 describe("the views over it all", () => {
   it("puts the most overdue person first on today, with how late they are", async () => {
-    const late = makePerson(repo, "Late Larry", { circle: "inner" });
-    const later = makePerson(repo, "Later Lucy", { circle: "inner" });
-    repo.createInteraction(late.id, "call", addDaysISO(todayISO(), -40), null);
-    repo.createInteraction(
+    const late = await makePerson(repo, "Late Larry", { circle: "inner" });
+    const later = await makePerson(repo, "Later Lucy", { circle: "inner" });
+    await repo.createInteraction(
+      late.id,
+      "call",
+      addDaysISO(todayISO(), -40),
+      null,
+    );
+    await repo.createInteraction(
       later.id,
       "call",
       addDaysISO(todayISO(), -200),
@@ -357,8 +369,8 @@ describe("the views over it all", () => {
   });
 
   it("counts a year of interactions by month, and people by circle", async () => {
-    const p = makePerson(repo, "Maya Chen", { circle: "close" });
-    repo.createInteraction(p.id, "call", todayISO(), null);
+    const p = await makePerson(repo, "Maya Chen", { circle: "close" });
+    await repo.createInteraction(p.id, "call", todayISO(), null);
 
     const body = (await get("/stats")).body as Stats;
     expect(body.months).toHaveLength(12);
@@ -375,8 +387,12 @@ describe("the views over it all", () => {
   });
 
   it("lists a month's dates, and what is coming up", async () => {
-    const p = makePerson(repo, "Maya Chen");
-    repo.createDate(p.id, "birthday", null, { month: 3, day: 15, year: 1990 });
+    const p = await makePerson(repo, "Maya Chen");
+    await repo.createDate(p.id, "birthday", null, {
+      month: 3,
+      day: 15,
+      year: 1990,
+    });
 
     const body = (await get("/calendar?year=2027&month=3"))
       .body as CalendarPage;
@@ -389,10 +405,10 @@ describe("the views over it all", () => {
   });
 
   it("filters the timeline by person and by kind", async () => {
-    const maya = makePerson(repo, "Maya Chen");
-    const ben = makePerson(repo, "Ben Foster");
-    repo.createInteraction(maya.id, "call", "2026-06-01", "Talked");
-    repo.createNews(ben.id, "Moved to Berlin", "2026-07-01");
+    const maya = await makePerson(repo, "Maya Chen");
+    const ben = await makePerson(repo, "Ben Foster");
+    await repo.createInteraction(maya.id, "call", "2026-06-01", "Talked");
+    await repo.createNews(ben.id, "Moved to Berlin", "2026-07-01");
 
     const entries = async (query: string) =>
       (await get(`/timeline${query}`)).body as TimelineEntry[];
@@ -406,8 +422,8 @@ describe("the views over it all", () => {
   });
 
   it("collects the distinct tags in use", async () => {
-    makePerson(repo, "One", { tags: ["family", "cycling"] });
-    makePerson(repo, "Two", { tags: ["family"] });
+    await makePerson(repo, "One", { tags: ["family", "cycling"] });
+    await makePerson(repo, "Two", { tags: ["family"] });
     expect((await get("/tags")).body as string[]).toEqual([
       "cycling",
       "family",
@@ -432,7 +448,7 @@ describe("importing", () => {
   });
 
   it("flags someone already in the rolodex by their email", async () => {
-    makePerson(repo, "Nora Feldman");
+    await makePerson(repo, "Nora Feldman");
     const res = await post("/import/parse", {
       filename: "contacts.csv",
       content: "Name,Email\nNora Feldman,nora.feldman@example.com",
@@ -518,7 +534,7 @@ describe("importing", () => {
 
     const imported = (await get("/people")).body as PersonComputed[];
     expect(imported[0].tags).toEqual(["imported"]);
-    const dates = repo.listAllDates();
+    const dates = await repo.listAllDates();
     expect(dates.map((d) => [d.month, d.day, d.year])).toEqual([
       [4, 11, 1993],
       [4, 11, null],

@@ -1,11 +1,9 @@
-import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { config as loadEnv } from "dotenv";
 import { migrate } from "./db/migrate.js";
 import { createPool } from "./db/pool.js";
 import { isSeeded, seed } from "./crm/seed.js";
-import { openDb as openRolodexDb } from "./rolodex/db/index.js";
 import { seedIfEmpty as seedRolodex } from "./rolodex/seed.js";
 import { seedIfEmpty as seedSpace } from "./space/seed.js";
 import { createApp } from "./app.js";
@@ -17,7 +15,6 @@ const root = path.resolve(
 );
 loadEnv({ path: path.join(root, ".env") });
 
-const dataDir = path.resolve(root, process.env.DATA_DIR ?? "data");
 const port = Number(process.env.PORT ?? 8100);
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -26,11 +23,6 @@ if (!databaseUrl || !jwtSecret) {
   console.error("DATABASE_URL and JWT_SECRET are required (see .env.example)");
   process.exit(1);
 }
-
-mkdirSync(dataDir, { recursive: true });
-
-const rolodex = openRolodexDb(path.join(dataDir, "rolodex.sqlite"));
-seedRolodex(rolodex);
 
 const pool = createPool({ connectionString: databaseUrl });
 const migrationsDir = path.resolve(
@@ -62,7 +54,8 @@ if (!(await isSeeded(pool, tenantId))) {
   console.log("Seeded the CRM database with sample data");
 }
 await seedSpace(pool, tenantId);
+await seedRolodex(pool, tenantId);
 
-createApp({ pool, jwtSecret, dbs: { rolodex } }).listen(port, () => {
+createApp({ pool, jwtSecret }).listen(port, () => {
   console.log(`Novhora running at http://localhost:${port}`);
 });

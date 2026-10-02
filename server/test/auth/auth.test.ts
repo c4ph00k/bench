@@ -11,7 +11,6 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Pool } from "pg";
 import { createApp } from "../../src/app.js";
-import { openDb as openRolodexDb } from "../../src/rolodex/db/index.js";
 import * as auth from "../../src/auth/db.js";
 import {
   JWT_SECRET,
@@ -36,9 +35,6 @@ function makeApp() {
   return createApp({
     pool,
     jwtSecret: JWT_SECRET,
-    dbs: {
-      rolodex: openRolodexDb(":memory:"),
-    },
   });
 }
 

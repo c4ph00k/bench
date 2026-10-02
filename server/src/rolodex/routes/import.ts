@@ -1,6 +1,8 @@
 /** Bringing people in from a CSV or vCard file: parse, remap the columns, then apply. */
 import { Router } from "express";
-import type { Repo } from "../db/index.js";
+import type { Pool } from "pg";
+import { createRepo, type Repo } from "../db/index.js";
+import { tenantIdOf } from "../../tenant.js";
 import {
   applyMapping,
   checkDuplicates,
@@ -13,8 +15,12 @@ import { badRequest, body, isText } from "./validate.js";
 
 type Existing = { id: number; name: string; email: string | null }[];
 
-const listExisting = (repo: Repo): Existing =>
-  repo.listPeople().map((p) => ({ id: p.id, name: p.name, email: p.email }));
+const listExisting = async (repo: Repo): Promise<Existing> =>
+  (await repo.listPeople()).map((p) => ({
+    id: p.id,
+    name: p.name,
+    email: p.email,
+  }));
 
 const withDuplicates = (people: ParsedPerson[], existing: Existing) =>
   people.map((person, index) => ({
@@ -23,13 +29,15 @@ const withDuplicates = (people: ParsedPerson[], existing: Existing) =>
     duplicate: checkDuplicates(person, existing),
   }));
 
-export function importRouter(repo: Repo): Router {
+export function importRouter(pool: Pool): Router {
   const router = Router();
 
-  router.post("/parse", (req, res) => {
+  router.post("/parse", async (req, res) => {
+    const tenantId = tenantIdOf(res);
+    const repo = createRepo(pool, tenantId);
     const { filename, content } = body(req);
     if (!isText(content)) return badRequest(res, "A file is required");
-    const existing = listExisting(repo);
+    const existing = await listExisting(repo);
 
     const name = typeof filename === "string" ? filename : "";
     if (/\.vcf$/i.test(name) || /^BEGIN:VCARD/im.test(content.trim())) {
@@ -55,7 +63,8 @@ export function importRouter(repo: Repo): Router {
   });
 
   /** Re-run a CSV through a mapping the user corrected by hand. */
-  router.post("/remap", (req, res) => {
+  router.post("/remap", async (req, res) => {
+    const repo = createRepo(pool, tenantIdOf(res));
     const { headers, raw_rows, mapping } = body(req);
     if (
       !Array.isArray(headers) ||
@@ -75,26 +84,31 @@ export function importRouter(repo: Repo): Router {
       },
       mapping as Record<string, string>,
     );
-    res.json({ rows: withDuplicates(people, listExisting(repo)) });
+    res.json({ rows: withDuplicates(people, await listExisting(repo)) });
   });
 
-  router.post("/apply", (req, res) => {
+  router.post("/apply", async (req, res) => {
+    const tenantId = tenantIdOf(res);
     const { people } = body(req);
     if (!Array.isArray(people) || people.length === 0)
       return badRequest(res, "No people to import");
 
-    const existing = listExisting(repo);
+    const existing = await listExisting(createRepo(pool, tenantId));
     const created: { id: number; name: string }[] = [];
     const skipped: DuplicateCheck[] = [];
+
     // One transaction: a half-imported address book is worse than a failed import.
-    repo.db.transaction(() => {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const repo = createRepo(client, tenantId);
       for (const p of people as ParsedPerson[]) {
         const duplicate = checkDuplicates(p, existing);
         if (duplicate.isDuplicate) {
           skipped.push(duplicate);
           continue;
         }
-        const person = repo.createPerson({
+        const person = await repo.createPerson({
           name: p.name,
           email: p.email,
           phone: p.phone,
@@ -110,9 +124,15 @@ export function importRouter(repo: Repo): Router {
           name: person.name,
           email: person.email,
         });
-        addBirthday(repo, person.id, p.birthday);
+        await addBirthday(repo, person.id, p.birthday);
       }
-    })();
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
     res.status(201).json({ created, skipped: skipped.length });
   });
 
@@ -120,11 +140,15 @@ export function importRouter(repo: Repo): Router {
 }
 
 /** vCard dates come as 1993-04-11 or as --04-11 when the year is unknown. */
-function addBirthday(repo: Repo, personId: number, birthday: string | null) {
+async function addBirthday(
+  repo: Repo,
+  personId: number,
+  birthday: string | null,
+) {
   if (!birthday) return;
   const full = /^(\d{4})-(\d{2})-(\d{2})$/.exec(birthday);
   if (full) {
-    repo.createDate(personId, "birthday", null, {
+    await repo.createDate(personId, "birthday", null, {
       month: Number(full[2]),
       day: Number(full[3]),
       year: Number(full[1]),
@@ -133,7 +157,7 @@ function addBirthday(repo: Repo, personId: number, birthday: string | null) {
   }
   const noYear = /^--(\d{2})-(\d{2})$/.exec(birthday);
   if (noYear)
-    repo.createDate(personId, "birthday", null, {
+    await repo.createDate(personId, "birthday", null, {
       month: Number(noYear[1]),
       day: Number(noYear[2]),
       year: null,

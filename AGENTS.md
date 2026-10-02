@@ -5,10 +5,9 @@ login gate (email + password, seeded on first run - see `server/src/auth/`). The
 branded for Novhora - name, mark and favicon come from `web/src/shared/brand.ts` and
 `web/public/novhora.svg`. One npm workspace
 root with two workspaces: `web/` (one Vite project, an HTML entry point per app) and `server/`.
-TypeScript throughout. The apps still store data in local SQLite files under `data/`; auth has
-moved to Postgres (JWT sessions, memberships - see `docs/SAAS-MULTITENANCY.md`), so the server
-reads `DATABASE_URL` and `JWT_SECRET` from `.env`. Playwright specs in `e2e/`. All commands run
-from the root.
+TypeScript throughout. All data - auth, CRM, Space and Rolodex - lives in Postgres behind
+`DATABASE_URL`, migrated and seeded on first run (see `docs/SAAS-MULTITENANCY.md`); the server also
+reads `JWT_SECRET` from `.env`. Playwright specs in `e2e/`. All commands run from the root.
 
 ## Golden rules
 

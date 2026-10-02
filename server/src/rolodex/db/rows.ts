@@ -1,5 +1,4 @@
-/** Turning SQLite rows into domain objects. SQLite has no boolean, so those columns are 0 or 1. */
-import type Database from "better-sqlite3";
+/** Turning Postgres rows into domain objects. Booleans are real booleans now. */
 import type {
   Connection,
   ConnectionKind,
@@ -15,12 +14,7 @@ import type {
   Reminder,
 } from "../types.js";
 
-export type DB = Database.Database;
-
 export type Row = Record<string, unknown>;
-
-/** What SQLite accepts as a bound parameter: the driver rejects booleans and undefined. */
-export type Param = string | number | bigint | null;
 
 export function personFromRow(r: Row): Person {
   return {
@@ -34,7 +28,7 @@ export function personFromRow(r: Row): Person {
     timezone: r.timezone as string | null,
     circle: r.circle as Person["circle"],
     cadence_override_days: r.cadence_override_days as number | null,
-    checkins_off: r.checkins_off === 1,
+    checkins_off: r.checkins_off as boolean,
     snoozed_until: r.snoozed_until as string | null,
     how_met: r.how_met as string | null,
     met_where: r.met_where as string | null,
@@ -96,7 +90,7 @@ export function reminderFromRow(r: Row): Reminder {
     person_id: r.person_id as number,
     text: r.text as string,
     due_date: r.due_date as string,
-    done: r.done === 1,
+    done: r.done as boolean,
     done_at: r.done_at as string | null,
     created_at: r.created_at as string,
   };
@@ -120,19 +114,10 @@ export function connectionFromRow(r: Row): Connection {
     person_a: r.person_a as number,
     person_b: r.person_b as number,
     kind: r.kind as ConnectionKind,
-    a_is_parent: r.a_is_parent === 1,
+    a_is_parent: r.a_is_parent as boolean,
     label: r.label as string | null,
     inverse_label: r.inverse_label as string | null,
     note: r.note as string | null,
     created_at: r.created_at as string,
   };
-}
-
-/** Every insert here reads the row back, so callers get the stored values rather than the sent ones. */
-export function readRow(db: DB, table: string, id: number | bigint): Row {
-  return db.prepare(`SELECT * FROM ${table} WHERE id = ?`).get(id) as Row;
-}
-
-export function deleteRow(db: DB, table: string, id: number): boolean {
-  return db.prepare(`DELETE FROM ${table} WHERE id = ?`).run(id).changes > 0;
 }

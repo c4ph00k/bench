@@ -2,14 +2,14 @@
 
 Three local-first apps, merged from four separate repos into one project with **one frontend
 server and one backend server**, branded for Novhora. Everything runs on your own machine: one
-login at the door, no external services. Auth and CRM live in Postgres; Space and Rolodex still
-store data in local SQLite files (see [SAAS-MULTITENANCY.md](./SAAS-MULTITENANCY.md)).
+login at the door, no external services. Auth, CRM, Space and Rolodex all live in Postgres, each
+row carrying the tenant it belongs to (see [SAAS-MULTITENANCY.md](./SAAS-MULTITENANCY.md)).
 
-| App         | Path       | What it is                                                                                                                      | Backend                  |
-| ----------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
-| **CRM**     | `/crm`     | Personal sales CRM: organizations, contacts, deals, drag-and-drop pipeline, activities, dashboard                               | Postgres                 |
-| **Space**   | `/space`   | Personal knowledge manager, a single-user Notion: pages and blocks, databases with table/board/list views, search               | `data/personal-space.db` |
-| **Rolodex** | `/rolodex` | Personal CRM for your own people: check-in cadences, circles, birthdays, a timeline of every conversation, CSV and vCard import | `data/rolodex.sqlite`    |
+| App         | Path       | What it is                                                                                                                      | Backend  |
+| ----------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| **CRM**     | `/crm`     | Personal sales CRM: organizations, contacts, deals, drag-and-drop pipeline, activities, dashboard                               | Postgres |
+| **Space**   | `/space`   | Personal knowledge manager, a single-user Notion: pages and blocks, databases with table/board/list views, search               | Postgres |
+| **Rolodex** | `/rolodex` | Personal CRM for your own people: check-in cadences, circles, birthdays, a timeline of every conversation, CSV and vCard import | Postgres |
 
 A launcher at `/` links to all three, and every page carries the same navigation strip: the
 Novhora mark, then Home, CRM, Space and Rolodex, each with the icon that identifies it inside its
@@ -69,8 +69,6 @@ server/             ONE Express app
   src/space/          space routes + db + seed
   src/rolodex/        rolodex routes + db + seed
   test/{auth,crm,space,rolodex}/   vitest suites
-data/                 personal-space.db, rolodex.sqlite (gitignored, seeded on first run);
-                      auth and CRM live in Postgres
 docs/                 this documentation; docs/<app>/ per app
 e2e/                  Playwright specs; auth.spec.ts is the only one that never signs in
 scripts/              check-secrets.mjs, the repo-specific half of the secrets check
@@ -127,22 +125,17 @@ These are settled. Changing one is a project-level decision, not an implementati
   browser that revalidates one gets **304 with an empty body** - which the client then parses as
   JSON and fails on, with a message that names neither the request nor the status. Nothing is
   saved by caching a list that changes whenever you touch it, on a machine talking to itself.
-- **SQLite for the two unported apps, Postgres for auth and CRM.** The app schemas are
-  unrelated - do not merge them. Space and Rolodex each still open a SQLite file seeded on first
-  use, in WAL mode, so recent writes live in the `-wal` sidecar rather than the main file: copy or
-  move the whole set together, or checkpoint first
-  (`sqlite3 f.sqlite "PRAGMA wal_checkpoint(TRUNCATE);"`). Deleting a `-wal` as a stray artifact
-  discards data - a 4KB `.sqlite` beside a 3MB `-wal` is a full database, not an empty one. Auth
-  and CRM live in Postgres behind `DATABASE_URL`; CRM's rows carry a `tenant_id` resolved per
-  request - see [SAAS-MULTITENANCY.md](./SAAS-MULTITENANCY.md).
+- **One Postgres database, one tenant id on every row.** Auth, CRM, Space and Rolodex share the
+  database behind `DATABASE_URL`, each with its own tables, and every operational row carries a
+  `tenant_id` resolved per request from the session's membership. The schemas are applied by the
+  SQL migration runner in `server/migrations/` and seeded on first run - see
+  [SAAS-MULTITENANCY.md](./SAAS-MULTITENANCY.md).
 - **The login gate is server-side and total.** Pages redirect to `/login` and every `/api` route
   except `/api/auth` answers 401 without a session, both in `server/src/app.ts`. Two prefixes
   stay open on purpose: `/login` (the document itself) and `/assets` (build output, code not
-  data - the login document cannot boot without its bundle). An auth database with no users
-  gates nothing; that is what lets the per-app server suites run unauthenticated against
-  in-memory dbs. The client half is thin: the three app api helpers redirect on a 401, and the
-  launcher probes `/api/auth/me` once, which covers `npm run dev` where pages come from Vite
-  rather than through the gate.
+  data - the login document cannot boot without its bundle). The client half is thin: the three
+  app api helpers redirect on a 401, and the launcher probes `/api/auth/me` once, which covers
+  `npm run dev` where pages come from Vite rather than through the gate.
 - **A role lives on each membership, and one flag can hold users at the door.** The role is
   `owner`, `admin` or `user`, stored on the membership; `users.must_change_password` is set when an
   admin creates a member or resets a password. While it is set, the page gate redirects everything
@@ -186,24 +179,16 @@ These are settled. Changing one is a project-level decision, not an implementati
   typescript-eslint's supported range. The cost is roughly three seconds a typecheck against 7.
   **Revisit when typescript-eslint supports the native compiler.** See
   [CONTROLS.md](./CONTROLS.md).
-- **better-sqlite3 stays on 12.** `npm ci` prints one deprecation warning for its
-  `prebuild-install` dependency; that is accepted, not an oversight. v13 ships `binding.gyp`
-  inside the tarball next to its prebuilt binaries and relies on `gypfile: false` to stop npm
-  compiling - but the lockfile and the registry's install metadata do not carry that field, so
-  `npm ci` injects `node-gyp rebuild` and every install compiles from source. That succeeds
-  silently on machines with Python and a C++ toolchain and fails hard on a stock Windows machine;
-  the prebuilds inside the tarball are only read at require time, never at install. v12 downloads
-  a prebuilt binary instead, which needs no toolchain. Revisit if npm starts carrying `gypfile`
-  through the lockfile, or upstream stops shipping `binding.gyp` in the tarball.
 
 ## Adding a fourth app
 
 A new `web/<name>/index.html`, a new `web/src/<name>/`, an entry in `vite.config.ts`
 `rollupOptions.input`, the prefix in the `APPS` list in **both** `server/src/app.ts` and
 `web/vite.config.ts`, and a card on the launcher in `web/src/home/App.tsx`. A backend, if it has
-one, is a `server/src/<name>/` with its own database file opened in `server/src/index.ts` and its
-router mounted at `/api/<name>` - and a `no-restricted-imports` entry in `eslint.config.js` so it
-stays separate from its siblings.
+one, is a `server/src/<name>/` with a migration in `server/migrations/` (tenant_id on every row),
+its router mounted at `/api/<name>` on the shared pool, and a seed wired into the tenant bootstrap
+in `server/src/index.ts` - plus a `no-restricted-imports` entry in `eslint.config.js` so it stays
+separate from its siblings.
 
 Then the navigation: an icon in `web/src/shared/AppIcons.tsx`, an entry in the `APPS` list in
 `web/src/shared/BenchNav.tsx`, the new key in that file's `AppKey` union, and

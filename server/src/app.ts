@@ -5,7 +5,6 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { crmRouter } from "./crm/routes.js";
 import { rolodexRouter } from "./rolodex/routes/index.js";
-import type { Repo } from "./rolodex/db/index.js";
 import { spaceRouter } from "./space/routes/index.js";
 import { authRouter } from "./auth/routes.js";
 import { sessionUser } from "./auth/session.js";
@@ -20,23 +19,16 @@ const webDist = path.resolve(
 /** The apps with their own HTML entry point in web/dist, for deep-link fallback. */
 const APPS = ["crm", "space", "rolodex", "admin", "change-password"];
 
-interface Dbs {
-  rolodex: Repo;
-}
-
 export interface AppOptions {
   pool: Pool;
   jwtSecret: string;
   jwtTtl?: number;
-  dbs: Dbs;
 }
 
-/**
- * Build the Express app around the shared Postgres pool. CRM and Space have moved there, alongside
- * auth; Rolodex hands its old SQLite handle until its own port lands.
- */
+/** Build the Express app around the shared Postgres pool, which serves auth, CRM, Space and
+    Rolodex alike. */
 export function createApp(options: AppOptions): express.Express {
-  const { pool, jwtSecret, jwtTtl, dbs } = options;
+  const { pool, jwtSecret, jwtTtl } = options;
   const app = express();
   // Rolodex accepts whole address books and photos in one request, which is why this is not 2mb.
   app.use(express.json({ limit: "25mb" }));
@@ -78,7 +70,7 @@ export function createApp(options: AppOptions): express.Express {
 
   app.use("/api/crm", crmRouter(pool));
   app.use("/api/space", spaceRouter(pool));
-  app.use("/api/rolodex", rolodexRouter(dbs.rolodex));
+  app.use("/api/rolodex", rolodexRouter(pool));
 
   if (existsSync(webDist)) {
     // Pages are gated too: any GET without a session is sent to the login document, the one page

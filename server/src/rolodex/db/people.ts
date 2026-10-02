@@ -2,30 +2,24 @@
 import { computeStatus } from "../cadence.js";
 import { nowISO } from "../dates.js";
 import type { Person, PersonComputed, PersonInput } from "../types.js";
-import {
-  deleteRow,
-  personFromRow,
-  readRow,
-  type DB,
-  type Param,
-  type Row,
-} from "./rows.js";
+import { personFromRow, type Row } from "./rows.js";
+import type { Queryable } from "./index.js";
 
 interface NewPerson extends Partial<PersonInput> {
   name: string;
 }
 
 export interface PeopleRepo {
-  listPeople(): PersonComputed[];
-  getPerson(id: number): PersonComputed | null;
-  createPerson(input: NewPerson): Person;
-  updatePerson(id: number, patch: Partial<PersonInput>): Person | null;
-  deletePerson(id: number): boolean;
-  personCount(): number;
-  allTags(): string[];
+  listPeople(): Promise<PersonComputed[]>;
+  getPerson(id: number): Promise<PersonComputed | null>;
+  createPerson(input: NewPerson): Promise<Person>;
+  updatePerson(id: number, patch: Partial<PersonInput>): Promise<Person | null>;
+  deletePerson(id: number): Promise<boolean>;
+  personCount(): Promise<number>;
+  allTags(): Promise<string[]>;
 }
 
-const COLUMNS = [
+const PERSON_COLUMNS = [
   "name",
   "email",
   "phone",
@@ -45,93 +39,142 @@ const COLUMNS = [
   "photo",
 ] as const;
 
-/** The column values in COLUMNS order. Three of them are not what SQLite can store: a circle
-    defaults, a boolean becomes 0 or 1, and tags are JSON. Everything absent becomes NULL. */
-function values(p: NewPerson | Person): Param[] {
+const INSERT_COLUMNS = [
+  "tenant_id",
+  ...PERSON_COLUMNS,
+  "created_at",
+  "updated_at",
+];
+const INSERT_PLACEHOLDERS = INSERT_COLUMNS.map((_, i) => `$${i + 1}`).join(
+  ", ",
+);
+
+function personValues(input: NewPerson): unknown[] {
   const row: Record<string, unknown> = {
-    ...p,
-    circle: p.circle ?? "close",
-    checkins_off: p.checkins_off ? 1 : 0,
-    tags: JSON.stringify(p.tags ?? []),
+    ...input,
+    circle: input.circle ?? "close",
+    checkins_off: input.checkins_off ?? false,
+    tags: JSON.stringify(input.tags ?? []),
   };
-  return COLUMNS.map((c) => (row[c] ?? null) as Param);
+  return PERSON_COLUMNS.map((c) => row[c] ?? null);
 }
 
-const PLACEHOLDERS = COLUMNS.map(() => "?").join(", ");
-const ASSIGNMENTS = COLUMNS.map((c) => `${c} = ?`).join(", ");
-
-export function peopleRepo(db: DB): PeopleRepo {
-  const insert = db.prepare(
-    `INSERT INTO people (${COLUMNS.join(", ")}, created_at, updated_at)
-     VALUES (${PLACEHOLDERS}, ?, ?)`,
-  );
-  const update = db.prepare(
-    `UPDATE people SET ${ASSIGNMENTS}, updated_at = ? WHERE id = ?`,
-  );
-  const lastContacted = db.prepare(
-    "SELECT MAX(date) AS last FROM interactions WHERE person_id = ?",
-  );
-  const latestNews = db.prepare(
-    "SELECT id, text, date FROM news WHERE person_id = ? ORDER BY date DESC, id DESC LIMIT 1",
-  );
-
-  /** A person plus what the app actually asks about them: when you last spoke, and whether that
-      is overdue. Both are derived rather than stored, so they cannot drift. */
-  function computed(p: Person): PersonComputed {
-    const last = (lastContacted.get(p.id) as Row).last as string | null;
-    const news = latestNews.get(p.id) as Row | undefined;
-    const status = computeStatus(p, last);
+export function peopleRepo(db: Queryable, tenantId: number): PeopleRepo {
+  async function computed(p: Person): Promise<PersonComputed> {
+    const last = await db.query<{ last: string | null }>(
+      "SELECT MAX(date) AS last FROM interactions WHERE person_id = $1 AND tenant_id = $2",
+      [p.id, tenantId],
+    );
+    const news = await db.query<Row>(
+      "SELECT id, text, date FROM news WHERE person_id = $1 AND tenant_id = $2 ORDER BY date DESC, id DESC LIMIT 1",
+      [p.id, tenantId],
+    );
+    const status = computeStatus(p, last.rows[0].last);
+    const newsRow = news.rows[0] as Row | undefined;
     return {
       ...p,
-      last_contacted: last,
+      last_contacted: last.rows[0].last,
       next_due: status.nextDue,
       status: status.status,
-      latest_news: news
+      latest_news: newsRow
         ? {
-            id: news.id as number,
-            text: news.text as string,
-            date: news.date as string,
+            id: newsRow.id as number,
+            text: newsRow.text as string,
+            date: newsRow.date as string,
           }
         : null,
     };
   }
 
-  const read = (id: number): Person => personFromRow(readRow(db, "people", id));
+  async function read(id: number): Promise<Person | undefined> {
+    const result = await db.query<Row>(
+      "SELECT * FROM people WHERE id = $1 AND tenant_id = $2",
+      [id, tenantId],
+    );
+    return result.rows[0] ? personFromRow(result.rows[0]) : undefined;
+  }
 
   return {
-    listPeople: () =>
-      (
-        db
-          .prepare("SELECT * FROM people ORDER BY name COLLATE NOCASE")
-          .all() as Row[]
-      ).map((r) => computed(personFromRow(r))),
-
-    getPerson: (id) => {
-      const row = db.prepare("SELECT * FROM people WHERE id = ?").get(id) as
-        Row | undefined;
-      return row ? computed(personFromRow(row)) : null;
+    listPeople: async () => {
+      const result = await db.query<Row>(
+        "SELECT * FROM people WHERE tenant_id = $1 ORDER BY lower(name)",
+        [tenantId],
+      );
+      return Promise.all(result.rows.map((r) => computed(personFromRow(r))));
     },
 
-    createPerson: (input) => {
+    getPerson: async (id) => {
+      const result = await db.query<Row>(
+        "SELECT * FROM people WHERE id = $1 AND tenant_id = $2",
+        [id, tenantId],
+      );
+      return result.rows[0] ? computed(personFromRow(result.rows[0])) : null;
+    },
+
+    createPerson: async (input) => {
       const now = nowISO();
-      const info = insert.run(...values(input), now, now);
-      return read(Number(info.lastInsertRowid));
+      const result = await db.query<Row>(
+        `INSERT INTO people (${INSERT_COLUMNS.join(", ")}) VALUES (${INSERT_PLACEHOLDERS}) RETURNING *`,
+        [tenantId, ...personValues(input), now, now],
+      );
+      return personFromRow(result.rows[0]);
     },
 
-    updatePerson: (id, patch) => {
-      update.run(...values({ ...read(id), ...patch }), nowISO(), id);
-      return read(id);
+    updatePerson: async (id, patch) => {
+      const current = await read(id);
+      if (!current) return null;
+      const merged = { ...current, ...patch };
+      await db.query(
+        `UPDATE people SET name = $1, email = $2, phone = $3, job_title = $4, company = $5, city = $6, timezone = $7, circle = $8, cadence_override_days = $9, checkins_off = $10, snoozed_until = $11, how_met = $12, met_where = $13, met_on = $14, notes = $15, tags = $16, photo = $17, updated_at = $18 WHERE id = $19 AND tenant_id = $20`,
+        [
+          merged.name,
+          merged.email,
+          merged.phone,
+          merged.job_title,
+          merged.company,
+          merged.city,
+          merged.timezone,
+          merged.circle,
+          merged.cadence_override_days,
+          merged.checkins_off,
+          merged.snoozed_until,
+          merged.how_met,
+          merged.met_where,
+          merged.met_on,
+          merged.notes,
+          JSON.stringify(merged.tags),
+          merged.photo,
+          nowISO(),
+          id,
+          tenantId,
+        ],
+      );
+      return (await read(id)) ?? null;
     },
 
-    deletePerson: (id) => deleteRow(db, "people", id),
+    deletePerson: async (id) => {
+      const result = await db.query(
+        "DELETE FROM people WHERE id = $1 AND tenant_id = $2",
+        [id, tenantId],
+      );
+      return (result.rowCount ?? 0) > 0;
+    },
 
-    personCount: () =>
-      (db.prepare("SELECT COUNT(*) AS n FROM people").get() as Row).n as number,
+    personCount: async () => {
+      const result = await db.query<{ n: number }>(
+        "SELECT COUNT(*)::int AS n FROM people WHERE tenant_id = $1",
+        [tenantId],
+      );
+      return result.rows[0].n;
+    },
 
-    allTags: () => {
-      const rows = db.prepare("SELECT tags FROM people").all() as Row[];
+    allTags: async () => {
+      const result = await db.query<Row>(
+        "SELECT tags FROM people WHERE tenant_id = $1",
+        [tenantId],
+      );
       const tags = new Set<string>();
-      for (const r of rows)
+      for (const r of result.rows)
         for (const t of JSON.parse(r.tags as string) as string[]) tags.add(t);
       return [...tags].sort((a, b) => a.localeCompare(b));
     },
